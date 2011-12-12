@@ -1,0 +1,3 @@
+lambdaAlpha=0.5
+muTheta=0.0
+dofTheta=7
