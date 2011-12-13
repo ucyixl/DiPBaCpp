@@ -34,7 +34,7 @@ include_directories("${DIPBAC_SOURCE_DIR}/CPP_Base/include")
 # "make test" will be used to run the test
 #add_custom_target(check COMMAND ${CMAKE_TEST_COMMAND})
 
-add_executable(DiPBaCpp DiPBaCpp.cpp)
+add_executable(DiPBaCpp DiPBaC.cpp)
 #set_target_properties(profileRegression PROPERTIES COMPILE_FLAGS "-fopenmp")
 target_link_libraries (DiPBaCpp armadillo)
 target_link_libraries (DiPBaCpp goto2)
