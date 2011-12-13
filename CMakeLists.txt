@@ -5,9 +5,9 @@ project(DIPBAC)
 # of this file
 
 # Turn on debugging warnings and profiling
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -pg -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -pg -Wall")
 # Build as optimised code
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 # Built-in modules
 include(CheckIncludeFiles)
