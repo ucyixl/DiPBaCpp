@@ -1,11 +1,12 @@
-########## Profile Regression C++ and R program version 2.0.1 ##################
+########## DiPBaC++: C++ and R code version 1.0.0 ##################
 
 ### Author ###
 David Hastie, Imperial College London
 
 
 ### Description ###
-Program to implement profile regression as described in Hastie et al. 2011
+Program to implement Dirichlet Process Bayesian Clustering as described in 
+Hastie et al. 2011. Previously this project was called profile regression.
 
    - Implements an infinite Dirichlet process model
    - Handles categorical, ordinal or normal covariates
@@ -26,7 +27,9 @@ Program to implement profile regression as described in Hastie et al. 2011
 
 
 ### ChangeLog: ###
-Changes since previous version 2.0.0
+This is the first version of the this software, but the software
+was previously available from the author in the profileRegression archive
+Changes since profileRegression version 2.0.1
    - Changes to this README, in particular noting that it was --fixedAlloc not 
      --fixedInit run time option that was removed in version 2.0.0, and 
      correction of arguments to the discussion of R calcPredictions function. 
@@ -104,6 +107,8 @@ An example input file for Poisson outcome and categorical data is given in
 An example input file for Poisson outcome and Normal data is given in
 	data/input/example_Poisson_Normal_input.txt
 
+We recommend you store real data outside the data directory in this package to 
+avoid it being overwritten when the package is updated.
 
 ### Hyperparameters: ###
 
@@ -124,9 +129,9 @@ An example parameter file is provided in
 
 The possible hyperparameters are (with definition):
 rAlpha  		- The shape parameter for Gamma prior on alpha 
-			  (default=3.125)
+			  (default=1.0)
 sAlpha  		- The inverse-scale (rate) parameter for the Gamma prior
-			  on alpha (default=0.625)
+			  on alpha (default=0.5)
 useReciprocalNCatsPhi 	- Boolean denoting whether the vector phi_j (for 
 			  covariate j) have all elements equal (only used in the 
 			  discrete covariate case, default=true)
@@ -191,7 +196,10 @@ lines must have the covariate values for each of these subjects. An example file
 is in example_Normal_predictX.txt in the data/input folder.
 
 At each iteration the predictive subjects are assigned to one of the current 
-clusters according to their covariate profiles (but ignoring missing values). 
+clusters according to their covariate profiles (but ignoring missing values), or
+their Rao Blackwellised estimate of theta is recorded (a weighted average of all
+theta, weighted by the probability of allocation into each cluster. 
+
 The predictive subjects have no impact on the likelihood and so do not determine 
 the clustering or parameters at each iteration. The predictive allocations are 
 then recorded as extra entries in each row of the output_z.txt file. This can 
@@ -202,11 +210,11 @@ predicted response values for these subjects.
 ### Running the program: ###  
 
 Runnning 
->bin/profileRegression --help
+>bin/DiPBaCpp --help
 will give a summary of all the possible user run time options
 
 An example call of the C++ program (from the main folder)
->bin/profileRegression --input=data/input/example_Poisson_Normal_input.txt 
+>bin/DiPBaCpp --input=data/input/example_Poisson_Normal_input.txt 
  --output=data/output/output_example --nSweeps=10000 --nBurn=1000 
  --yModel=Poisson --xModel=Normal --extraYVar 
  --hyper=data/input/example_hyperparameter_file.txt 
@@ -229,10 +237,10 @@ The package depends on the Rcpp, clue, cluster and ggplot2 packages (available
 from CRAN)
 
 To install the package from the rfiles subdirectory use
->R CMD INSTALL profRegr_2.0.1.tar.gz
+>R CMD INSTALL DiPBaC_1.0.0.tar.gz
 
 Then in R the commands are:
->require(profRegr)
+>require(DiPBaC)
 >runInfoObj<-readRunInfo('../data/output','output_example')
 >dissimObj<-calcDissimilarityMatrix(runInfoObj)
 >clusObj<-calcOptimalClustering(dissimObj)
