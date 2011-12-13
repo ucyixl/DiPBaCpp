@@ -1,0 +1,1684 @@
+readRunInfo<-function(directoryPath,fileStem='output'){
+
+   # Read the number of sweeps, the length of burn in and filter from the log file
+   runData<-readLines(file.path(directoryPath,paste(fileStem,'_log.txt',sep='')))
+
+   # Number of sweeps
+   nSweeps<-runData[grep('Number of sweeps',runData)]
+   nSweeps<-substr(nSweeps,regexpr(':',nSweeps)+1,nchar(nSweeps))
+   nSweeps<-gsub(' ','',nSweeps)
+   nSweeps<-gsub('\t','',nSweeps)
+   nSweeps<-as.integer(nSweeps)
+    
+   # Length of burn in
+   nBurn<-runData[grep('Burn in sweeps',runData)]
+   nBurn<-substr(nBurn,regexpr(':',nBurn)+1,nchar(nBurn))
+   nBurn<-gsub(' ','',nBurn)
+   nBurn<-gsub('\t','',nBurn)
+   nBurn<-as.integer(nBurn)
+    
+   # Output filter
+   nFilter<-runData[grep('Output filter',runData)]
+   nFilter<-substr(nFilter,regexpr(':',nFilter)+1,nchar(nFilter))
+   nFilter<-gsub(' ','',nFilter)
+   nFilter<-gsub('\t','',nFilter)
+   nFilter<-as.integer(nFilter)
+    
+   # Number of subjects
+   nSubjects<-runData[grep('Number of subjects',runData)]
+   nSubjects<-substr(nSubjects,regexpr(':',nSubjects)+1,nchar(nSubjects))
+   nSubjects<-gsub(' ','',nSubjects)
+   nSubjects<-gsub('\t','',nSubjects)
+   nSubjects<-as.integer(nSubjects)
+    
+   # Number of prediction subjects
+   nPredictSubjects<-runData[grep('Number of prediction subjects',runData)]
+   if(length(nPredictSubjects)==0){
+      # This is for legacy runs
+      nPredictSubjects<-0
+   }else{
+      nPredictSubjects<-substr(nPredictSubjects,regexpr(':',nPredictSubjects)+1,
+                                 nchar(nPredictSubjects))
+      nPredictSubjects<-gsub(' ','',nPredictSubjects)
+      nPredictSubjects<-gsub('\t','',nPredictSubjects)
+      nPredictSubjects<-as.integer(nPredictSubjects)
+   }
+      
+   # Model for X
+   xModel<-as.character(runData[grep('Model for X',runData)])
+   xModel<-substr(xModel,regexpr(':',xModel)+1,nchar(xModel))
+   xModel<-gsub(' ','',xModel)
+   xModel<-gsub('\t','',xModel)
+      
+   if(length(grep('Include response: False',runData))>0){
+      includeResponse<-F
+      yModel<-NULL
+   }else{
+      includeResponse<-T
+      # Model for Y   
+      yModel<-as.character(runData[grep('Model for Y',runData)])
+      yModel<-substr(yModel,regexpr(':',yModel)+1,nchar(yModel))
+      yModel<-gsub(' ','',yModel)
+      yModel<-gsub('\t','',yModel)      
+   }
+
+   # Variable selection type
+   if(length(grep("Variable selection",runData))==0){
+      varSelect<-F
+      varSelectType<-NULL
+   }else{
+      if(length(grep('Variable selection: None',runData))>0){   
+         varSelect<-F
+         varSelectType<-NULL
+      }else{
+         varSelect<-T
+         varSelectType<-as.character(runData[grep('Variable selection',runData)])
+         varSelectType<-substr(varSelectType,regexpr(':',varSelectType)+1,nchar(varSelectType))
+         varSelectType<-gsub(' ','',varSelectType)
+         varSelectType<-gsub('\t','',varSelectType)
+      }
+   }   
+   # Input data file name 
+   inputFileName<-runData[grep('Data file path',runData)]
+   inputFileName<-substr(inputFileName,regexpr(':',inputFileName)+1,nchar(inputFileName))
+   inputFileName<-gsub(' ','',inputFileName)
+   inputFileName<-gsub('\t','',inputFileName)
+      
+   # Get covariate and confounder information
+   inputData<-readLines(inputFileName)
+   inputData<-gsub("\t"," ",inputData)
+   nCovariates<-as.integer(inputData[2])
+   nConfounders<-as.integer(inputData[3+nCovariates])
+   nExtraRows<-0
+   nCategories<-NULL
+   if(xModel=='Discrete'){
+      nExtraRows<-2
+      nCategories<-inputData[(4+nCovariates+nConfounders)]
+      nCategories<-as.integer(unlist(strsplit(nCategories," ")))
+   }
+
+   # Covariate names
+   covNames<-inputData[3:(2+nCovariates)]
+
+   xMat<-inputData[(4+nCovariates+nConfounders+nExtraRows):length(inputData)]
+   xMat<-matrix(as.numeric(unlist(strsplit(xMat," "))),nrow=nSubjects,byrow=T)   
+   yMat<-NULL
+   wMat<-NULL     
+   if(includeResponse){
+      yMat<-matrix(xMat[,1],ncol=1)
+      if(yModel=='Poisson'){
+         offset<-xMat[,ncol(xMat)]
+         yMat<-cbind(yMat,offset)
+      }else if(yModel=='Binomial'){
+         nTrials<-xMat[,ncol(xMat)]
+         yMat<-cbind(yMat,nTrials)
+      }
+   
+      if(nConfounders>0){
+         wMat<-as.matrix(xMat[,(2+nCovariates):(1+nCovariates+nConfounders)])
+      }
+   }
+   xMat<-matrix(xMat[,2:(nCovariates+1)],nrow=nSubjects)
+   
+   return(list("directoryPath"=directoryPath,"fileStem"=fileStem,
+                  "inputFileName"=inputFileName,"nSweeps"=nSweeps,
+                   "nBurn"=nBurn,"nFilter"=nFilter,"nSubjects"=nSubjects,
+                   "nPredictSubjects"=nPredictSubjects,
+                   "covNames"=covNames,"xModel"=xModel,
+                   "includeResponse"=includeResponse,"yModel"=yModel,
+                   "varSelect"=varSelect,"varSelectType"=varSelectType,
+                   "nCovariates"=nCovariates,"nConfounders"=nConfounders,
+                   "nCategories"=nCategories,"xMat"=xMat,"yMat"=yMat,"wMat"=wMat))
+    
+}
+
+
+# Function to take the output from the C++ run and return an average dissimilarity 
+# matrix
+calcDissimilarityMatrix<-function(runInfoObj){
+
+   attach(runInfoObj)
+   fileName <- file.path(directoryPath,paste(fileStem,'_z.txt',sep=''))
+      
+   # Call the C++ to compute the dissimilarity matrix
+   disSimMat<-.Call('calcDisSimMat',fileName,nSweeps,nBurn,nFilter,nSubjects,
+                       nPredictSubjects, PACKAGE = 'profRegr')
+
+   disSimMatPred<-NULL              
+   if(nPredictSubjects>0){
+      disSimMatPred<-disSimMat[(1+(nSubjects*(nSubjects-1)/2)):length(disSimMat)]
+      disSimMat<-disSimMat[1:(nSubjects*(nSubjects-1)/2)]
+   }   
+   detach(runInfoObj)              
+   disSimObj<-list('disSimRunInfoObj'=runInfoObj,'disSimMat'=disSimMat,
+                     'disSimMatPred'=disSimMatPred)              
+   return(disSimObj)
+}
+
+# Given a dissimilarity matrix (or list of dissimilarity matrices)
+# run partitioning around medoids clustering
+calcOptimalClustering<-function(disSimObj,maxNClusters=NULL){
+   
+   attach(disSimObj)
+   attach(disSimRunInfoObj)
+
+	if(is.null(maxNClusters)){
+		# Determine the maximum number of clusters
+   	nMembersFileName<-file.path(directoryPath,paste(fileStem,'_nMembers.txt',sep=''))
+   	nMembersFile<-file(nMembersFileName,open="r")
+   	nClustersFileName<- file.path(directoryPath,paste(fileStem,'_nClusters.txt',sep=''))
+   	nClustersFile<-file(nClustersFileName,open="r")
+   	
+   	# Restrict to sweeps after burn in
+   	firstLine<-2+nBurn/nFilter
+   	lastLine<-1+(nSweeps+nBurn)/nFilter
+   	maxNClusters<-0
+   	
+		for(sweep in firstLine:lastLine){
+	   	if(sweep==firstLine){
+		   	skipVal<-firstLine-1
+	   	}else{
+		   	skipVal<-0
+	   	}
+	   
+	   	# Get the current number of members for each cluster
+	   	nClusters<-scan(nClustersFile,what=integer(),skip=skipVal,n=1,quiet=T)	
+	   	currNMembers<-scan(nMembersFile,what=integer(),skip=skipVal,n=nClusters+1,quiet=T)
+			currNMembers<-currNMembers[1:nClusters]
+	   	# Find the number of non-empty clusters
+			nNotEmpty<-sum(currNMembers>0)
+	   	if(nNotEmpty>maxNClusters){
+		   	maxNClusters<-nNotEmpty
+	   	}
+   	}   
+   	# Add on another 5 just to make sure bound is safe (but don't let it exceed no. of subjects)
+   	maxNClusters<-min(maxNClusters+5,nSubjects)
+
+   	close(nMembersFile)
+   	close(nClustersFile)
+	}   
+   
+   # If the input was a list of dissimilarity matrices then take the average
+   if(is.list(disSimMat)){
+      for(i in 1:length(disSimMat)){
+         if(i==1){
+            tmpMat<-disSimMat[[i]]      
+         }else{
+            tmpMat<-tmpMat+disSimMat[[i]]
+         }
+      }
+      tmpMat<-tmpMat/length(disSimMat)
+      disSimMat<-tmpMat
+   }
+   
+   # Loop over the possible number of clusters
+   avgSilhouetteWidth<--1.0;
+	cat(paste("Max no of possible clusters:",maxNClusters,"\n"))
+   for(c in 2:maxNClusters){
+      cat(paste("Trying",c,"clusters\n"))
+      tmpObj<-pam(disSimMat,k=c,diss=T)
+      # Check whether the silhouette width from this clustering improves previous best
+      if(avgSilhouetteWidth<tmpObj$silinfo$avg.width){
+         avgSilhouetteWidth<-tmpObj$silinfo$avg.width
+         chosenNClusters<-c
+         clustVec<-tmpObj$clustering
+         clustSizes<-tmpObj$clusinfo[,1]
+         # The id of the objects chosen as the medoids
+         clustMedoids<-tmpObj$id.med
+      }
+   }
+   
+   # Work out the clustering of the prediction objects
+   clusteringPred<-NULL
+   if(nPredictSubjects>0){
+      disSimMatPred<-matrix(disSimMatPred,nrow=nPredictSubjects,byrow=T)
+      clusteringPred<-rep(0,nPredictSubjects)
+      for(i in 1:nPredictSubjects){
+         tmpVec<-disSimMatPred[i,clustMedoids]
+         clusteringPred[i]<-which(tmpVec==min(tmpVec))
+      }
+   }
+   
+	detach(disSimRunInfoObj)
+   detach(disSimObj)
+   return(list("clusObjRunInfoObj"=disSimObj$disSimRunInfoObj,"clusObjDisSimMat"=disSimObj$disSimMat,"nClusters"=chosenNClusters,"clusterSizes"=clustSizes,
+               "clustering"=clustVec,"avgSilhouetteWidth"=avgSilhouetteWidth,"clusteringPred"=clusteringPred))
+}
+
+# Function to take the optimal clustering and computing the risk and probability
+# profile
+calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
+
+   attach(clusObj)
+   attach(clusObjRunInfoObj)
+          
+   # Construct the number of clusters file name
+   nClustersFileName<-file.path(directoryPath,paste(fileStem,'_nClusters.txt',sep=''))
+   nClustersFile<-file(nClustersFileName,open="r")
+   
+   # Construct the allocation file name
+   zFileName <- file.path(directoryPath,paste(fileStem,'_z.txt',sep=''))
+   zFile<-file(zFileName,open="r")
+   
+   if(xModel=="Discrete"){
+      # Construct the allocation file name
+      phiFileName <- file.path(directoryPath,paste(fileStem,'_phi.txt',sep=''))
+      phiFile<-file(phiFileName,open="r")
+      # Get the maximum number of categories
+      maxNCategories<-max(nCategories)
+      if(varSelect){
+         nullPhiFileName <- file.path(directoryPath,paste(fileStem,'_nullPhi.txt',sep=''))
+         if(varSelectType=="Continuous"){
+            gammaFileName <- file.path(directoryPath,paste(fileStem,'_rho.txt',sep=''))
+            gammaFile<-file(gammaFileName,open="r")
+         }else{
+            gammaFileName <- file.path(directoryPath,paste(fileStem,'_gamma.txt',sep=''))            
+            gammaFile<-file(gammaFileName,open="r")
+         }
+      }
+
+   }else if(xModel=="Normal"){
+      muFileName <- file.path(directoryPath,paste(fileStem,'_mu.txt',sep=''))
+      muFile<-file(muFileName,open="r")
+      SigmaFileName <- file.path(directoryPath,paste(fileStem,'_Sigma.txt',sep=''))
+      SigmaFile<-file(SigmaFileName,open="r")
+      if(varSelect){
+         nullMuFileName <- file.path(directoryPath,paste(fileStem,'_nullMu.txt',sep=''))
+         if(varSelectType=="Continuous"){
+            gammaFileName <- file.path(directoryPath,paste(fileStem,'_rho.txt',sep=''))
+            gammaFile<-file(gammaFileName,open="r")
+         }else{
+            gammaFileName <- file.path(directoryPath,paste(fileStem,'_gamma.txt',sep=''))            
+            gammaFile<-file(gammaFileName,open="r")
+         }
+      }
+   }
+   
+   if(includeResponse){
+      # Construct the theta file name
+      thetaFileName <- file.path(directoryPath,paste(fileStem,'_theta.txt',sep=''))
+      thetaFile<-file(thetaFileName,open="r")
+      
+      if(nConfounders>0){
+         # Construct the confounder file name
+         betaFileName <-file.path(directoryPath,paste(fileStem,'_beta.txt',sep=''))
+         betaFile<-file(betaFileName,open="r")
+      }
+   }
+               
+   # Restrict to sweeps after burn in
+   firstLine<-2+nBurn/nFilter
+   lastLine<-1+(nSweeps+nBurn)/nFilter
+   nSamples<-lastLine-firstLine+1
+   
+   # Make a list of the subjects in each of the optimal clusters
+   optAlloc<-vector("list",nClusters)
+   for(c in 1:nClusters){
+      optAlloc[[c]]<-which(clustering==c)
+   }
+   
+   if(includeResponse){
+      # Initialise the object for storing the risks
+      riskArray<-array(0,dim=c(nSamples,nClusters))
+      thetaArray<-array(0,dim=c(nSamples,nClusters))
+      if(nConfounders>0){
+         betaArray<-array(0,dim=c(nSamples,nConfounders))
+      }
+   }else{
+      riskArray<-NULL
+   }
+   
+   # Initialise the object for storing the profiles
+   if(xModel=='Discrete'){
+      phiArray<-array(dim=c(nSamples,nClusters,nCovariates,maxNCategories))
+      if(varSelect){
+         phiStarArray<-array(dim=c(nSamples,nClusters,nCovariates,maxNCategories))
+         tmpCurrNullPhi<-scan(nullPhiFileName,what=double(),quiet=T)
+         tmpCurrNullPhi<-array(tmpCurrNullPhi,dim=c(maxNCategories,nCovariates))
+         currNullPhi<-array(dim=c(1,maxNCategories,nCovariates))
+         currNullPhi[1,,]<-tmpCurrNullPhi
+      }else{
+         phiStarArray<-NULL
+      }
+   }else if(xModel=='Normal'){
+      muArray<-array(dim=c(nSamples,nClusters,nCovariates))
+      if(varSelect){
+         muStarArray<-array(dim=c(nSamples,nClusters,nCovariates))
+         currNullMu<-scan(nullMuFileName,what=double(),quiet=T)
+         currNullMu<-array(currNullMu,dim=c(nCovariates,1))
+         currNullMu<-t(currNullMu)
+      }else{
+         muStarArray<-NULL
+      }
+      sigmaArray<-array(dim=c(nSamples,nClusters,nCovariates,nCovariates))
+   }
+   
+      
+   for(sweep in firstLine:lastLine){
+      if(sweep==firstLine){
+         skipVal<-firstLine-1
+      }else{
+         skipVal<-0
+      }
+      
+      if(sweep-firstLine==0||(sweep-firstLine+1)%%100==0){
+         cat(paste("Processing sweep",sweep-firstLine+1,"of ",lastLine-firstLine+1,"\n"))
+      }
+      
+      currMaxNClusters<-scan(nClustersFile,what=integer(),skip=skipVal,n=1,quiet=T)
+
+      # Get the current allocation data for this sweep
+      currZ<-scan(zFile,what=integer(),skip=skipVal,n=nSubjects+nPredictSubjects,quiet=T)
+      currZ<-1+currZ
+            
+      if(includeResponse){
+         # Get the risk data corresponding to this sweep
+         currTheta<-scan(thetaFile,what=double(),skip=skipVal,n=currMaxNClusters,quiet=T)
+         if(nConfounders>0){
+            currBeta<-scan(betaFile,what=double(),skip=skipVal,n=nConfounders,quiet=T)
+            betaArray[sweep-firstLine+1,]<-currBeta
+         }
+         # Calculate the average risk (over subjects) for each cluster
+         for(c in 1:nClusters){
+            currLambda<-currTheta[currZ[optAlloc[[c]]]]
+            if(includeConfounders&&nConfounders>0){
+               currLambda<-currLambda+as.matrix(wMat[optAlloc[[c]],])%*%currBeta
+            }
+            
+            if(yModel=="Poisson"){
+               currRisk<-exp(currLambda)                     
+            }else if(yModel=="Bernoulli"||yModel=="Binomial"){
+               currRisk<-1.0/(1.0+exp(-currLambda))  
+            }
+            riskArray[sweep-firstLine+1,c]<-mean(currRisk)
+            thetaArray[sweep-firstLine+1,c]<-mean(currTheta[currZ[optAlloc[[c]]]])
+         }
+      }
+      
+      # Calculate the average profile (over subjects) for each cluster
+      if(xModel=='Discrete'){
+         currPhi<-scan(phiFile,what=double(),skip=skipVal,n=currMaxNClusters*maxNCategories*nCovariates,quiet=T)
+         # This is slightly convoluted, because of the way that R reads in by column
+         # I switched the order of categories and covariates in column below, and then 
+         # take the transpose to correct in the loop
+         currPhi<-array(currPhi,dim=c(currMaxNClusters,maxNCategories,nCovariates))
+         if(varSelect){
+            # We increase dimensions of currGamma using duplicates, to 
+            # enable easier calculation of phiStar
+            if(varSelectType=='BinaryCluster'){
+               tmpCurrGamma<-scan(gammaFile,what=double(),skip=skipVal,n=nCovariates*currMaxNClusters,quiet=T)
+               tmpCurrGamma<-array(tmpCurrGamma,dim=c(currMaxNClusters,nCovariates))
+            }else{
+               tmpCurrGamma<-scan(gammaFile,what=double(),skip=skipVal,n=nCovariates,quiet=T)
+               tmpCurrGamma<-array(tmpCurrGamma,dim=c(nCovariates,currMaxNClusters))
+               tmpCurrGamma<-t(tmpCurrGamma)
+            }
+            currGamma<-array(dim=c(currMaxNClusters,maxNCategories,nCovariates))
+            for(p in 1:maxNCategories){
+               currGamma[,p,]<-tmpCurrGamma
+            }
+         }
+         for(c in 1:nClusters){
+            phiArray[sweep-firstLine+1,c,,]<-t(apply(array(currPhi[currZ[optAlloc[[c]]],,],dim=c(length(optAlloc[[c]]),dim(currPhi)[2],dim(currPhi)[3])),2:3,mean))
+            if(varSelect){
+               phiStarArray[sweep-firstLine+1,c,,]<-t(apply(array(currGamma[currZ[optAlloc[[c]]],,],dim=c(length(optAlloc[[c]]),dim(currGamma)[2],dim(currGamma)[3]))*
+																		array(currPhi[currZ[optAlloc[[c]]],,],dim=c(length(optAlloc[[c]]),dim(currPhi)[2],dim(currPhi)[3]))+
+                                                   (1-array(currGamma[currZ[optAlloc[[c]]],,],dim=c(length(optAlloc[[c]]),dim(currGamma)[2],dim(currGamma)[3])))*
+																		array(currNullPhi[rep(1,length(optAlloc[[c]])),,],dim=c(length(optAlloc[[c]]),dim(currNullPhi)[2],dim(currNullPhi)[3])),2:3,mean))
+               
+            }
+         }                  
+      }else if(xModel=='Normal'){
+         # mu stored like phi 
+         currMu<-scan(muFile,what=double(),skip=skipVal,n=currMaxNClusters*nCovariates,quiet=T)
+         currMu<-array(currMu,dim=c(currMaxNClusters,nCovariates))
+         if(varSelect){
+            # We increase dimensions of nullPhi and currGamma using duplicates, to 
+            # enable easier calculation of phiStar
+            # We increase dimensions of currGamma using duplicates, to 
+            # enable easier calculation of phiStar
+            if(varSelectType=='BinaryCluster'){
+               tmpCurrGamma<-scan(gammaFile,what=double(),skip=skipVal,n=currMaxNClusters*nCovariates,quiet=T)
+               currGamma<-array(tmpCurrGamma,dim=c(currMaxNClusters,nCovariates))
+            }else{	
+               tmpCurrGamma<-scan(gammaFile,what=double(),skip=skipVal,n=nCovariates,quiet=T)
+               tmpCurrGamma<-array(tmpCurrGamma,dim=c(nCovariates,currMaxNClusters))
+               currGamma<-t(tmpCurrGamma)
+            }
+            
+         }
+         for(c in 1:nClusters){
+            muArray[sweep-firstLine+1,c,]<-apply(matrix(currMu[currZ[optAlloc[[c]]],],ncol=nCovariates),2,mean)
+            if(varSelect){
+               muStarArray[sweep-firstLine,+1,c]<-apply(matrix(currGamma[currZ[optAlloc[[c]]],],ncol=nCovariates)*matrix(currMu[currZ[optAlloc[[c]]],],ncol=nCovariates)+
+                                                         matrix(1-currGamma[currZ[optAlloc[[c]]],],ncol=nCovariates)*matrix(currNullMu[rep(1,length(optAlloc[[c]])),],ncol=nCovariates),2,mean)
+            }
+         }
+         
+         currSigma<-scan(SigmaFile,what=double(),skip=skipVal,n=currMaxNClusters*nCovariates*nCovariates,quiet=T)
+         currSigma<-array(currSigma,dim=c(currMaxNClusters,nCovariates,nCovariates))
+         for(c in 1:nClusters){
+            sigmaArray[sweep-firstLine+1,c,,]<-apply(array(currSigma[currZ[optAlloc[[c]]],,],dim=c(length(optAlloc[[c]]),dim(currSigma)[2],dim(currSigma)[3])),2:3,mean)
+         }         
+      }
+   }
+   
+   
+   # Calculate the empiricals
+   empiricals<-rep(0,nClusters)
+   if(!is.null(yModel)){
+      for(c in 1:nClusters){
+         if(yModel=='Bernoulli'){
+            empiricals[c]<-mean(yMat[optAlloc[[c]],1])
+         }else if(yModel=='Binomial'){
+            empiricals[c]<-mean(yMat[optAlloc[[c]],1]/yMat[optAlloc[[c]],2])
+         }else if(yModel=='Poisson'){
+            empiricals[c]<-mean(yMat[optAlloc[[c]],1]/yMat[optAlloc[[c]],2])
+         }
+      }
+   }
+   
+   if(xModel=='Discrete'){
+      out<-list('riskProfClusObj'=clusObj,'risk'=riskArray,'profile'=phiArray,'profileStar'=phiStarArray,'empiricals'=empiricals)
+   }else if(xModel=='Normal'){
+      out<-list('riskProfClusObj'=clusObj,'risk'=riskArray,'profile'=muArray,'profileStar'=muStarArray,'profileStdDev'=sigmaArray,
+            'empiricals'=empiricals)      
+   }
+
+   close(zFile)
+	close(nClustersFile)
+   if(xModel=="Discrete"){
+      close(phiFile)
+      if(varSelect){
+         close(gammaFile)
+      }
+   }else if(xModel=="Normal"){
+      close(muFile)
+      close(SigmaFile)
+      if(varSelect){
+         close(gammaFile)
+      }      
+   }
+   
+   if(includeResponse){
+      close(thetaFile)
+      if(nConfounders>0){
+         close(betaFile)
+      }
+   }
+   
+   detach(clusObjRunInfoObj)
+   detach(clusObj)
+   
+   
+   return(out)
+}
+
+
+
+# Plot output values
+plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=T,orderBy=NULL,whichClusters=NULL,whichCovariates=NULL,useProfileStar=F){
+   
+   attach(riskProfObj)
+   attach(riskProfClusObj)
+   attach(clusObjRunInfoObj)
+   
+   if(useProfileStar){
+      profile<-profileStar
+   }
+   if(!is.null(whichCovariates)){
+      if(xModel=='Discrete'){
+         profile<-profile[,,whichCovariates,]         
+         nCategories<-nCategories[whichCovariates]
+      }else if(xModel=='Normal'){
+         profile<-profile[,,whichCovariates]         
+         profileStdDev<-profileStdDev[,,whichCovariates,whichCovariates]
+      }
+      covNames<-covNames[whichCovariates]
+      nCovariates<-length(whichCovariates)
+   }
+   
+   png(outFile,width=1200,height=800)
+   
+   if(!is.null(orderBy)){
+      if(!includeResponse){
+         if(orderBy!='Empirical'&&orderBy!='ClusterSize'&&!orderBy%in%covNames){
+            orderBy<-NULL              
+         }
+      }else{
+         if(orderBy!='Risk'&&orderBy!='Empirical'&&orderBy!='ClusterSize'&&!orderBy%in%covNames){
+            orderBy<-NULL              
+         }         
+      }
+   }
+   
+   # Set up the layout for the plot
+   plotLayout<-grid.layout(ncol = nCovariates+1, nrow = 6)
+   grid.newpage()
+   pushViewport(viewport(layout = plotLayout))   
+   
+   orderProvided<-F
+   if(is.numeric(orderBy)){
+      if(length(orderBy)==nClusters){
+         orderProvided<-T      
+         meanSortIndex<-orderBy      
+      }else{
+         cat("Order vector provided not of same length as number of clusters. Reverting to default ordering.\n")
+         orderBy<-NULL
+      }
+   }
+   
+   if(!orderProvided){
+      if(!is.null(risk)){
+         if(is.null(orderBy)){
+            # Default is to order by posterior theta risk
+            # Compute the means
+            orderStat<-apply(risk,2,median)
+         }else{
+            if(orderBy=='Risk'){
+               orderStat<-apply(risk,2,median)
+            }else if(orderBy=='Empirical'){
+               orderStat<-empiricals
+            }else if(orderBy=='ClusterSize'){
+               orderStat<-clusterSizes
+            }else{
+               whichCov<-match(orderBy,covNames)
+               if(xModel=='Normal'){
+                  orderStat<-apply(profile[,,whichCov],2,median)
+               }else{
+                  # This assumes that there is some order to the categories
+                  # and then uses an expected value
+                  tmpMat<-profile[,,whichCov,1]
+                  if(nCategories[whichCov]>1){
+                     for(k in 2:nCategories[whichCov]){
+                        tmpMat<-tmpMat+k*profile[,,whichCov,k]
+                     }
+                  }
+                  orderStat<-apply(tmpMat,2,median)
+               }
+            }      
+         }
+      }else{
+         if(is.null(orderBy)){
+            # Default is to order by empirical risk
+            orderStat<-empiricals
+         }else{
+            if(orderBy=='Empirical'){
+               orderStat<-empiricals
+            }else if(orderBy=='ClusterSize'){
+               orderStat<-clusterSizes
+            }else{
+               whichCov<-match(orderBy,covNames)
+               if(xModel=='Normal'){
+                  orderStat<-apply(profile[,,whichCov],2,median)
+               }else{
+                  # This assumes that there is some order to the categories
+                  # and then uses an expected value
+                  tmpMat<-profile[,,whichCov,1]
+                  if(nCategories[whichCov]>1){
+                     for(k in 2:nCategories[whicCov]){
+                        tmpMat<-tmpMat+k*profile[,,whichCov,k]
+                     }
+                  }
+                  orderStat<-apply(tmpMat,2,median)
+               }                  
+               
+            }      
+         }
+      }
+      # Sort into ascending mean size
+      meanSortIndex<-order(orderStat,decreasing=F)
+   } 
+
+   if(includeResponse){
+      # Reorder the risk matrix
+      risk<-risk[,meanSortIndex]
+		if(showRelativeRisk){
+			for(c in nClusters:1){
+				risk[,c]<-risk[,c]/risk[,1]
+			}
+		}
+   }
+		
+   # Reorder the cluster sizes
+   clusterSizes<-clusterSizes[meanSortIndex]
+   # Reorder the empiricals
+   empiricals<-empiricals[meanSortIndex]
+   meanEmpirical<-sum(empiricals*clusterSizes)/sum(clusterSizes)
+   if(includeResponse){
+      # Recompute the means and now also credible intervals
+      riskMeans<-apply(risk,2,mean,trim=0.005)
+      riskMean<-sum(riskMeans*clusterSizes)/sum(clusterSizes)
+      riskLower<-apply(risk,2,quantile,0.05)
+      riskUpper<-apply(risk,2,quantile,0.95)
+      # The next line is to avoid outliers spoiling plot scales
+      plotMax<-2*max(riskUpper)-riskMean
+   
+      # Get the plot colors
+      riskColor<-ifelse(riskLower>rep(riskMean,nClusters),"high",
+                  ifelse(riskUpper<rep(riskMean,nClusters),"low","avg"))
+      riskDF<-data.frame("risk"=c(),"cluster"=c(),"meanRisk"=c(),
+                     "lowerRisk"=c(),"upperRisk"=c(),"fillColor"=c())
+   }else{
+      riskColor<-ifelse(empiricals>rep(meanEmpirical,nClusters),"high",
+            ifelse(empiricals<rep(meanEmpirical,nClusters),"low","avg"))      
+   }   
+
+	if(is.null(whichClusters)){
+		whichClusters<-1:nClusters
+	}
+	nClusters<-length(whichClusters)
+	
+   empiricalDF<-data.frame("empiricals"=c(),"meanEmpirical"=c(),"cluster"=c(),"fillColor"=c())   
+   sizeDF<-data.frame("clusterSize"=c(),"cluster"=c(),"fillColor"=c())
+               
+   # Restructure the data for plotting            
+   for(c in whichClusters){
+      if(includeResponse){
+         plotRisk<-risk[,c]
+         plotRisk<-plotRisk[plotRisk<plotMax]
+         nPoints<-length(plotRisk)
+         riskDF<-rbind(riskDF,data.frame("risk"=plotRisk,"cluster"=rep(c,nPoints),
+                        "meanRisk"=rep(riskMean,nPoints),
+                        "lowerRisk"=rep(riskLower[c],nPoints),
+                        "upperRisk"=rep(riskUpper[c],nPoints),                        
+                        "fillColor"=rep(riskColor[c],nPoints)))
+      }
+      empiricalDF<-rbind(empiricalDF,data.frame("empiricals"=empiricals[c],"meanEmpirical"=meanEmpirical,"cluster"=c,"fillColor"=riskColor[c]))
+      sizeDF<-rbind(sizeDF,data.frame("clusterSize"=clusterSizes[c],"cluster"=c,"fillColor"=riskColor[c]))
+   }
+
+   if(includeResponse){
+      rownames(riskDF)<-seq(1,nrow(riskDF),1)
+      
+      # Create the risk plot
+      plotObj<-ggplot(riskDF)
+      plotObj<-plotObj+geom_hline(aes(x=as.factor(cluster),y=risk,yintercept=meanRisk))
+      plotObj<-plotObj+geom_boxplot(aes(x=as.factor(cluster),y=risk,fill=as.factor(fillColor)),outlier.size=0.5)
+      plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=lowerRisk,colour=as.factor(fillColor)),size=1.5)
+      plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=upperRisk,colour=as.factor(fillColor)),size=1.5)
+      plotObj<-plotObj+scale_fill_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
+               scale_colour_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
+               opts(legend.position="none")+labs(x="Cluster",y=ifelse(showRelativeRisk,'RR',ifelse(yModel=="Bernoulli"||yModel=="Binomial","Probability","E[Count]")))
+      plotObj<-plotObj+opts(axis.title.y=theme_text(size=10,angle=90),axis.title.x=theme_text(size=10))
+      plotObj<-plotObj+opts(title=ifelse(showRelativeRisk,'Relative Risk','Risk'),plot.title=theme_text(size=10))
+      # Margin order is (top,right,bottom,left) 
+      plotObj<-plotObj+opts(print.margin=unit(c(0,0,0,0),'lines'))+opts(plot.margin=unit(c(0.5,0.5,0.15,1),'lines'))
+      print(plotObj,vp=viewport(layout.pos.row=1:2,layout.pos.col=1))
+   }
+
+   # Create a bar chart of cluster empiricals
+   plotObj<-ggplot(empiricalDF)
+   plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=empiricals,colour=as.factor(fillColor)),size=3)
+   plotObj<-plotObj+geom_hline(aes(x=as.factor(cluster),y=empiricals,yintercept=meanEmpirical))
+   plotObj<-plotObj+scale_colour_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
+         opts(legend.position="none")
+   plotObj<-plotObj+opts(title='Empirical Data',plot.title=theme_text(size=10))
+   plotObj<-plotObj+opts(axis.title.x=theme_text(size=10),axis.title.y=theme_text(size=10,angle=90))
+   plotObj<-plotObj+labs(y=ifelse(yModel=="Bernoulli","Proportion of cases",ifelse(yModel=="Binomial","Avg Proportion of occurrence","Avg Count")),x="Cluster")
+   plotObj<-plotObj+opts(print.margin=unit(c(0,0,0,0),'lines'))+opts(plot.margin=unit(c(0.15,0.5,0.5,1),'lines'))
+   print(plotObj,vp=viewport(layout.pos.row=3:4,layout.pos.col=1))
+      
+   # Create a bar chart of cluster sizes
+   plotObj<-ggplot(sizeDF)
+   plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=clusterSize,colour=as.factor(fillColor)),size=3)
+   plotObj<-plotObj+scale_colour_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
+         opts(legend.position="none")
+   plotObj<-plotObj+opts(title="Size",plot.title=theme_text(size=10))
+   plotObj<-plotObj+opts(axis.title.x=theme_text(size=10),axis.title.y=theme_text(size=10,angle=90))
+   plotObj<-plotObj+labs(y="No. of Subjects",x="Cluster")
+   plotObj<-plotObj+opts(print.margin=unit(c(0,0,0,0),'lines'))+opts(plot.margin=unit(c(0.15,0.5,0.5,1),'lines'))
+   print(plotObj,vp=viewport(layout.pos.row=5:6,layout.pos.col=1))
+
+   # Loop over the covariates
+   for(j in 1:nCovariates){
+      if(xModel=='Discrete'){
+         profileDF<-data.frame("prob"=c(),"cluster"=c(),"category"=c(),"meanProb"=c(),
+            "lowerProb"=c(),"upperProb"=c(),"fillColor"=c())   
+         for(k in 1:nCategories[j]){
+            probMat<-profile[,meanSortIndex,j,k]
+            nPoints<-nrow(probMat)
+            probMeans<-apply(probMat,2,mean)
+            probMean<-sum(probMeans*clusterSizes)/sum(clusterSizes)
+            probLower<-apply(probMat,2,quantile,0.05)
+            probUpper<-apply(probMat,2,quantile,0.95)
+         
+            # Get the plot colors
+            probColor<-ifelse(probLower>rep(probMean,nClusters),"high",
+               ifelse(probUpper<rep(probMean,nClusters),"low","avg"))
+			
+			
+         	for(c in whichClusters){
+            	profileDF<-rbind(profileDF,data.frame("prob"=probMat[,c],"cluster"=rep(c,nPoints),
+                        "category"=rep(k-1,nPoints),
+                        "meanProb"=rep(probMean,nPoints),
+                        "lowerProb"=rep(probLower[c],nPoints),
+                        "upperProb"=rep(probUpper[c],nPoints),                        
+                        "fillColor"=rep(probColor[c],nPoints)))
+            	rownames(profileDF)<-seq(1,nrow(profileDF),1)
+         
+         	}
+			}
+      
+         plotObj<-ggplot(profileDF)
+         plotObj<-plotObj+facet_wrap(~category,ncol=1,as.table=F,scales="free_y")
+         plotObj<-plotObj+geom_hline(aes(x=as.factor(cluster),y=prob,yintercept=meanProb))
+         plotObj<-plotObj+geom_boxplot(aes(x=as.factor(cluster),y=prob,fill=as.factor(fillColor)),outlier.size=0.5)
+         plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=lowerProb,colour=as.factor(fillColor)),size=1.5)
+         plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=upperProb,colour=as.factor(fillColor)),size=1.5)
+         plotObj<-plotObj+scale_fill_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
+               scale_colour_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
+               opts(legend.position="none")+labs(x="Cluster")+opts(axis.title.x=theme_text(size=10))
+         if(j==1){
+            plotObj<-plotObj+labs(y="Probability")+opts(axis.title.y=theme_text(size=10,angle=90))
+         }else{
+            plotObj<-plotObj+opts(axis.title.y=theme_blank())
+         }
+         plotObj<-plotObj+opts(title=covNames[j],plot.title=theme_text(size=10))
+         plotObj<-plotObj+opts(plot.margin=unit(c(0.5,ifelse(j==nCovariates,1,0),0.5,ifelse(j==1,0.5,0)),'lines'))+
+               opts(print.margin=unit(c(0,0,0,0),'lines'))
+      
+         print(plotObj,vp=viewport(layout.pos.row=1:6,layout.pos.col=j+1))
+      }else if(xModel=='Normal'){
+         # Plot the means
+         profileDF<-data.frame("mu"=c(),"cluster"=c(),"muMean"=c(),
+               "lowerMu"=c(),"upperMu"=c(),"fillColor"=c())   
+         muMat<-profile[,meanSortIndex,j]
+         muMeans<-apply(muMat,2,mean)
+         muMean<-sum(muMeans*clusterSizes)/sum(clusterSizes)
+         muLower<-apply(muMat,2,quantile,0.05)
+         muUpper<-apply(muMat,2,quantile,0.95)
+         # The next line is to avoid outliers spoiling plot scales
+         plotMax<-2*max(muUpper)-muMean
+         plotMin<-2*min(muLower)-muMean
+         
+         # Get the plot colors
+         muColor<-ifelse(muLower>rep(muMean,nClusters),"high",
+                  ifelse(muUpper<rep(muMean,nClusters),"low","avg"))
+         for(c in whichClusters){
+            plotMu<-muMat[,c]
+            plotMu<-plotMu[plotMu<plotMax&plotMu>plotMin]
+            nPoints<-length(plotMu)
+            profileDF<-rbind(profileDF,data.frame("mu"=plotMu,"cluster"=rep(c,nPoints),
+                           "meanMu"=rep(muMean,nPoints),
+                           "lowerMu"=rep(muLower[c],nPoints),
+                           "upperMu"=rep(muUpper[c],nPoints),                        
+                           "fillColor"=rep(muColor[c],nPoints)))
+         }
+         rownames(profileDF)<-seq(1,nrow(profileDF),1)
+            
+         plotObj<-ggplot(profileDF)
+         plotObj<-plotObj+geom_hline(aes(x=as.factor(cluster),y=mu,yintercept=meanMu))
+         plotObj<-plotObj+geom_boxplot(aes(x=as.factor(cluster),y=mu,fill=as.factor(fillColor)),outlier.size=0.5)
+         plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=lowerMu,colour=as.factor(fillColor)),size=1.5)
+         plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=upperMu,colour=as.factor(fillColor)),size=1.5)
+         plotObj<-plotObj+scale_fill_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
+               scale_colour_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
+               opts(legend.position="none")+labs(x="Cluster")+opts(axis.title.x=theme_text(size=10))
+         if(j==1){
+            plotObj<-plotObj+labs(y="Mean")+opts(axis.title.y=theme_text(size=10,angle=90))
+         }else{
+            plotObj<-plotObj+opts(axis.title.y=theme_blank())
+         }
+         plotObj<-plotObj+opts(title=covNames[j],plot.title=theme_text(size=10))
+         plotObj<-plotObj+opts(plot.margin=unit(c(0.5,ifelse(j==nCovariates,1,0),0.5,ifelse(j==1,0.5,0)),'lines'))+
+               opts(print.margin=unit(c(0,0,0,0),'lines'))
+         
+         print(plotObj,vp=viewport(layout.pos.row=1:3,layout.pos.col=j+1))
+         
+         # Plot the variances         
+         profileDF<-data.frame("sigma"=c(),"cluster"=c(),"sigmaMean"=c(),
+               "lowerSigma"=c(),"upperSigma"=c(),"fillColor"=c())   
+         sigmaMat<-profileStdDev[,meanSortIndex,j,j]
+         sigmaMeans<-apply(sigmaMat,2,mean)
+         sigmaMean<-sum(sigmaMeans*clusterSizes)/sum(clusterSizes)
+         sigmaLower<-apply(sigmaMat,2,quantile,0.05)
+         sigmaUpper<-apply(sigmaMat,2,quantile,0.95)
+         # The next line is to avoid outliers spoiling plot scales
+         plotMax<-2*max(sigmaUpper)-sigmaMean
+         
+         # Get the plot colors
+         sigmaColor<-ifelse(sigmaLower>rep(sigmaMean,nClusters),"high",
+               ifelse(sigmaUpper<rep(sigmaMean,nClusters),"low","avg"))
+         for(c in whichClusters){
+            plotSigma<-sigmaMat[,c]
+            plotSigma<-plotSigma[plotSigma<plotMax]
+            nPoints<-length(plotSigma)
+            profileDF<-rbind(profileDF,data.frame("sigma"=plotSigma,"cluster"=rep(c,nPoints),
+                        "meanSigma"=rep(sigmaMean,nPoints),
+                        "lowerSigma"=rep(sigmaLower[c],nPoints),
+                        "upperSigma"=rep(sigmaUpper[c],nPoints),                        
+                        "fillColor"=rep(sigmaColor[c],nPoints)))
+         }
+         rownames(profileDF)<-seq(1,nrow(profileDF),1)
+                  
+         plotObj<-ggplot(profileDF)
+         plotObj<-plotObj+geom_hline(aes(x=as.factor(cluster),y=sigma,yintercept=meanSigma))
+         plotObj<-plotObj+geom_boxplot(aes(x=as.factor(cluster),y=sigma,fill=as.factor(fillColor)),outlier.size=0.5)
+         plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=lowerSigma,colour=as.factor(fillColor)),size=1.5)
+         plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=upperSigma,colour=as.factor(fillColor)),size=1.5)
+         plotObj<-plotObj+scale_fill_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
+               scale_colour_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
+               opts(legend.position="none")+labs(x="Cluster")+opts(axis.title.x=theme_text(size=10))
+         if(j==1){
+            plotObj<-plotObj+labs(y="Std Dev")+opts(axis.title.y=theme_text(size=10,angle=90))
+         }else{
+            plotObj<-plotObj+opts(axis.title.y=theme_blank())
+         }
+         plotObj<-plotObj+opts(plot.margin=unit(c(0.5,ifelse(j==nCovariates,1,0),0.5,ifelse(j==1,0.5,0)),'lines'))+
+               opts(print.margin=unit(c(0,0,0,0),'lines'))
+         
+         print(plotObj,vp=viewport(layout.pos.row=4:6,layout.pos.col=j+1))
+         
+         
+      }
+   }  
+   dev.off()
+	detach(clusObjRunInfoObj)
+	detach(riskProfClusObj)	
+   detach(riskProfObj)
+
+   return(meanSortIndex)
+   
+}
+
+# Plot output values
+plotRiskProfileRank<-function(riskProfObj,outFile,covariatesOnXAxis=F,clusterOrder=NULL,associatedVariable=NULL,useProfileStar=F,whichCovariates=NULL){
+   
+   attach(riskProfObj)
+   attach(riskProfClusObj)
+   attach(clusObjRunInfoObj)
+   
+   if(covariatesOnXAxis){
+      png(outFile,width=800,height=1200)
+   }else{
+      png(outFile,width=1200,height=800)      
+   }
+   if(includeResponse){
+      risk<-apply(risk,2,mean)
+   }
+   
+   if(useProfileStar){
+      profile<-profileStar
+   }
+   
+   nOrigCovariates<-nCovariates
+   if(!is.null(whichCovariates)){
+      if(xModel=='Discrete'){
+         profile<-profile[,,whichCovariates,]
+         nCategories<-nCategories[whichCovariates]
+      }else if(xModel=='Normal'){
+         profile<-profile[,,whichCovariates]         
+         profileStdDev<-profileStdDev[,,whichCovariates,whichCovariates]
+      }
+      xMat<-matrix(xMat[,whichCovariates],nrow=nSubjects)
+      covNames<-covNames[whichCovariates]
+      nOrigCovariates<-nCovariates
+      nCovariates<-length(whichCovariates)
+   }
+   # Average over sweeps
+   if(xModel=='Discrete'){
+      # Read in the raw X data
+      rawXFileName<-gsub('.txt','_RawX.txt',inputFileName)
+      if(file.exists(rawXFileName)){
+         rawXData<-readLines(rawXFileName)
+         rawXData<-rawXData[(nOrigCovariates+3):length(rawXData)]
+         rawXData<-matrix(as.numeric(unlist(strsplit(rawXData," "))),nrow=nSubjects,byrow=T)
+         if(!is.null(whichCovariates)){
+            rawXData<-matrix(rawXData[,whichCovariates],nrow=nSubjects)   
+         }
+      }else{
+         rawXData<-xMat
+      }
+      profile<-apply(profile,2:4,mean)
+      tmp<-array(dim=c(nClusters,nCovariates))
+      for(j in 1:nCovariates){
+         catValueVec<-rep(0,nCategories[j])
+         for(p in 1:nCategories[j]){
+            catValueVec[p]<-mean(rawXData[xMat[,j]==(p-1),j])
+         }
+         if(covNames[j]=='CessationTime'||covNames[j]=='StartAge'){
+            difVal<-mean(diff(catValueVec[2:length(catValueVec)]))
+            catValueVec[1]<-catValueVec[2]-difVal
+         }
+         if(catValueVec[1]>catValueVec[nCategories[j]]){
+            catValueVec<--catValueVec
+         }
+         for(c in 1:nClusters){
+            tmp[c,j]<-profile[c,j,(1:nCategories[j])]%*%catValueVec  
+         }
+      }
+      profile<-tmp
+   }else{
+      profile<-apply(profile,2:3,mean)
+   }
+   
+   if(is.null(clusterOrder)){
+      if(includeResponse){
+         orderStat<-risk
+      }else{
+         # Order by the first covariate
+         orderStat<-profile[,1]         
+      }
+      meanSortIndex<-order(orderStat,decreasing=F)
+      clusterOrder<-meanSortIndex
+   }else{
+      meanSortIndex<-clusterOrder
+   }
+   
+   if(includeResponse){
+      # Reorder the risk matrix
+      risk<-risk[meanSortIndex]
+      # Rescale between 0 to 1
+      risk<-(risk-min(risk))/(max(risk)-min(risk))
+   }
+   # Reorder the profile summaries
+   profile<-profile[meanSortIndex,]
+   profile<-sweep(profile,2,apply(profile,2,min))/(sweep(profile,2,apply(profile,2,max),FUN="+")-sweep(profile,2,apply(profile,2,min),FUN="+"))
+   # Reorder the cluster sizes
+   clusterSizes<-clusterSizes[meanSortIndex]
+   # Create the data frame for plotting
+   x<-c()
+   y<-c()
+   z<-c()
+   covLabels<-rep('',ifelse(includeResponse,nCovariates+1,nCovariates))
+   tileOrders<-c()
+   for(j in 1:nCovariates){
+      if(covariatesOnXAxis){
+         x<-c(x,rep(j+1.5,nClusters))
+         y<-c(y,nClusters:1)
+         covLabels[j+1]<-covNames[j]
+      }else{
+         x<-c(x,1:nClusters)
+         y<-c(y,rep(nCovariates-j+1+ifelse(!is.null(associatedVariable),1.5,0),nClusters))
+         covLabels[nCovariates-j+1+ifelse(!is.null(associatedVariable),1,0)]<-covNames[j]
+      }
+      z<-c(z,profile[,j])
+      tileOrders<-c(tileOrders,order(order(profile[,j],decreasing=F),decreasing=F))
+   }
+   if(includeResponse){
+      if(covariatesOnXAxis){
+         x<-c(x,rep(1,nClusters))
+         y<-c(y,nClusters:1)
+         covLabels[1]<-'Risk'
+      }else{
+         x<-c(x,1:nClusters)
+         y<-c(y,rep(nCovariates+1.5+ifelse(!is.null(associatedVariable),1.5,0),nClusters))
+         covLabels[nCovariates+1+ifelse(!is.null(associatedVariable),1,0)]<-'Risk'
+      }
+      z<-c(z,risk)
+      tileOrders<-c(tileOrders,order(order(risk,decreasing=F),decreasing=F))
+   }
+   if(!is.null(associatedVariable)){
+      clusterAssocValues<-c(0,nClusters)
+      for(c in 1:nClusters){
+         relData<-na.omit(associatedVariable$values[clustering==clusterOrder[c]])
+         clusterAssocValues[c]<-mean(relData)         
+      }
+      clusterAssocValues<-(clusterAssocValues-min(clusterAssocValues))/(max(clusterAssocValues)-min(clusterAssocValues))
+      if(covariatesOnXAxis){
+         x<-c(x,rep(nCovariates+2,nClusters))
+         y<-c(y,nClusters:1)
+         covLabels[nCovariates+2]<-associatedVariable$name
+      }else{
+         x<-c(x,1:nClusters)
+         y<-c(y,rep(1,nClusters))
+         covLabels[1]<-associatedVariable$name
+      }
+      z<-c(z,clusterAssocValues)
+      tileOrders<-c(tileOrders,order(order(clusterAssocValues,decreasing=F),decreasing=F))
+   }
+   if(covariatesOnXAxis){
+      clusterLabels<-paste(nClusters:1,' (',rev(clusterSizes),')',sep='')
+   }else{
+      clusterLabels<-paste(1:nClusters,' (',clusterSizes,')',sep='')
+   }
+   plotDF<-data.frame(x=x,y=y,z=z,tileOrders=tileOrders)
+   xBreakVec<-sort(unique(x))
+   yBreakVec<-sort(unique(y))
+   p <- ggplot(plotDF)
+   p<-p+geom_tile(aes(x=x,y=y,fill=z,height=0.9,width=0.9))
+   p<-p+geom_text(aes(x=x,y=y,label=tileOrders),colour="black",size=12)
+   p<-p+scale_fill_gradient2(mid="white", high=muted("red"), low=muted("blue"),midpoint=0.5)
+   if(covariatesOnXAxis){
+      p<-p+scale_y_continuous(name='Cluster',breaks=yBreakVec,labels=clusterLabels)
+      p<-p+scale_x_continuous(name='',breaks=xBreakVec,labels=covLabels)      
+   }else{
+      p<-p+scale_y_continuous(name='',breaks=yBreakVec,labels=covLabels)
+      p<-p+scale_x_continuous(name='Cluster',breaks=xBreakVec,labels=clusterLabels)
+   }
+   p<-p+opts(legend.position="none")+opts(print.margin=unit(c(0,0,0,0),'lines'))
+   p<-p+opts(axis.text.y=theme_text(colour="black",size=20))
+   p<-p+opts(axis.text.x=theme_text(colour="black",size=20)) 
+   p<-p+opts(axis.title.x=theme_text(size=20))
+   print(p)
+   
+   dev.off()
+	
+	detach(clusObjRunInfoObj)
+	detach(riskProfClusObj)
+   detach(riskProfObj)
+   
+   return(meanSortIndex)
+   
+} 
+
+plotClustering<-function(clusObj,outFile,clusterPlotOrder=NULL,whichCovariates=NULL){
+   
+   attach(clusObj)
+   attach(clusObjRunInfoObj)
+   
+   png(outFile,width=1200,height=800)      
+   
+   if(is.null(clusterPlotOrder)){
+      clusterPlotOrder<-1:nClusters
+   }
+   # Read in the raw X data
+   rawXFileName<-gsub('.txt','_RawX.txt',inputFileName)
+   rawXData<-readLines(rawXFileName)
+   rawXData<-rawXData[(nCovariates+3):length(rawXData)]
+   rawXData<-matrix(as.numeric(unlist(strsplit(rawXData," "))),ncol=nCovariates,byrow=T)
+   if('CessationTime'%in%covNames){
+      relInd<-match('CessationTime',covNames)
+      meanCat1<-mean(rawXData[xMat[,relInd]==1,relInd])
+      rawXData[xMat[,relInd]==0,relInd]<-meanCat1+10
+   }
+   rawXData[rawXData==-999]<-NA
+   includeVec<-rep(T,nSubjects)
+   for(i in 1:nSubjects){
+      if(any(is.na(rawXData[i,]))){
+         includeVec[i]<-F
+      }
+   }
+   rawXData<-rawXData[includeVec,]
+   if(!is.null(whichCovariates)){
+      rawXData<-rawXData[,whichCovariates]
+   }
+   clustering<-clustering[includeVec]
+   d<-dist(rawXData)
+   
+   principalComp<-cmdscale(d,k=2)
+   plot(principalComp[,1],principalComp[,2],pch=match(clustering,clusterPlotOrder),
+         col=match(clustering,clusterPlotOrder),xlab="Principal Component 1",ylab="Principal Component 2")
+   title(main="2D visualization of how subjects cluster")
+   legend("topleft",legend=1:nClusters,pch=1:nClusters,col=1:nClusters,bg="white")
+   box()
+   dev.off()
+   
+   detach(clusObjRunInfoObj)
+   detach(clusObj)
+	
+	return(list("rawXDist"=d,"rawXprincipalComponents"=principalComp,"rawXIncludeVec"=includeVec))
+}
+
+# Show the continuous hyperparameter for variable selection
+summariseVarSelectRho<-function(runInfoObj){
+   
+   attach(runInfoObj)
+   # Rho file name
+   rhoFileName <- file.path(directoryPath,paste(fileStem,'_rho.txt',sep=''))
+
+   rhoMat<-matrix(scan(rhoFileName,what=double(),quiet=T),ncol=nCovariates,byrow=T)
+   
+   # Restrict to after burn in
+   firstLine<-2+nBurn/nFilter
+   lastLine<-1+(nBurn+nSweeps)/nFilter
+   
+   rhoMat<-rhoMat[firstLine:lastLine,]
+   
+   rhoMean<-apply(rhoMat,2,mean)
+   rhoMedian<-apply(rhoMat,2,median)
+   rhoLowerCI<-apply(rhoMat,2,quantile,0.05)
+   rhoUpperCI<-apply(rhoMat,2,quantile,0.95)
+   
+   output<-list("rho"=rhoMat,"rhoMean"=rhoMean,"rhoMedian"=rhoMedian,"rhoLowerCI"=rhoLowerCI,"rhoUpperCI"=rhoUpperCI)
+	detach(runInfoObj)
+   return(output)   
+}
+
+
+
+# Compute Ratio of variances (for extra variation case)
+computeRatioOfVariance<-function(runInfoObj){
+
+   attach(runInfoObj)
+   # Construct the number of clusters file name
+   nClustersFileName <- file.path(directoryPath,paste(fileStem,'_nClusters.txt',sep=''))
+   # Construct the allocation file name
+   zFileName <- file.path(directoryPath,paste(fileStem,'_z.txt',sep=''))
+   # Construct the allocation file name
+   thetaFileName <- file.path(directoryPath,paste(fileStem,'_theta.txt',sep=''))
+   # Construct the allocation file name
+   epsilonFileName <- file.path(directoryPath,paste(fileStem,'_epsilon.txt',sep=''))
+   
+   # Restrict to sweeps after burn in
+   firstLine<-2+nBurn/nFilter
+   lastLine<-1+(nBurn+nSweeps)/nFilter
+   
+   ratioOfVariance<-rep(0,length(lastLine-firstLine+1))
+   for(sweep in firstLine:lastLine){
+      currMaxNClusters<-scan(nClustersFileName,what=integer(),skip=sweep-1,n=1,quiet=T)
+      zCurr<-1+scan(zFileName,what=integer(),skip=sweep-1,n=nSubjects+nPredictSubjects,quiet=T)  
+      zCurr<-zCurr[1:nSubjects]
+      thetaCurr<-scan(thetaFileName,what=double(),skip=sweep-1,n=currMaxNClusters,quiet=T)  
+      thetaCurr<-thetaCurr[zCurr]
+      vTheta<-var(thetaCurr)
+      epsilonCurr<-scan(epsilonFileName,what=double(),skip=sweep-1,n=nSubjects,quiet=T)
+      vEpsilon<-var(epsilonCurr)
+      ratioOfVariance[sweep-firstLine+1]<-vTheta/(vTheta+vEpsilon)
+
+   }
+   detach(runInfoObj)
+   return(ratioOfVariance)   
+   
+}
+
+# Calculate predictions, and if possible assess predictive performance
+calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwell=F,fullSweepPredictions=F){
+
+   attach(riskProfObj)
+   attach(riskProfClusObj)
+   attach(clusObjRunInfoObj)
+
+   firstLine<-2+nBurn/nFilter
+   lastLine<-1+(nSweeps+nBurn)/nFilter
+   nSamples<-lastLine-firstLine+1
+      
+   # First of all we see if there a covariate file has been supplied
+   if(nPredictSubjects==0){
+		detach(clusObjRunInfoObj)
+		detach(riskProfClusObj)
+		detach(riskProfObj)		
+      stop("No prediction subjects processed by C++\n")
+   }
+   
+   # Get the response and confounder data if available   
+   responseProvided<-F
+   extraInfoProvided<-F
+   confoundersProvided<-F
+   if(!is.null(predictResponseFileName)){
+      predictResponseData<-scan(predictResponseFileName,quiet=T)
+      predictResponseMat<-matrix(predictResponseData[2:length(predictResponseData)],
+            nrow=nPredictSubjects,byrow=T)
+      predictYMat<-matrix(predictResponseMat[,1],ncol=1)
+      if(yModel=="Poisson"||yModel=="Binomial"){
+         predictYMat<-cbind(predictYMat,predictResponseMat[,ncol(predictResponseMat)])
+         if(all(predictYMat[,2]>-999)){
+            extraInfoProvided<-T
+         }
+      }
+      if(all(predictYMat[,1]>-999)){
+         responseProvided<-T
+      }
+      if(nConfounders>0){
+         confoundersProvided<-T
+         predictWMat<-matrix(predictResponseMat[,2:(nConfounders+1)],nrow=nPredictSubjects)
+         # Set missing values to their average or reference value
+         predictWMat[predictWMat==-999]<-0
+      }
+   }
+   
+   if(confoundersProvided){
+      # Construct the confounder file name
+      betaFileName <-file.path(directoryPath,paste(fileStem,'_beta.txt',sep=''))
+      # Read the beta data
+      betaMat<-matrix(scan(betaFileName,what=double(),quiet=T),ncol=nConfounders,byrow=T)
+      betaMat<-matrix(betaMat[firstLine:lastLine,],ncol=nConfounders)
+   }
+   
+   predictedY<-matrix(0,nSamples,nPredictSubjects)
+   
+   
+   # Already done the allocation in the C++
+   if(doRaoBlackwell){
+  		# Construct the RB theta file name
+      thetaFileName<-file.path(directoryPath,paste(fileStem,'_predictThetaRaoBlackwell.txt',sep=''))
+      # Read the RB theta data
+      thetaMat<-matrix(scan(thetaFileName,what=double(),quiet=T),byrow=T,ncol=nPredictSubjects)
+      thetaMat<-thetaMat[firstLine:nrow(thetaMat),]   
+   }else{
+      # Construct the file names
+      zFileName <- file.path(directoryPath,paste(fileStem,'_z.txt',sep=''))
+	   zFile<-file(zFileName,open="r")
+		thetaFileName<-file.path(directoryPath,paste(fileStem,'_theta.txt',sep=''))
+	   thetaFile<-file(thetaFileName,open="r")
+		nClustersFileName<-file.path(directoryPath,paste(fileStem,'_nClusters.txt',sep=''))
+		nClustersFile<-file(nClustersFileName,open="r")
+
+		thetaMat<-matrix(0,nSamples,nPredictSubjects)
+		for(sweep in firstLine:lastLine){
+		   if(sweep==firstLine){
+			   skipVal<-firstLine-1
+			}else{
+				skipVal<-0
+			}
+			currZ<-1+scan(zFile,what=integer(),skip=skipVal,n=nSubjects+nPredictSubjects,quiet=T)
+			currZ<-currZ[(nSubjects+1):length(currZ)]
+			currNClusters<-scan(nClustersFile,skip=skipVal,n=1,what=integer(),quiet=T)
+			currTheta<-scan(thetaFile,skip=skipVal,n=currNClusters,what=double(),quiet=T)
+			thetaMat[sweep-firstLine+1,]<-currTheta[currZ]
+		 }
+		 close(zFile)
+	    close(thetaFile)
+		 close(nClustersFile)
+	}
+   
+   # Use the values of theta to derive the predicted values   
+   predictedY<-matrix(0,nSamples,nPredictSubjects)
+   for(sweep in 1:nSamples){
+      if(sweep==1||sweep%%100==0){
+         cat(paste("Processing sweep",sweep,"of ",nSamples,"\n"))
+      }
+      
+      lambda<-thetaMat[sweep,]
+      if(confoundersProvided){
+         currBeta<-betaMat[sweep,]
+         lambda<-lambda+predictWMat%*%currBeta
+      }
+      
+      if(yModel=='Poisson'){
+         if(extraInfoProvided){
+            # Add in the offset
+            lambda<-lambda+log(predictYMat[,2])
+         }
+      }
+      
+      if(yModel=='Bernoulli'){
+         predictedY[sweep,]<-exp(lambda)/(1+exp(lambda))
+      }else if(yModel=='Binomial'){
+         if(extraInfoProvided){
+            predictedY[sweep,]<-predictYMat[,2]*exp(lambda)/(1+exp(lambda))
+         }else{
+            predictedY[sweep,]<-exp(lambda)/(1+exp(lambda))            
+         }
+      }else if(yModel=='Poisson'){
+         predictedY[sweep,]<-exp(lambda)
+      }      
+   }   
+   if(responseProvided){
+      bias<-apply(predictedY,2,mean)-predictYMat[,1]
+      rmse<-sqrt(mean(bias^2))
+      bias<-mean(bias)
+      output<-list("bias"=bias,"rmse"=rmse,"observedY"=predictYMat[,1],"predictedY"=apply(predictedY,2,mean),"doRaoBlackwell"=doRaoBlackwell)
+   }else{
+      output<-list("bias"=NA,"rmse"=NA,"observedY"=NA,"predictedY"=apply(predictedY,2,mean),"doRaoBlackwell"=doRaoBlackwell)
+   }
+   if(fullSweepPredictions){
+      output$predictedYPerSweep<-predictedY
+   }
+	detach(clusObjRunInfoObj)
+	detach(riskProfClusObj)
+	detach(riskProfObj)		
+   
+	return(output)
+
+}
+
+# For a particular clustering, show the cluster values of a separate variable
+computeAssociatedVariable<-function(subjectValues,clusObj,clusterPlotOrder,latexFile=NULL){
+
+   attach(clusObj)   
+   outData<-data.frame('cluster'=rep(0,nClusters),'Mean'=rep(NA,nClusters),
+                     'SD'=rep(NA,nClusters),'Q1'=rep(NA,nClusters),
+                     'Med'=rep(NA,nClusters),'Q3'=rep(NA,nClusters))
+   for(c in 1:nClusters){
+      relData<-na.omit(subjectValues[clustering==clusterPlotOrder[c]])
+      tmpDF<-data.frame('cluster'=i,'Mean'=mean(relData),
+           'SD'=sd(relData),'Q1'=quantile(relData,0.25),
+           'Med'=quantile(relData,0.5),'Q3'=quantile(relData,0.75))
+      outData[i,]<-tmpDF
+     
+  }
+  rownames(outData)<-seq(1,nClusters,1) 
+  
+  if(!is.null(latexFile)){
+     outStr<-c()
+     for(c in 1:nClusters){
+        tmpStr<-paste(format(round(outData[c,],4),nsmall=4),collapse=" & ")
+        if(c<nClusters){
+           tmpStr<-paste(tmpStr,"\\\\",sep="")
+        }
+        outStr<-c(outStr,tmpStr)
+     }
+     write(outStr,file=latexFile,append=F)
+  }
+  detach(clusObj)
+  return(outData)
+   
+}
+
+compareClustering<-function(riskProfileObjA,riskProfileObjB,clusterOrder=NULL){
+	
+   clusterObjA<-riskProfileObjA$riskProfClusObj
+   clusterObjB<-riskProfileObjB$riskProfClusObj
+	disSimMatA<-clusterObjA$clusObjDisSimMat
+   disSimMatB<-clusterObjB$clusObjDisSimMat
+   runInfoObjA<-clusterObjA$clusObjRunInfoObj
+   runInfoObjB<-clusterObjB$clusObjRunInfoObj
+	riskMeansA<-apply(riskProfileObjA$risk,2,mean)
+	riskMeansB<-apply(riskProfileObjB$risk,2,mean)
+	nSubjects<-runInfoObjA$nSubjects
+	if(runInfoObjB$nSubjects!=nSubjects){
+		exit("Number of subjects not the same in comparison")
+	}
+	
+	optSimObjA<-matrix(0,nSubjects,nSubjects)
+	optSimObjB<-matrix(0,nSubjects,nSubjects)
+	rawSimObjA<-matrix(0,nSubjects,nSubjects)
+	rawSimObjB<-matrix(0,nSubjects,nSubjects)
+	r<-1
+	dOpt<-0
+	dRaw<-0
+	dRisk<-0
+	dOptClusA<-rep(0,clusterObjA$nClusters)
+	dOptClusB<-rep(0,clusterObjB$nClusters)
+	for(i in 1:nSubjects){
+		if(i<(nSubjects-1)){
+			for(j in (i+1):nSubjects){
+				optSimObjA[i,j]<-ifelse(clusterObjA$clustering[i]==clusterObjA$clustering[j],1,0)
+				optSimObjB[i,j]<-ifelse(clusterObjB$clustering[i]==clusterObjB$clustering[j],1,0)
+				rawSimObjA[i,j]<-1-disSimMatA[r]
+				rawSimObjB[i,j]<-1-disSimMatB[r]
+				r<-r+1
+				if(optSimObjA[i,j]!=optSimObjB[i,j]){
+					dOpt<-dOpt+1
+					dOptClusA[clusterObjA$clustering[i]]<-dOptClusA[clusterObjA$clustering[i]]+1
+					dOptClusB[clusterObjB$clustering[i]]<-dOptClusB[clusterObjB$clustering[i]]+1
+					dOptClusA[clusterObjA$clustering[j]]<-dOptClusA[clusterObjA$clustering[j]]+1
+					dOptClusB[clusterObjB$clustering[j]]<-dOptClusB[clusterObjB$clustering[j]]+1
+				}
+				dRaw<-dRaw+abs(rawSimObjA[i,j]-rawSimObjB[i,j])
+			}
+		}
+		dRisk<-dRisk+abs(riskMeansA[clusterObjA$clustering[i]]-riskMeansB[clusterObjB$clustering[i]])
+	}
+	
+	dOpt<-2*dOpt/(nSubjects*(nSubjects-1))
+	dOptClusA<-dOptClusA/(nSubjects*clusterObjA$clusterSizes)
+	dOptClusB<-dOptClusB/(nSubjects*clusterObjB$clusterSizes)
+	if(!is.null(clusterOrder)){
+		dOptClusA<-dOptClusA[clusterOrder]
+		dOptClusB<-dOptClusB[clusterOrder]
+	}
+	dRaw<-2*dRaw/(nSubjects*(nSubjects-1))
+	dRisk<-dRisk/nSubjects
+	
+	return(list('dOpt'=dOpt,'dOptClusA'=dOptClusA,'dOptClusB'=dOptClusB,'dRaw'=dRaw,'dRisk'=dRisk))
+	
+}
+
+
+# Compute a symmetrized version of the divergence between two profiles
+compareProfiles<-function(riskProfileObjA,riskProfileObjB,weightVecA,weightVecB,summaryFn=mean,KLThresh=10e-08){
+   
+   divergenceABObj<-computeDivergenceAB(riskProfileObjA,riskProfileObjB,weightVecA,summaryFn,KLThresh)
+   divergenceBAObj<-computeDivergenceAB(riskProfileObjB,riskProfileObjA,weightVecB,summaryFn,KLThresh)
+   totalDivergence<-0.5*(divergenceABObj$totalDivergence+divergenceBAObj$totalDivergence)
+   out<-list("totalDivergence"=totalDivergence,"totalDivergenceAB"=divergenceABObj$totalDivergence,
+            "totalDivergenceBA"=divergenceBAObj$totalDivergence,"nClustersA"=divergenceABObj$nClustersA,
+            "nClustersB"=divergenceABObj$nClustersB,"allocationAB"=divergenceABObj$allocation,
+            "allocationBA"=divergenceBAObj$allocation,"divergenceBreakdownAB"=divergenceABObj$divergenceBreakdown,
+            "divergenceBreakdownBA"=divergenceBAObj$divergenceBreakdown)
+
+   return(out)         
+}
+
+
+# Compute a statistic measuring divergence between two profiles
+computeDivergenceAB<-function(riskProfileObjA,riskProfileObjB,weightsVecA,summaryFn=mean,KLThresh=10e-08){
+
+   clusterObjA<-riskProfileObjA$riskProfClusObj
+   clusterObjB<-riskProfileObjB$riskProfClusObj
+   runInfoObjA<-clusterObjA$clusObjRunInfoObj
+   runInfoObjB<-clusterObjB$clusObjRunInfoObj
+      
+   # Make sure the profiles come from the same models
+   xModel<-runInfoObjA$xModel
+   if(xModel!=runInfoObjB$xModel){
+      stop("The X model is not the same for the two profiles")
+   }
+   
+   # Only include the response in the computation if both samples were based on
+   # including the response and the response model is the same in both cases
+   includeResponseA<-runInfoObjA$includeResponse
+   includeResponseB<-runInfoObjB$includeResponse
+   if(includeResponseA&&includeResponseB){
+      includeResponse<-T
+   }else{
+      includeResponse<-F
+   }
+   
+   if(includeResponse){
+      yModelA<-runInfoObjA$yModel
+      yModelB<-runInfoObjA$yModel
+      if(yModelA==yModelB){
+         yModel<-yModelA
+      }else{
+         includeResponse<-F
+      }
+   }
+
+   nClustersA<-clusterObjA$nClusters
+   nClustersB<-clusterObjB$nClusters
+   
+   riskSummaryA<-NULL
+   riskSummaryB<-NULL
+   if(includeResponse){
+      riskSummaryA<-riskProfileObjA$risk
+      riskSummaryA<-apply(riskSummaryA,2,summaryFn)
+      riskSummaryB<-riskProfileObjB$risk
+      riskSummaryB<-apply(riskSummaryB,2,summaryFn)
+   }
+   
+   # We only compare covariates that are in both A and B
+   covNamesA<-runInfoObjA$covNames
+   covNamesB<-runInfoObjB$covNames
+   includeCovA<-covNamesA%in%covNamesB
+   includeCovB<-covNamesB%in%covNamesA
+   covNames<-covNamesA[includeCovA]
+   nCovariates<-length(covNames)
+   
+   # We make sure the covariates are in the same order   
+   if(xModel=='Discrete'){
+      whichAInB<-which(covNamesA%in%covNamesB)
+      whichBInA<-rep(0,nCovariates)
+      for (i in 1:nCovariates){ 
+         whichBInA[i]<-which(covNamesA[whichAInB[i]]==covNamesB)
+      }
+      covariatePhiA<-riskProfileObjA$profile
+      covariatePhiA<-apply(covariatePhiA,2:4,summaryFn)
+      covariatePhiA<-covariatePhiA[,whichAInB,]
+      covariatePhiB<-riskProfileObjB$profile
+      covariatePhiB<-apply(covariatePhiB,2:4,summaryFn)
+      covariatePhiB<-covariatePhiB[,whichBInA,]
+      # Make sure the remaining covariates have the same number of categories      
+      nCategoriesA<-runInfoObjA$nCategories
+      nCategoriesA<-nCategoriesA[whichAInB]
+      nCategoriesB<-runInfoObjB$nCategories
+      nCategoriesB<-nCategoriesA[whichBInA]
+      keepCov<-which(nCategoriesA==nCategoriesB)
+      covariatePhiA<-covariatePhiA[,keepCov,]
+      covariatePhiB<-covariatePhiB[,keepCov,]
+      nCovariates<-length(keepCov)
+      nCategories<-nCategoriesA[keepCov]
+      
+   }else if(xModel=='Normal'){
+      whichAInB<-which(covNamesA%in%covNamesB)
+      whichBInA<-rep(0,nCovariates)
+      for (i in 1:nCovariates){ 
+         whichBInA[i]<-which(covNamesA[whichAInB[i]]==covNamesB)
+      }
+      covariateMuA<-riskProfileObjA$profile
+      covariateMuA<-apply(covariateMuA,2:3,summaryFn)
+      covariateMuA<-covariateMuA[,whichAInB]
+      covariateSigmaA<-riskProfileObjA$profileStdDev
+      covariateSigmaA<-apply(covariateSigmaA,2:4,summaryFn)
+      covariateSigmaA<-covariateSigmaA[,whichAInB,whichAInB]
+      covariateMuB<-riskProfileObjB$profile
+      covariateMuB<-apply(covariateMuB,2:3,summaryFn)
+      covariateMuB<-covariateMuB[,whichBInA]
+      covariateSigmaB<-riskProfileObjB$profileStdDev
+      covariateSigmaB<-apply(covariateSigmaB,2:4,summaryFn)
+      covariateSigmaB<-covariateSigmaB[,whichBInA,whichBInA]
+   }
+   
+   KLXAB<-matrix(0,nrow=nClustersA,ncol=nClustersB)
+   
+   for(c1 in 1:nClustersA){
+      for(c2 in 1:nClustersB){
+         if(xModel=='Discrete'){
+            for(j in 1:nCovariates){
+               for(k in 1:nCategories[j]){
+                  KLXAB[c1,c2]<-KLXAB[c1,c2]+covariatePhiA[c1,j,k]*
+                        log(covariatePhiA[c1,j,k]/covariatePhiB[c2,j,k])
+               }
+            }
+         }else if(xModel=='Normal'){
+            muA<-as.vector(covariateMuA[c1,])
+            sigmaA<-as.matrix(covariateSigmaA[c1,,])
+            muB<-as.vector(covariateMuB[c2,])
+            sigmaB<-as.matrix(covariateSigmaB[c2,,])
+            paramsA<-list("mu"=muA,"sigma"=sigmaA)
+            paramsB<-list("mu"=muB,"sigma"=sigmaB)
+            KLXAB[c1,c2]<-computeKullbackLiebler(paramsA,paramsB,"Normal",eps=KLThresh)
+         }
+      }
+   }
+   
+   #Munkers algorithm: to find the optimal allocation   
+   costMat<-KLXAB
+   nRowsCostMat<-nClustersA
+   nColsCostMat<-nClustersB
+   
+   if (nColsCostMat>=nRowsCostMat){
+      #Simple case, number of columns greater than or equal to number of rows
+      # Use built in function to solve
+      optAlloc<-as.integer(solve_LSAP(costMat))
+   }else{
+      # Harder case, more rows than columns
+      # Add dupicates of the columns to allow original columns to be matched to multiple rows
+      nRepeats<-floor(nRowsCostMat/nColsCostMat)
+      if (nRepeats>1){
+         for (r in 1:(nRepeats-1)){
+            costMat<-cbind(costMat,costMat[,(1:nColsCostMat)])
+         }
+      }
+      
+      # Add columns of zeros to make same number of rows and columns
+      nRemain<-nRowsCostMat-nRepeats*nColsCostMat
+      if (nRemain>0){
+         for (r in 1:nRemain)
+            costMat<-cbind(costMat,rep(0,nRowsCostMat))
+      }
+      
+      #solve using the munkers algo
+      optAlloc<-as.integer(solve_LSAP(costMat))
+      
+      # find the ones matched to the zero columns and rematch them
+      notMatched<-which(optAlloc>(nColsCostMat*nRepeats))
+      costMat<-matrix(KLXAB[notMatched,],ncol=nColsCostMat)
+      secondAlloc<-as.integer(solve_LSAP(costMat))
+      optAlloc[notMatched]<-secondAlloc
+      
+      # Make sure the clusters matched originally which are matched to repeats
+      # are reindexed to match to the correct original copy
+      optAlloc<-optAlloc %% nColsCostMat
+      optAlloc[optAlloc==0]<-nColsCostMat 
+   }
+   
+   totalDivergence<-0
+   divBreakdown<-matrix(0,ncol=2,nrow=nClustersA)
+   for (c in 1:nClustersA){
+      responseDivergence<-0
+      if(includeResponse){
+         if (yModel=='Poisson'){
+            paramsA<-list("lambda"=riskSummaryA[c])
+            paramsB<-list("lambda"=riskSummaryB[optAlloc[c]])
+            KLDistribution<-'Poisson'
+         }else if(yModel=='Bernoulli'||yModel=='Binomial'){
+            paramsA<-list("n"=1,"p"=riskSummaryA[c])
+            paramsB<-list("n"=1,"p"=riskSummaryB[optAlloc[c]])
+            KLDistribution<-'Binomial'
+         } 
+         responseDivergence<-computeKullbackLiebler(paramsA,paramsB,KLDistribution,eps=KLThresh)
+      }
+      totalDivergence<-totalDivergence+weightsVecA[c]*0.5*(responseDivergence+KLXAB[c,optAlloc[c]]/nCovariates)
+      divBreakdown[c,]<-c(responseDivergence,KLXAB[c,optAlloc[c]])
+   }
+   
+   output<-list("totalDivergence"=totalDivergence,"nClustersA"=clusterObjA$nClusters,
+               "nClustersB"=clusterObjB$nClusters,"allocation"=optAlloc,"divergenceBreakdown"=divBreakdown)
+   return(output)
+}
+
+# Compute the Kullback Liebler divergence
+computeKullbackLiebler<-function(paramsA,paramsB,distribution,eps=10e-08){
+   
+   if(distribution=='Binomial'){
+      # Get the parameters
+      nA<-paramsA$n
+      pA<-paramsA$p
+      nB<-paramsB$n
+      pB<-paramsB$p
+      # KL divergence between binomials
+      x<-seq(0,min(nA,nB),1)
+      out<-sum(dbinom(x,nA,pA)*(dbinom(x,nA,pA,log=T)-dbinom(x,nB,pB,log=T)))
+   }else if(distribution=='Poisson'){
+      # Get the parameters
+      lambdaA<-paramsA$lambda
+      lambdaB<-paramsB$lambda
+      # KL divergence between Poissons
+      x<-0
+      stopRule<-100
+      out<-0
+      while(stopRule>eps){
+         stopRule<-min(dpois(x,lambdaA),dpois(x,lambdaB))
+         out<-out+dpois(x,lambdaA)*(dpois(x,lambdaA,log=T)-dpois(x,lambdaB,log=T))
+         x<-x+1
+      }
+   }else if(distribution=='Normal'){
+      muA<-paramsA$mu
+      sigmaA<-paramsA$sigma
+      muB<-paramsB$mu
+      sigmaB<-paramsB$sigma
+      invSigmaA<-solve(sigmaA)
+      invSigmaB<-solve(sigmaB)
+      lenMu<-length(muA)
+      # NB determinant function returns the log of the determinant
+      logDetSigmaA<-determinant(sigmaA)
+      logDetSigmaA<-logDetSigmaA$modulus
+      logDetSigmaB<-determinant(sigmaB)
+      logDetSigmaB<-logDetSigmaB$modulus
+      out<-0.5*((logDetSigmaB-logDetSigmaA)+sum(diag(invSigmaB%*%sigmaA))+
+               (muB-muA)%*%(invSigmaB%*%(muB-muA))-lenMu)
+            
+   } 
+   return(out)
+}
+
+multivariateNormalPDF<-function(x,mu,Sigma){
+
+	dimX<-length(x)
+	if(dimX==1){
+		return(dnorm(x,mean=mu,sd=sqrt(Sigma)))
+	}else{
+		work<-solve(Sigma)%*%(x-mu)
+		work<--0.5*t(x-mu)%*%work
+		if(work>0){
+			# This can only happen because of rounding in the files produced by the C++
+			# Causing a non positive definite Sigma
+			# It only happens when the clusters is empty, so little harm in setting to 0
+			return(0)
+		}else{
+			work<-work-0.5*(dimX*log(2*pi)+determinant(Sigma)$modulus)
+			return(exp(work))
+		}
+	}
+		
+}
+
+
+
+
+
+

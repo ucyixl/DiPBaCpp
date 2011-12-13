@@ -1,7 +1,6 @@
-/// \file profileRegression.cpp
+/// \file DiPBaC.cpp
 /// \author David Hastie
-/// \date 26 Jan 2011
-/// \brief Main file for running profile regression
+/// \brief Main file for running DiPBaC
 
 // Standard includes
 #include <cmath>
@@ -18,11 +17,11 @@
 #include "MCMC/sampler.h"
 #include "MCMC/model.h"
 #include "MCMC/proposal.h"
-#include "profileRegression/profileRegressionOptions.h"
-#include "profileRegression/profileRegressionModel.h"
-#include "profileRegression/profileRegressionData.h"
-#include "profileRegression/profileRegressionProposals.h"
-#include "profileRegression/profileRegressionIO.h"
+#include "DiPBaCOptions.h"
+#include "DiPBaCModel.h"
+#include "DiPBaCData.h"
+#include "DiPBaCProposals.h"
+#include "DiPBaCIO.h"
 
 using std::vector;
 using std::cout;
@@ -37,72 +36,72 @@ int main(int argc, char*  argv[]){
 	beginTime = time(NULL);
 
 	/* -----------Process the command line ---------*/
-	profRegrOptions options = processCommandLine(argc,argv);
+	diPBaCOptions options = processCommandLine(argc,argv);
 	
 	/* ---------- Set up the sampler object--------*/
 	// Initialise the sampler object
-	mcmcSampler<profRegrParams,profRegrOptions,
-				profRegrPropParams,profRegrData> profRegrSampler;
+	mcmcSampler<diPBaCParams,diPBaCOptions,
+				diPBaCPropParams,diPBaCData> diPBaCSampler;
 
 	// Set the options
-	profRegrSampler.options(options);
+	diPBaCSampler.options(options);
 
 	// Set the model
-	profRegrSampler.model(&importProfRegrData,&initialiseProfRegr,
-							&profRegrLogPost,true);
+	diPBaCSampler.model(&importDiPBaCData,&initialiseDiPBaC,
+							&diPBaCLogPost,true);
 
 	// Set the missing data function
-	profRegrSampler.updateMissingDataFn(&updateMissingProfRegrData);
+	diPBaCSampler.updateMissingDataFn(&updateMissingDiPBaCData);
 
 	// Add the function for writing output
-	profRegrSampler.userOutputFn(&writeProfRegrOutput);
+	diPBaCSampler.userOutputFn(&writeDiPBaCOutput);
 
 	// Seed the random number generator
-	profRegrSampler.seedGenerator(options.seed());
+	diPBaCSampler.seedGenerator(options.seed());
 
 	// Set the sampler specific variables
-	profRegrSampler.nSweeps(options.nSweeps());
-	profRegrSampler.nBurn(options.nBurn());
-	profRegrSampler.nFilter(options.nFilter());
-	profRegrSampler.nProgress(options.nProgress());
-	profRegrSampler.reportBurnIn(true);
+	diPBaCSampler.nSweeps(options.nSweeps());
+	diPBaCSampler.nBurn(options.nBurn());
+	diPBaCSampler.nFilter(options.nFilter());
+	diPBaCSampler.nProgress(options.nProgress());
+	diPBaCSampler.reportBurnIn(true);
 
 	/* ---------- Read in the data -------- */
-	profRegrSampler.model().dataset().outcomeType(options.outcomeType());
-	profRegrSampler.model().dataset().covariateType(options.covariateType());
-	profRegrSampler.importData(options.inFileName(),options.predictFileName());
-	profRegrData dataset = profRegrSampler.model().dataset();
+	diPBaCSampler.model().dataset().outcomeType(options.outcomeType());
+	diPBaCSampler.model().dataset().covariateType(options.covariateType());
+	diPBaCSampler.importData(options.inFileName(),options.predictFileName());
+	diPBaCData dataset = diPBaCSampler.model().dataset();
 
 	/* ---------- Add the proposals -------- */
 
 	// Set the proposal parameters
-	profRegrPropParams proposalParams(options.nSweeps(),dataset.nCovariates(),
+	diPBaCPropParams proposalParams(options.nSweeps(),dataset.nCovariates(),
 										dataset.nConfounders());
-	profRegrSampler.proposalParams(proposalParams);
+	diPBaCSampler.proposalParams(proposalParams);
 
 	// The gibbs update for the active V
-	profRegrSampler.addProposal("gibbsForVActive",1.0,1,1,&gibbsForVActive);
+	diPBaCSampler.addProposal("gibbsForVActive",1.0,1,1,&gibbsForVActive);
 
 
 	if(options.covariateType().compare("Discrete")==0){
 		// For discrete X data we do a mixture of Categorical and ordinal updates
 		if(dataset.anyCategorical()){
 			//  Update for the active phi parameters
-			profRegrSampler.addProposal("updateForPhiActive",1.0,1,1,&updateForPhiActive);
+			diPBaCSampler.addProposal("updateForPhiActive",1.0,1,1,&updateForPhiActive);
 		}
 
 		if(dataset.anyOrdinal()){
 			// Adaptive MH for active delta
-			profRegrSampler.addProposal("metropolisHastingsForDeltaActive",1.0,1,1,&metropolisHastingsForDeltaActive);
+			diPBaCSampler.addProposal("metropolisHastingsForDeltaActive",1.0,1,1,&metropolisHastingsForDeltaActive);
 		}
 
 	}else if(options.covariateType().compare("Normal")==0){
 		// Need to add the proposals for the normal case
 		// Update for the active mu parameters
-		profRegrSampler.addProposal("gibbsForMuActive",1.0,1,1,&gibbsForMuActive);
+		diPBaCSampler.addProposal("gibbsForMuActive",1.0,1,1,&gibbsForMuActive);
 
 		// Update for the active Sigma parameters
-		profRegrSampler.addProposal("gibbsForTauActive",1.0,1,1,&gibbsForTauActive);
+		diPBaCSampler.addProposal("gibbsForTauActive",1.0,1,1,&gibbsForTauActive);
 
 	}
 
@@ -112,49 +111,49 @@ int main(int argc, char*  argv[]){
 		firstSweep=1+(unsigned int)(options.nBurn()/10);
 		if(options.varSelectType().compare("Continuous")!=0){
 			// Gibbs update for gamma
-			profRegrSampler.addProposal("gibbsForGammaActive",1.0,1,firstSweep,&gibbsForGammaActive);
+			diPBaCSampler.addProposal("gibbsForGammaActive",1.0,1,firstSweep,&gibbsForGammaActive);
 		}
 
 	}
 
 	if(options.includeResponse()){
 		// The Metropolis Hastings update for the active theta
-		profRegrSampler.addProposal("metropolisHastingsForThetaActive",1.0,1,1,&metropolisHastingsForThetaActive);
+		diPBaCSampler.addProposal("metropolisHastingsForThetaActive",1.0,1,1,&metropolisHastingsForThetaActive);
 	}
 
 	// The Metropolis Hastings update for labels
-	profRegrSampler.addProposal("metropolisHastingsForLabels",1.0,1,1,&metropolisHastingsForLabels);
+	diPBaCSampler.addProposal("metropolisHastingsForLabels",1.0,1,1,&metropolisHastingsForLabels);
 
 	// Gibbs for U
-	profRegrSampler.addProposal("gibbsForU",1.0,1,1,&gibbsForU);
+	diPBaCSampler.addProposal("gibbsForU",1.0,1,1,&gibbsForU);
 
 	// The Metropolis Hastings update for alpha
 	if(options.fixedAlpha()<0){
-		profRegrSampler.addProposal("metropolisHastingsForAlpha",1.0,1,1,&metropolisHastingsForAlpha);
+		diPBaCSampler.addProposal("metropolisHastingsForAlpha",1.0,1,1,&metropolisHastingsForAlpha);
 	}
 
 	// The gibbs update for the inactive V
-	profRegrSampler.addProposal("gibbsForVInActive",1.0,1,1,&gibbsForVInActive);
+	diPBaCSampler.addProposal("gibbsForVInActive",1.0,1,1,&gibbsForVInActive);
 
 	if(options.covariateType().compare("Discrete")==0){
 		// For discrete X data we do a mixture of Categorical and ordinal updates
 		if(dataset.anyCategorical()){
 			//  Update for the inactive phi parameters
-			profRegrSampler.addProposal("gibbsForPhiInActive",1.0,1,1,&gibbsForPhiInActive);
+			diPBaCSampler.addProposal("gibbsForPhiInActive",1.0,1,1,&gibbsForPhiInActive);
 		}
 
 		if(dataset.anyOrdinal()){
 			// Adaptive MH for inactive delta
-			profRegrSampler.addProposal("metropolisHastingsForDeltaInActive",1.0,1,1,&metropolisHastingsForDeltaInActive);
+			diPBaCSampler.addProposal("metropolisHastingsForDeltaInActive",1.0,1,1,&metropolisHastingsForDeltaInActive);
 		}
 
 	}else if(options.covariateType().compare("Normal")==0){
 		// Need to add the proposals for the normal case
 		// Update for the active mu parameters
-		profRegrSampler.addProposal("gibbsForMuInActive",1.0,1,1,&gibbsForMuInActive);
+		diPBaCSampler.addProposal("gibbsForMuInActive",1.0,1,1,&gibbsForMuInActive);
 
 		// Update for the active Sigma parameters
-		profRegrSampler.addProposal("gibbsForTauInActive",1.0,1,1,&gibbsForTauInActive);
+		diPBaCSampler.addProposal("gibbsForTauInActive",1.0,1,1,&gibbsForTauInActive);
 	}
 
 	if(options.varSelectType().compare("None")!=0){
@@ -163,28 +162,28 @@ int main(int argc, char*  argv[]){
 		firstSweep=1+(unsigned int)(options.nBurn()/10);
 		if(options.varSelectType().compare("Continuous")!=0){
 			// Gibbs update for gamma
-			profRegrSampler.addProposal("gibbsForGammaInActive",1.0,1,firstSweep,&gibbsForGammaInActive);
+			diPBaCSampler.addProposal("gibbsForGammaInActive",1.0,1,firstSweep,&gibbsForGammaInActive);
 		}
 
 	}
 
 	if(options.includeResponse()){
 		// The Metropolis Hastings update for the inactive theta
-		profRegrSampler.addProposal("gibbsForThetaInActive",1.0,1,1,&gibbsForThetaInActive);
+		diPBaCSampler.addProposal("gibbsForThetaInActive",1.0,1,1,&gibbsForThetaInActive);
 	}
 
 	if(options.includeResponse()){
 		// Adaptive MH for beta
 		if(dataset.nConfounders()>0){
-			profRegrSampler.addProposal("metropolisHastingsForBeta",1.0,1,1,&metropolisHastingsForBeta);
+			diPBaCSampler.addProposal("metropolisHastingsForBeta",1.0,1,1,&metropolisHastingsForBeta);
 		}
 
 		if(options.responseExtraVar()){
 			// Adaptive MH for lambda
-			profRegrSampler.addProposal("metropolisHastingsForLambda",1.0,1,1,&metropolisHastingsForLambda);
+			diPBaCSampler.addProposal("metropolisHastingsForLambda",1.0,1,1,&metropolisHastingsForLambda);
 
 			// Gibbs for tauEpsilon
-			profRegrSampler.addProposal("gibbsForTauEpsilon",1.0,1,1,&gibbsForTauEpsilon);
+			diPBaCSampler.addProposal("gibbsForTauEpsilon",1.0,1,1,&gibbsForTauEpsilon);
 		}
 	}
 
@@ -194,37 +193,37 @@ int main(int argc, char*  argv[]){
 		unsigned int firstSweep;
 		firstSweep=1+(unsigned int)(options.nBurn()/10);
 
-		profRegrSampler.addProposal("metropolisHastingsForRhoOmega",1.0,1,firstSweep,&metropolisHastingsForRhoOmega);
+		diPBaCSampler.addProposal("metropolisHastingsForRhoOmega",1.0,1,firstSweep,&metropolisHastingsForRhoOmega);
 	}
 
 
 	// Gibbs update for the allocation parameters
-	profRegrSampler.addProposal("gibbsForZ",1.0,1,1,&gibbsForZ);
+	diPBaCSampler.addProposal("gibbsForZ",1.0,1,1,&gibbsForZ);
 
 
 	/* ---------- Initialise the output files -----*/
-	profRegrSampler.initialiseOutputFiles(options.outFileStem());
+	diPBaCSampler.initialiseOutputFiles(options.outFileStem());
 
 	/* ---------- Write the log file ------------- */
 	// The standard log file
-	profRegrSampler.writeLogFile();
+	diPBaCSampler.writeLogFile();
 
 	/* ---------- Initialise the chain ---- */
-	profRegrSampler.initialiseChain();
-	profRegrHyperParams hyperParams = profRegrSampler.chain().currentState().parameters().hyperParams();
+	diPBaCSampler.initialiseChain();
+	diPBaCHyperParams hyperParams = diPBaCSampler.chain().currentState().parameters().hyperParams();
 	/* ---------- Run the sampler --------- */
 	// Note: in this function the output gets written
-	profRegrSampler.run();
+	diPBaCSampler.run();
 
 	/* -- End the clock time and write the full run details to log file --*/
 	currTime = time(NULL);
     double timeInSecs=(double)currTime-(double)beginTime;
 	string tmpStr = storeLogFileData(options,dataset,hyperParams,timeInSecs);
-	profRegrSampler.appendToLogFile(tmpStr);
+	diPBaCSampler.appendToLogFile(tmpStr);
 
 
 	/* ---------- Clean Up ---------------- */
-	profRegrSampler.closeOutputFiles();
+	diPBaCSampler.closeOutputFiles();
 	return(0);
 
 }

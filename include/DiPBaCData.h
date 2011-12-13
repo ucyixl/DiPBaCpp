@@ -1,10 +1,9 @@
-/// \file profileRegressionData.h
+/// \file DiPBaCData.h
 /// \author David Hastie
-/// \date 1 Sep 2010
-/// \brief Header file for model specification for profile regression
+/// \brief Header file for data specification for DiPBaCpp
 
-#ifndef PROFILEREGRESSIONDATA_H_
-#define PROFILEREGRESSIONDATA_H_
+#ifndef DIPBACDATA_H_
+#define DIPBACDATA_H_
 
 // Standard includes
 #include<cmath>
@@ -18,16 +17,16 @@ using std::vector;
 using std::ifstream;
 using std::string;
 
-/// \class profRegrData profileRegressionModel.h "profileRegression/ProfileRegressionModel.h"
-/// \brief A class for profile regression parameters
-class profRegrData{
+/// \class diPBaCData DiPBaCData.h "DiPBaCModel.h"
+/// \brief A class for DiPBaCpp Data
+class diPBaCData{
 
 	public:
 		/// \brief Default constructor
-		profRegrData(): _nSubjects(0), _nCovariates(0), _nConfounders(0), _nPredictSubjects(0) {};
+		diPBaCData(): _nSubjects(0), _nCovariates(0), _nConfounders(0), _nPredictSubjects(0) {};
 
 		/// \brief Default destructor
-		~profRegrData(){};
+		~diPBaCData(){};
 
 		/// \brief Return the number of subjects
 		unsigned int nSubjects() const{
@@ -438,4 +437,4 @@ class profRegrData{
 };
 
 
-#endif
+#endif //DIPBACDATA_H_

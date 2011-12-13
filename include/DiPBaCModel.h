@@ -1,10 +1,9 @@
-/// \file profileRegressionModel.h
+/// \file DiPBaCModel.h
 /// \author David Hastie
-/// \date 1 Sep 2010
-/// \brief Header file for model specification for profile regression
+/// \brief Header file for model specification for DiPBaCpp
 
-#ifndef PROFILEREGRESSIONMODEL_H_
-#define PROFILEREGRESSIONMODEL_H_
+#ifndef DIPBACMODEL_H_
+#define DIPBACMODEL_H_
 
 // Standard includes
 #include<cmath>
@@ -27,11 +26,11 @@
 // Custom includes
 #include "MCMC/model.h"
 #include "MCMC/state.h"
-#include "base/random.h"
-#include "base/distribution.h"
-#include "base/mathfunctions.h"
-#include "profileRegression/profileRegressionData.h"
-#include "profileRegression/profileRegressionOptions.h"
+#include "Math/random.h"
+#include "Math/distribution.h"
+#include "Math/mathfunctions.h"
+#include "DiPBaCData.h"
+#include "DiPBaCOptions.h"
 
 using std::vector;
 using std::ifstream;
@@ -45,14 +44,14 @@ using boost::math::beta_distribution;
 using boost::math::students_t_distribution;
 using boost::math::lgamma;
 
-class profRegrHyperParams{
+class diPBaCHyperParams{
 
 	public:
 		// Default constructor
-		profRegrHyperParams() {};
+		diPBaCHyperParams() {};
 
 		// Default virtual destructor
-		~profRegrHyperParams() {};
+		~diPBaCHyperParams() {};
 
 		// Set sizes
 		void setSizes(const unsigned int& nCovariates){
@@ -64,8 +63,8 @@ class profRegrHyperParams{
 		}
 
 		// Set defaults
-		void setDefaults(const profRegrData& dataset,
-						const profRegrOptions& options){
+		void setDefaults(const diPBaCData& dataset,
+						const diPBaCOptions& options){
 
 			unsigned int nSubjects = dataset.nSubjects();
 			unsigned int nCovariates = dataset.nCovariates();
@@ -328,7 +327,7 @@ class profRegrHyperParams{
 		}
 
 		// Copy operator
-		profRegrHyperParams& operator=(const profRegrHyperParams& hyperParams){
+		diPBaCHyperParams& operator=(const diPBaCHyperParams& hyperParams){
 			_shapeAlpha = hyperParams.shapeAlpha();
 			_rateAlpha = hyperParams.rateAlpha();
 			_useReciprocalNCatsPhi = hyperParams.useReciprocalNCatsPhi();
@@ -407,16 +406,16 @@ class profRegrHyperParams{
 };
 
 
-/// \class profRegrParams profileRegressionModel.h "profileRegression/ProfileRegressionModel.h"
-/// \brief A class for profile regression parameters
-class profRegrParams{
+/// \class diPBaCParams DiPBaCModel.h "DiPBaCModel.h"
+/// \brief A class for DiPBaC parameters
+class diPBaCParams{
 
 	public:
 		/// \brief Default constructor
-		profRegrParams(){};
+		diPBaCParams(){};
 
 		/// \brief Destructor
-		~profRegrParams(){};
+		~diPBaCParams(){};
 
 		/// \brief Function to set the sizes of the various class members
 		void setSizes(const unsigned int& nSubjects,
@@ -1271,15 +1270,15 @@ class profRegrParams{
 		}
 
 
-		const profRegrHyperParams& hyperParams() const{
+		const diPBaCHyperParams& hyperParams() const{
 			return _hyperParams;
 		}
 
-		profRegrHyperParams& hyperParams(){
+		diPBaCHyperParams& hyperParams(){
 			return _hyperParams;
 		}
 
-		void hyperParams(const profRegrHyperParams& hyPar){
+		void hyperParams(const diPBaCHyperParams& hyPar){
 			_hyperParams = hyPar;
 		}
 
@@ -1472,7 +1471,7 @@ class profRegrParams{
 		}
 
 		/// \brief Copy operator
-		profRegrParams& operator=(const profRegrParams& params){
+		diPBaCParams& operator=(const diPBaCParams& params){
 			_maxNClusters=params.maxNClusters();
 			_logPsi = params.logPsi();
 			_u = params.u();
@@ -1590,7 +1589,7 @@ class profRegrParams{
 
 		/// NOTE: hyper parameters
 		/// \brief The hyper parameter object
-		profRegrHyperParams _hyperParams;
+		diPBaCHyperParams _hyperParams;
 
 		/// \brief Integer determining the maximum cluster label with some members
 		/// in
@@ -1627,7 +1626,7 @@ class profRegrParams{
 };
 
 
-double logPYiGivenZiWiBernoulli(const profRegrParams& params, const profRegrData& dataset,
+double logPYiGivenZiWiBernoulli(const diPBaCParams& params, const diPBaCData& dataset,
 						const unsigned int& nConfounders,const int& zi,
 						const unsigned int& i){
 
@@ -1641,8 +1640,8 @@ double logPYiGivenZiWiBernoulli(const profRegrParams& params, const profRegrData
 	return logPdfBernoulli(dataset.y(i),p);
 }
 
-double logPYiGivenZiWiBernoulliExtraVar(const profRegrParams& params,
-												const profRegrData& dataset,
+double logPYiGivenZiWiBernoulliExtraVar(const diPBaCParams& params,
+												const diPBaCData& dataset,
 												const unsigned int& nConfounders,const int& zi,
 												const unsigned int& i){
 
@@ -1652,7 +1651,7 @@ double logPYiGivenZiWiBernoulliExtraVar(const profRegrParams& params,
 	return logPdfBernoulli(dataset.y(i),p);
 }
 
-double logPYiGivenZiWiBinomial(const profRegrParams& params, const profRegrData& dataset,
+double logPYiGivenZiWiBinomial(const diPBaCParams& params, const diPBaCData& dataset,
 						const unsigned int& nConfounders,const int& zi,
 						const unsigned int& i){
 
@@ -1666,8 +1665,8 @@ double logPYiGivenZiWiBinomial(const profRegrParams& params, const profRegrData&
 	return logPdfBinomial(dataset.y(i),dataset.nTrials(i),p);
 }
 
-double logPYiGivenZiWiBinomialExtraVar(const profRegrParams& params,
-												const profRegrData& dataset,
+double logPYiGivenZiWiBinomialExtraVar(const diPBaCParams& params,
+												const diPBaCData& dataset,
 												const unsigned int& nConfounders,const int& zi,
 												const unsigned int& i){
 
@@ -1677,7 +1676,7 @@ double logPYiGivenZiWiBinomialExtraVar(const profRegrParams& params,
 	return logPdfBinomial(dataset.y(i),dataset.nTrials(i),p);
 }
 
-double logPYiGivenZiWiPoisson(const profRegrParams& params, const profRegrData& dataset,
+double logPYiGivenZiWiPoisson(const diPBaCParams& params, const diPBaCData& dataset,
 						const unsigned int& nConfounders,const int& zi,
 						const unsigned int& i){
 
@@ -1692,8 +1691,8 @@ double logPYiGivenZiWiPoisson(const profRegrParams& params, const profRegrData& 
 	return logPdfPoisson(dataset.y(i),mu);
 }
 
-double logPYiGivenZiWiPoissonExtraVar(const profRegrParams& params,
-												const profRegrData& dataset,
+double logPYiGivenZiWiPoissonExtraVar(const diPBaCParams& params,
+												const diPBaCData& dataset,
 												const unsigned int& nConfounders,const int& zi,
 												const unsigned int& i){
 
@@ -1703,12 +1702,12 @@ double logPYiGivenZiWiPoissonExtraVar(const profRegrParams& params,
 	return logPdfPoisson(dataset.y(i),mu);
 }
 
-vector<double> profRegrLogPost(const profRegrParams& params,
-								const mcmcModel<profRegrParams,
-												profRegrOptions,
-												profRegrData>& model){
+vector<double> diPBaCLogPost(const diPBaCParams& params,
+								const mcmcModel<diPBaCParams,
+												diPBaCOptions,
+												diPBaCData>& model){
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 	const string outcomeType = model.dataset().outcomeType();
 	const string covariateType = model.dataset().covariateType();
 	const bool includeResponse = model.options().includeResponse();
@@ -1721,7 +1720,7 @@ vector<double> profRegrLogPost(const profRegrParams& params,
 	unsigned int nConfounders=dataset.nConfounders();
 	vector<unsigned int> nCategories = dataset.nCategories();
 	vector<bool> ordinalIndic = dataset.ordinalIndic();
-	const profRegrHyperParams& hyperParams = params.hyperParams();
+	const diPBaCHyperParams& hyperParams = params.hyperParams();
 
 	// (Augmented) Log Likelihood first
 	// We want p(y,X|z,params,W) = p(y|z=c,W,params)p(X|z=c,params)
@@ -1738,7 +1737,7 @@ vector<double> profRegrLogPost(const profRegrParams& params,
 	vector<double> extraVarPriorVal(nSubjects,0.0);
 	vector<double> extraVarPriorMean(nSubjects,0.0);
 	if(includeResponse){
-		double (*logPYiGivenZiWi)(const profRegrParams&,const profRegrData&,
+		double (*logPYiGivenZiWi)(const diPBaCParams&,const diPBaCData&,
 									const unsigned int&,const int&,
 									const unsigned int&)=NULL;
 
@@ -1929,18 +1928,18 @@ vector<double> profRegrLogPost(const profRegrParams& params,
 
 
 // Log conditional posterior for phi (only used in continuous variable selection)
-double logCondPostPhicj(const profRegrParams& params,
-						const mcmcModel<profRegrParams,
-										profRegrOptions,
-										profRegrData>& model,
+double logCondPostPhicj(const diPBaCParams& params,
+						const mcmcModel<diPBaCParams,
+										diPBaCOptions,
+										diPBaCData>& model,
 						const unsigned int& c,
 						const unsigned int& j){
 
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 	unsigned int nSubjects=dataset.nSubjects();
 	vector<unsigned int> nCategories = dataset.nCategories();
-	const profRegrHyperParams& hyperParams = params.hyperParams();
+	const diPBaCHyperParams& hyperParams = params.hyperParams();
 
 	double out=0.0;
 
@@ -1963,20 +1962,20 @@ double logCondPostPhicj(const profRegrParams& params,
 }
 
 // Log conditional posterior for rho and omega (only used in variable selection)
-double logCondPostRhoOmegaj(const profRegrParams& params,
-						const mcmcModel<profRegrParams,
-										profRegrOptions,
-										profRegrData>& model,
+double logCondPostRhoOmegaj(const diPBaCParams& params,
+						const mcmcModel<diPBaCParams,
+										diPBaCOptions,
+										diPBaCData>& model,
 						const unsigned int& j){
 
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int maxNClusters=params.maxNClusters();
 	unsigned int nCovariates=dataset.nCovariates();
 	string varSelectType = model.options().varSelectType();
 
-	const profRegrHyperParams& hyperParams = params.hyperParams();
+	const diPBaCHyperParams& hyperParams = params.hyperParams();
 
 	double out=0.0;
 
@@ -2014,25 +2013,25 @@ double logCondPostRhoOmegaj(const profRegrParams& params,
 	return out;
 }
 
-double logCondPostThetaBeta(const profRegrParams& params,
-							const mcmcModel<profRegrParams,
-											profRegrOptions,
-											profRegrData>& model){
+double logCondPostThetaBeta(const diPBaCParams& params,
+							const mcmcModel<diPBaCParams,
+											diPBaCOptions,
+											diPBaCData>& model){
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 	const string outcomeType = model.dataset().outcomeType();
 	const bool responseExtraVar = model.options().responseExtraVar();
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int maxNClusters=params.maxNClusters();
 	unsigned int nConfounders=dataset.nConfounders();
-	const profRegrHyperParams& hyperParams = params.hyperParams();
+	const diPBaCHyperParams& hyperParams = params.hyperParams();
 
 	double out=0.0;
 
 	// Add in contribution from Y
 	vector<double> extraVarPriorVal(nSubjects,0.0);
 	vector<double> extraVarPriorMean(nSubjects,0.0);
-	double (*logPYiGivenZiWi)(const profRegrParams&,const profRegrData&,
+	double (*logPYiGivenZiWi)(const diPBaCParams&,const diPBaCData&,
 								const unsigned int&,const int&,
 								const unsigned int&) = NULL;
 
@@ -2116,13 +2115,13 @@ double logCondPostThetaBeta(const profRegrParams& params,
 	return out;
 }
 
-double logCondPostLambdaiBernoulli(const profRegrParams& params,
-								const mcmcModel<profRegrParams,
-												profRegrOptions,
-												profRegrData>& model,
+double logCondPostLambdaiBernoulli(const diPBaCParams& params,
+								const mcmcModel<diPBaCParams,
+												diPBaCOptions,
+												diPBaCData>& model,
 								const unsigned int& i){
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 	unsigned int nConfounders=dataset.nConfounders();
 
 	int zi = params.z(i);
@@ -2135,13 +2134,13 @@ double logCondPostLambdaiBernoulli(const profRegrParams& params,
 
 }
 
-double logCondPostLambdaiBinomial(const profRegrParams& params,
-								const mcmcModel<profRegrParams,
-												profRegrOptions,
-												profRegrData>& model,
+double logCondPostLambdaiBinomial(const diPBaCParams& params,
+								const mcmcModel<diPBaCParams,
+												diPBaCOptions,
+												diPBaCData>& model,
 								const unsigned int& i){
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 	unsigned int nConfounders=dataset.nConfounders();
 
 	int zi = params.z(i);
@@ -2154,13 +2153,13 @@ double logCondPostLambdaiBinomial(const profRegrParams& params,
 
 }
 
-double logCondPostLambdaiPoisson(const profRegrParams& params,
-								const mcmcModel<profRegrParams,
-												profRegrOptions,
-												profRegrData>& model,
+double logCondPostLambdaiPoisson(const diPBaCParams& params,
+								const mcmcModel<diPBaCParams,
+												diPBaCOptions,
+												diPBaCData>& model,
 								const unsigned int& i){
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 	unsigned int nConfounders=dataset.nConfounders();
 
 	int zi = params.z(i);
@@ -2177,4 +2176,4 @@ double logCondPostLambdaiPoisson(const profRegrParams& params,
 
 
 
-#endif /* PROFILEREGRESSIONMODEL_H_ */
+#endif /* DIPBACMODEL_H_ */

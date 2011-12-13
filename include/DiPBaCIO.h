@@ -1,10 +1,9 @@
-/// \file profileRegressionIO.h
+/// \file DiPBaCIO.h
 /// \author David Hastie
-/// \date 26 Jan 2011
-/// \brief Header file for handling input and output for profile regression
+/// \brief Header file for handling input and output for DiPBaC
 
-#ifndef PROFILEREGRESSIONIO_H_
-#define PROFILEREGRESSIONIO_H_
+#ifndef DIPBACIO_H_
+#define DIPBACIO_H_
 
 // Standard includes
 #include<cmath>
@@ -20,9 +19,9 @@
 #include "MCMC/chain.h"
 #include "MCMC/model.h"
 #include "MCMC/sampler.h"
-#include "profileRegression/profileRegressionOptions.h"
-#include "profileRegression/profileRegressionData.h"
-#include "profileRegression/profileRegressionModel.h"
+#include "DiPBaCOptions.h"
+#include "DiPBaCData.h"
+#include "DiPBaCModel.h"
 
 using std::vector;
 using std::cout;
@@ -31,10 +30,10 @@ using std::ostringstream;
 using std::string;
 
 // Process the command line run time options
-profRegrOptions processCommandLine(int argc, char*  argv[]){
+diPBaCOptions processCommandLine(int argc, char*  argv[]){
 
 	/* ---------- Handle run time options ----------*/
-	profRegrOptions options;
+	diPBaCOptions options;
 
 	int currArg=1;
 	bool wasError=false;
@@ -42,7 +41,7 @@ profRegrOptions processCommandLine(int argc, char*  argv[]){
 		string inString(argv[currArg]);
 		if(inString.compare("--help")==0){
 			// Output help if requested
-			cout << endl << "### Profile Regression Help Page. ###" << endl;
+			cout << endl << "### DiPBaCpp Help Page. ###" << endl;
 			cout << endl;
 			cout << "Possible arguments (defaults in parentheses):" << endl << endl;
 			cout << "--help" << endl << "\tShow this help page" << endl;
@@ -167,8 +166,8 @@ profRegrOptions processCommandLine(int argc, char*  argv[]){
 
 }
 
-// Read the profile regression data set
-void importProfRegrData(const string& fitFilename,const string& predictFilename,profRegrData& dataset){
+// Read the DiPBaC data set
+void importDiPBaCData(const string& fitFilename,const string& predictFilename,diPBaCData& dataset){
 
 	ifstream inputFile,predictFile;
 	inputFile.open(fitFilename.c_str());
@@ -354,7 +353,7 @@ void importProfRegrData(const string& fitFilename,const string& predictFilename,
 }
 
 // Function to read the hyper parameters from file
-void readHyperParamsFromFile(const string& filename,profRegrHyperParams& hyperParams){
+void readHyperParamsFromFile(const string& filename,diPBaCHyperParams& hyperParams){
 
 	ifstream inputFile;
 	inputFile.open(filename.c_str());
@@ -530,15 +529,15 @@ void readHyperParamsFromFile(const string& filename,profRegrHyperParams& hyperPa
 
 }
 
-// Initialise the profile regression object (needed in this file as it calls
+// Initialise the DiPBaC object (needed in this file as it calls
 // function to read hyper parameters)
-void initialiseProfRegr(baseGeneratorType& rndGenerator,
-				const mcmcModel<profRegrParams,profRegrOptions,profRegrData>& model,
-				profRegrParams& params){
+void initialiseDiPBaC(baseGeneratorType& rndGenerator,
+				const mcmcModel<diPBaCParams,diPBaCOptions,diPBaCData>& model,
+				diPBaCParams& params){
 
-	const profRegrData& dataset = model.dataset();
-	const profRegrOptions& options = model.options();
-	profRegrHyperParams& hyperParams = params.hyperParams();
+	const diPBaCData& dataset = model.dataset();
+	const diPBaCOptions& options = model.options();
+	diPBaCHyperParams& hyperParams = params.hyperParams();
 
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int nCovariates=dataset.nCovariates();
@@ -960,7 +959,7 @@ void initialiseProfRegr(baseGeneratorType& rndGenerator,
 }
 
 // Write the sampler output
-void writeProfRegrOutput(mcmcSampler<profRegrParams,profRegrOptions,profRegrPropParams,profRegrData>& sampler,
+void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,diPBaCData>& sampler,
 								const unsigned int& sweep){
 
 	bool reportBurnIn = sampler.reportBurnIn();
@@ -970,7 +969,7 @@ void writeProfRegrOutput(mcmcSampler<profRegrParams,profRegrOptions,profRegrProp
 
 	// Check if we need to do anything
 	if((reportBurnIn||((!reportBurnIn)&&sweep>nBurn))&&(sweep%nFilter==0)){
-		const profRegrParams& params = sampler.chain().currentState().parameters();
+		const diPBaCParams& params = sampler.chain().currentState().parameters();
 
 		unsigned int nSubjects = params.nSubjects();
 		unsigned int nPredictSubjects = params.nPredictSubjects();
@@ -984,8 +983,8 @@ void writeProfRegrOutput(mcmcSampler<profRegrParams,profRegrOptions,profRegrProp
 		string outcomeType = sampler.model().options().outcomeType();
 		string varSelectType = sampler.model().options().varSelectType();
 
-		const profRegrData& dataset = sampler.model().dataset();
-		profRegrPropParams& proposalParams = sampler.proposalParams();
+		const diPBaCData& dataset = sampler.model().dataset();
+		diPBaCPropParams& proposalParams = sampler.proposalParams();
 
 		vector<unsigned int> nCategories;
 		vector<bool> ordinalIndic;
@@ -1480,9 +1479,9 @@ void writeProfRegrOutput(mcmcSampler<profRegrParams,profRegrOptions,profRegrProp
 
 }
 
-string storeLogFileData(const profRegrOptions& options,
-								const profRegrData& dataset,
-								const profRegrHyperParams& hyperParams,
+string storeLogFileData(const diPBaCOptions& options,
+								const diPBaCData& dataset,
+								const diPBaCHyperParams& hyperParams,
 								const double& timeInSecs){
 
 	ostringstream tmpStr;
@@ -1585,4 +1584,4 @@ string storeLogFileData(const profRegrOptions& options,
 	return tmpStr.str();
 }
 
-#endif // PROFILEREGRESSIONION_H_
+#endif // DIPBACIO_H_

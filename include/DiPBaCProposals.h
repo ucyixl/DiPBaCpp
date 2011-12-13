@@ -1,10 +1,9 @@
-/// \file profileRegressionModel.h
+/// \file DiPBaCProposals.h
 /// \author David Hastie
-/// \date 16 Sep 2010
-/// \brief Header file for model specification for profile regression
+/// \brief Header file for model specification for DiPBaCpp
 
-#ifndef PROFILEREGRESSIONPROPOSALS_H_
-#define PROFILEREGRESSIONPROPOSALS_H_
+#ifndef DIPBACPROPOSALS_H_
+#define DIPBACPROPOSALS_H_
 
 // Standard includes
 #include<cmath>
@@ -22,11 +21,11 @@
 // Custom includes
 #include "MCMC/chain.h"
 #include "MCMC/model.h"
-#include "base/random.h"
-#include "base/distribution.h"
-#include "profileRegression/profileRegressionOptions.h"
-#include "profileRegression/profileRegressionModel.h"
-#include "profileRegression/profileRegressionData.h"
+#include "Math/random.h"
+#include "Math/distribution.h"
+#include "DiPBaCOptions.h"
+#include "DiPBaCModel.h"
+#include "DiPBaCData.h"
 
 
 using std::vector;
@@ -36,13 +35,13 @@ using boost::math::normal_distribution;
 using boost::math::students_t_distribution;
 using boost::math::lgamma;
 
-class profRegrPropParams{
+class diPBaCPropParams{
 
 	public:
 		// Default constructor
-		profRegrPropParams() {};
+		diPBaCPropParams() {};
 
-		profRegrPropParams(const unsigned int& nSweeps,const unsigned int& nCovariates,
+		diPBaCPropParams(const unsigned int& nSweeps,const unsigned int& nCovariates,
 								const unsigned int& nConfounders){
 				_thetaStdDev=1.0;
 				_thetaStdDevLower=0.1;
@@ -141,7 +140,7 @@ class profRegrPropParams{
 
 		};
 
-		~profRegrPropParams(){};
+		~diPBaCPropParams(){};
 
 		vector<unsigned int> nTryDelta() const{
 			return _nTryDelta;
@@ -733,7 +732,7 @@ class profRegrPropParams{
 
 
 		// Need to define a copy iterator
-		profRegrPropParams& operator=(const profRegrPropParams& propParams){
+		diPBaCPropParams& operator=(const diPBaCPropParams& propParams){
 			_nTryDelta=propParams.nTryDelta();
 			_nAcceptDelta=propParams.nAcceptDelta();
 			_nLocalAcceptDelta=propParams.nLocalAcceptDelta();
@@ -874,14 +873,14 @@ class profRegrPropParams{
 // for this block with u integrated out (the marginal over u). This can be thought of as
 // a MH sample from p(v^A,Theta^A|.), where we sample v^A from conditional, and
 // leave Theta^A unchanged (thus having an acceptance rate of 1).
-void gibbsForVActive(mcmcChain<profRegrParams>& chain,
+void gibbsForVActive(mcmcChain<diPBaCParams>& chain,
 				unsigned int& nTry,unsigned int& nAccept,
-				const mcmcModel<profRegrParams,profRegrOptions,profRegrData>& model,
-				profRegrPropParams& propParams,
+				const mcmcModel<diPBaCParams,diPBaCOptions,diPBaCData>& model,
+				diPBaCPropParams& propParams,
 				baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
 
 	nTry++;
 	nAccept++;
@@ -916,17 +915,17 @@ void gibbsForVActive(mcmcChain<profRegrParams>& chain,
 // Move for updating phi
 // Gibbs used if no variable selection, or binary switch based variable selection
 // Otherwise Metropolis Hastings is used
-void updateForPhiActive(mcmcChain<profRegrParams>& chain,
+void updateForPhiActive(mcmcChain<diPBaCParams>& chain,
 				unsigned int& nTry,unsigned int& nAccept,
-				const mcmcModel<profRegrParams,profRegrOptions,profRegrData>& model,
-				profRegrPropParams& propParams,
+				const mcmcModel<diPBaCParams,diPBaCOptions,diPBaCData>& model,
+				diPBaCPropParams& propParams,
 				baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 	string varSelectType = model.options().varSelectType();
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -1010,19 +1009,19 @@ void updateForPhiActive(mcmcChain<profRegrParams>& chain,
 
 
 // Adaptive Metropolis Hastings move for delta
-void metropolisHastingsForDeltaActive(mcmcChain<profRegrParams>& chain,
+void metropolisHastingsForDeltaActive(mcmcChain<diPBaCParams>& chain,
 								unsigned int& nTry,unsigned int& nAccept,
-								const mcmcModel<profRegrParams,
-												profRegrOptions,
-												profRegrData>& model,
-								profRegrPropParams& propParams,
+								const mcmcModel<diPBaCParams,
+												diPBaCOptions,
+												diPBaCData>& model,
+								diPBaCPropParams& propParams,
 								baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -1208,17 +1207,17 @@ void metropolisHastingsForDeltaActive(mcmcChain<profRegrParams>& chain,
 }
 
 // Gibbs update for mu in Normal covariate case
-void gibbsForMuActive(mcmcChain<profRegrParams>& chain,
+void gibbsForMuActive(mcmcChain<diPBaCParams>& chain,
 				unsigned int& nTry,unsigned int& nAccept,
-				const mcmcModel<profRegrParams,profRegrOptions,profRegrData>& model,
-				profRegrPropParams& propParams,
+				const mcmcModel<diPBaCParams,diPBaCOptions,diPBaCData>& model,
+				diPBaCPropParams& propParams,
 				baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -1287,17 +1286,17 @@ void gibbsForMuActive(mcmcChain<profRegrParams>& chain,
 }
 
 // Gibbs update for Tau in the Normal covariate case
-void gibbsForTauActive(mcmcChain<profRegrParams>& chain,
+void gibbsForTauActive(mcmcChain<diPBaCParams>& chain,
 				unsigned int& nTry,unsigned int& nAccept,
-				const mcmcModel<profRegrParams,profRegrOptions,profRegrData>& model,
-				profRegrPropParams& propParams,
+				const mcmcModel<diPBaCParams,diPBaCOptions,diPBaCData>& model,
+				diPBaCPropParams& propParams,
 				baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -1342,18 +1341,18 @@ void gibbsForTauActive(mcmcChain<profRegrParams>& chain,
 
 
 // Gibbs update for update of gamma (only used in the binary variable selection case)
-void gibbsForGammaActive(mcmcChain<profRegrParams>& chain,
+void gibbsForGammaActive(mcmcChain<diPBaCParams>& chain,
 					unsigned int& nTry,unsigned int& nAccept,
-					const mcmcModel<profRegrParams,
-									profRegrOptions,
-									profRegrData>& model,
-					profRegrPropParams& propParams,
+					const mcmcModel<diPBaCParams,
+									diPBaCOptions,
+									diPBaCData>& model,
+					diPBaCPropParams& propParams,
 					baseGeneratorType& rndGenerator){
 
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
 	// Find the number of subjects
 	unsigned int nCovariates = currentParams.nCovariates();
@@ -1431,16 +1430,16 @@ void gibbsForGammaActive(mcmcChain<profRegrParams>& chain,
 
 
 // Adaptive Metropolis-Hastings for theta
-void metropolisHastingsForThetaActive(mcmcChain<profRegrParams>& chain,
+void metropolisHastingsForThetaActive(mcmcChain<diPBaCParams>& chain,
 								unsigned int& nTry,unsigned int& nAccept,
-								const mcmcModel<profRegrParams,
-												profRegrOptions,
-												profRegrData>& model,
-								profRegrPropParams& propParams,
+								const mcmcModel<diPBaCParams,
+												diPBaCOptions,
+												diPBaCData>& model,
+								diPBaCPropParams& propParams,
 								baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
 
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -1500,14 +1499,14 @@ void metropolisHastingsForThetaActive(mcmcChain<profRegrParams>& chain,
 
 
 // Label switching moves (as recommended in Papaspiliopoulos and Roberts, 2008
-void metropolisHastingsForLabels(mcmcChain<profRegrParams>& chain,
+void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 				unsigned int& nTry,unsigned int& nAccept,
-				const mcmcModel<profRegrParams,profRegrOptions,profRegrData>& model,
-				profRegrPropParams& propParams,
+				const mcmcModel<diPBaCParams,diPBaCOptions,diPBaCData>& model,
+				diPBaCPropParams& propParams,
 				baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
 
 	unsigned int maxZ = currentParams.workMaxZi();
 	string varSelectType = model.options().varSelectType();
@@ -1648,14 +1647,14 @@ void metropolisHastingsForLabels(mcmcChain<profRegrParams>& chain,
 // for u, conditional on the v^A,Theta^A parameters generated above
 // This is done by using Gibbs to sample from p(u|v^A.), which is the conditional
 
-void gibbsForU(mcmcChain<profRegrParams>& chain,
+void gibbsForU(mcmcChain<diPBaCParams>& chain,
 				unsigned int& nTry,unsigned int& nAccept,
-				const mcmcModel<profRegrParams,profRegrOptions,profRegrData>& model,
-				profRegrPropParams& propParams,
+				const mcmcModel<diPBaCParams,diPBaCOptions,diPBaCData>& model,
+				diPBaCPropParams& propParams,
 				baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
 
 	nTry++;
 	nAccept++;
@@ -1686,17 +1685,17 @@ void gibbsForU(mcmcChain<profRegrParams>& chain,
 // v^I. Then we sample from p(v^I|alpha,.)
 
 // Adaptive Metropolis Hastings move for alpha
-void metropolisHastingsForAlpha(mcmcChain<profRegrParams>& chain,
+void metropolisHastingsForAlpha(mcmcChain<diPBaCParams>& chain,
 								unsigned int& nTry,unsigned int& nAccept,
-								const mcmcModel<profRegrParams,
-												profRegrOptions,
-												profRegrData>& model,
-								profRegrPropParams& propParams,
+								const mcmcModel<diPBaCParams,
+												diPBaCOptions,
+												diPBaCData>& model,
+								diPBaCPropParams& propParams,
 								baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -1762,14 +1761,14 @@ void metropolisHastingsForAlpha(mcmcChain<profRegrParams>& chain,
 
 // Gibbs move for v which are inactive. Only update to maxNClusters, which
 // needs to be computed here
-void gibbsForVInActive(mcmcChain<profRegrParams>& chain,
+void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 				unsigned int& nTry,unsigned int& nAccept,
-				const mcmcModel<profRegrParams,profRegrOptions,profRegrData>& model,
-				profRegrPropParams& propParams,
+				const mcmcModel<diPBaCParams,diPBaCOptions,diPBaCData>& model,
+				diPBaCPropParams& propParams,
 				baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
 
 	nTry++;
 	nAccept++;
@@ -1858,17 +1857,17 @@ void gibbsForVInActive(mcmcChain<profRegrParams>& chain,
 // each of the variables
 
 // Gibbs move for updating phi
-void gibbsForPhiInActive(mcmcChain<profRegrParams>& chain,
+void gibbsForPhiInActive(mcmcChain<diPBaCParams>& chain,
 				unsigned int& nTry,unsigned int& nAccept,
-				const mcmcModel<profRegrParams,profRegrOptions,profRegrData>& model,
-				profRegrPropParams& propParams,
+				const mcmcModel<diPBaCParams,diPBaCOptions,diPBaCData>& model,
+				diPBaCPropParams& propParams,
 				baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 	string varSelectType = model.options().varSelectType();
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -1909,19 +1908,19 @@ void gibbsForPhiInActive(mcmcChain<profRegrParams>& chain,
 
 
 // Adaptive Metropolis Hastings move for delta
-void metropolisHastingsForDeltaInActive(mcmcChain<profRegrParams>& chain,
+void metropolisHastingsForDeltaInActive(mcmcChain<diPBaCParams>& chain,
 								unsigned int& nTry,unsigned int& nAccept,
-								const mcmcModel<profRegrParams,
-												profRegrOptions,
-												profRegrData>& model,
-								profRegrPropParams& propParams,
+								const mcmcModel<diPBaCParams,
+												diPBaCOptions,
+												diPBaCData>& model,
+								diPBaCPropParams& propParams,
 								baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
-	const profRegrData& dataset = model.dataset();
+	const diPBaCData& dataset = model.dataset();
 
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -2082,15 +2081,15 @@ void metropolisHastingsForDeltaInActive(mcmcChain<profRegrParams>& chain,
 }
 
 // Gibbs update for mu in Normal covariate case
-void gibbsForMuInActive(mcmcChain<profRegrParams>& chain,
+void gibbsForMuInActive(mcmcChain<diPBaCParams>& chain,
 				unsigned int& nTry,unsigned int& nAccept,
-				const mcmcModel<profRegrParams,profRegrOptions,profRegrData>& model,
-				profRegrPropParams& propParams,
+				const mcmcModel<diPBaCParams,diPBaCOptions,diPBaCData>& model,
+				diPBaCPropParams& propParams,
 				baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -2118,15 +2117,15 @@ void gibbsForMuInActive(mcmcChain<profRegrParams>& chain,
 }
 
 // Gibbs update for Tau in the Normal covariate case
-void gibbsForTauInActive(mcmcChain<profRegrParams>& chain,
+void gibbsForTauInActive(mcmcChain<diPBaCParams>& chain,
 				unsigned int& nTry,unsigned int& nAccept,
-				const mcmcModel<profRegrParams,profRegrOptions,profRegrData>& model,
-				profRegrPropParams& propParams,
+				const mcmcModel<diPBaCParams,diPBaCOptions,diPBaCData>& model,
+				diPBaCPropParams& propParams,
 				baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -2143,18 +2142,18 @@ void gibbsForTauInActive(mcmcChain<profRegrParams>& chain,
 }
 
 // Gibbs update for update of gamma (only used in the binary variable selection case)
-void gibbsForGammaInActive(mcmcChain<profRegrParams>& chain,
+void gibbsForGammaInActive(mcmcChain<diPBaCParams>& chain,
 					unsigned int& nTry,unsigned int& nAccept,
-					const mcmcModel<profRegrParams,
-									profRegrOptions,
-									profRegrData>& model,
-					profRegrPropParams& propParams,
+					const mcmcModel<diPBaCParams,
+									diPBaCOptions,
+									diPBaCData>& model,
+					diPBaCPropParams& propParams,
 					baseGeneratorType& rndGenerator){
 
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
 	// Find the number of subjects
 	unsigned int nCovariates = currentParams.nCovariates();
@@ -2217,17 +2216,17 @@ void gibbsForGammaInActive(mcmcChain<profRegrParams>& chain,
 }
 
 // Gibbs for theta
-void gibbsForThetaInActive(mcmcChain<profRegrParams>& chain,
+void gibbsForThetaInActive(mcmcChain<diPBaCParams>& chain,
 								unsigned int& nTry,unsigned int& nAccept,
-								const mcmcModel<profRegrParams,
-												profRegrOptions,
-												profRegrData>& model,
-								profRegrPropParams& propParams,
+								const mcmcModel<diPBaCParams,
+												diPBaCOptions,
+												diPBaCData>& model,
+								diPBaCPropParams& propParams,
 								baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -2251,16 +2250,16 @@ void gibbsForThetaInActive(mcmcChain<profRegrParams>& chain,
 // N=Non-cluster, and Theta contains: beta, rho, omega, lambda, tau_epsilon
 
 // Adaptive Metropolis-Hastings for beta
-void metropolisHastingsForBeta(mcmcChain<profRegrParams>& chain,
+void metropolisHastingsForBeta(mcmcChain<diPBaCParams>& chain,
 								unsigned int& nTry,unsigned int& nAccept,
-								const mcmcModel<profRegrParams,
-												profRegrOptions,
-												profRegrData>& model,
-								profRegrPropParams& propParams,
+								const mcmcModel<diPBaCParams,
+												diPBaCOptions,
+												diPBaCData>& model,
+								diPBaCPropParams& propParams,
 								baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
 
 	// Find the number of clusters
 	unsigned int nConfounders = currentParams.nConfounders();
@@ -2320,16 +2319,16 @@ void metropolisHastingsForBeta(mcmcChain<profRegrParams>& chain,
 
 
 // Adaptive Metropolis-Hastings for lambda
-void metropolisHastingsForLambda(mcmcChain<profRegrParams>& chain,
+void metropolisHastingsForLambda(mcmcChain<diPBaCParams>& chain,
 								unsigned int& nTry,unsigned int& nAccept,
-								const mcmcModel<profRegrParams,
-												profRegrOptions,
-												profRegrData>& model,
-								profRegrPropParams& propParams,
+								const mcmcModel<diPBaCParams,
+												diPBaCOptions,
+												diPBaCData>& model,
+								diPBaCPropParams& propParams,
 								baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
 	const string outcomeType = model.dataset().outcomeType();
 
 	// Find the number of subjects
@@ -2346,10 +2345,10 @@ void metropolisHastingsForLambda(mcmcChain<profRegrParams>& chain,
 	double lambdaTargetRate = propParams.lambdaAcceptTarget();
 	unsigned int lambdaUpdateFreq = propParams.lambdaUpdateFreq();
 
-	double (*logCondPostLambdai)(const profRegrParams&,
-											const mcmcModel<profRegrParams,
-															profRegrOptions,
-															profRegrData>&,
+	double (*logCondPostLambdai)(const diPBaCParams&,
+											const mcmcModel<diPBaCParams,
+															diPBaCOptions,
+															diPBaCData>&,
 											const unsigned int&) = NULL;
 
 	if(outcomeType.compare("Bernoulli")==0){
@@ -2407,18 +2406,18 @@ void metropolisHastingsForLambda(mcmcChain<profRegrParams>& chain,
 }
 
 // Gibbs update for the precision of extra variation epsilon
-void gibbsForTauEpsilon(mcmcChain<profRegrParams>& chain,
+void gibbsForTauEpsilon(mcmcChain<diPBaCParams>& chain,
 						unsigned int& nTry,unsigned int& nAccept,
-						const mcmcModel<profRegrParams,
-										profRegrOptions,
-										profRegrData>& model,
-						profRegrPropParams& propParams,
+						const mcmcModel<diPBaCParams,
+										diPBaCOptions,
+										diPBaCData>& model,
+						diPBaCPropParams& propParams,
 						baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
-	const profRegrData& dataset = model.dataset();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
+	const diPBaCData& dataset = model.dataset();
 	const string& outcomeType = model.dataset().outcomeType();
 
 	unsigned int nSubjects=dataset.nSubjects();
@@ -2454,17 +2453,17 @@ void gibbsForTauEpsilon(mcmcChain<profRegrParams>& chain,
 }
 
 // Metropolis-Hastings for joint uptdate of rho and omega
-void metropolisHastingsForRhoOmega(mcmcChain<profRegrParams>& chain,
+void metropolisHastingsForRhoOmega(mcmcChain<diPBaCParams>& chain,
 									unsigned int& nTry,unsigned int& nAccept,
-									const mcmcModel<profRegrParams,
-													profRegrOptions,
-													profRegrData>& model,
-									profRegrPropParams& propParams,
+									const mcmcModel<diPBaCParams,
+													diPBaCOptions,
+													diPBaCData>& model,
+									diPBaCPropParams& propParams,
 									baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	profRegrHyperParams hyperParams = currentParams.hyperParams();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
 	// Find the number of subjects
 	unsigned int nCovariates = currentParams.nCovariates();
@@ -2600,17 +2599,17 @@ void metropolisHastingsForRhoOmega(mcmcChain<profRegrParams>& chain,
 /*********** BLOCK 5 p(Z|.) **********************************/
 
 // Gibbs update for the allocation variables
-void gibbsForZ(mcmcChain<profRegrParams>& chain,
+void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				unsigned int& nTry,unsigned int& nAccept,
-				const mcmcModel<profRegrParams,
-								profRegrOptions,
-								profRegrData>& model,
-				profRegrPropParams& propParams,
+				const mcmcModel<diPBaCParams,
+								diPBaCOptions,
+								diPBaCData>& model,
+				diPBaCPropParams& propParams,
 				baseGeneratorType& rndGenerator){
 
-	mcmcState<profRegrParams>& currentState = chain.currentState();
-	profRegrParams& currentParams = currentState.parameters();
-	const profRegrData& dataset = model.dataset();
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	const diPBaCData& dataset = model.dataset();
 	const string& outcomeType = model.dataset().outcomeType();
 	const string& covariateType = model.dataset().covariateType();
 	unsigned int nSubjects=dataset.nSubjects();
@@ -2747,7 +2746,7 @@ void gibbsForZ(mcmcChain<profRegrParams>& chain,
 
 	}
 
-	double (*logPYiGivenZiWi)(const profRegrParams&, const profRegrData&,
+	double (*logPYiGivenZiWi)(const diPBaCParams&, const diPBaCData&,
 											const unsigned int&,const int&,
 											const unsigned int&)=NULL;
 
@@ -2873,10 +2872,10 @@ void gibbsForZ(mcmcChain<profRegrParams>& chain,
 }
 
 
-void updateMissingProfRegrData(baseGeneratorType& rndGenerator,
-								profRegrParams& params,
-								const profRegrOptions& options,
-								profRegrData& dataset){
+void updateMissingDiPBaCData(baseGeneratorType& rndGenerator,
+								diPBaCParams& params,
+								const diPBaCOptions& options,
+								diPBaCData& dataset){
 
 	unsigned int nSubjects = dataset.nSubjects();
 	unsigned int nCovariates = dataset.nCovariates();
@@ -2948,4 +2947,4 @@ void updateMissingProfRegrData(baseGeneratorType& rndGenerator,
 }
 
 
-#endif /* PROFILEREGRESSIONPROPOSALS_H_ */
+#endif /* DIPBACPROPOSALS_H_ */

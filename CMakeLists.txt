@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 2.6)
 
-project(PROFREGR)
-# Name of the project this creates PROFREGR_SOURCE_DIR as being the location
+project(DIPBAC)
+# Name of the project this creates DIPBAC_SOURCE_DIR as being the location
 # of this file
 
 # Turn on debugging warnings and profiling
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -pg -Wall")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -pg -Wall")
 # Build as optimised code
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
@@ -14,19 +14,19 @@ include(CheckIncludeFiles)
 include(CheckLibraryExists)
 
 # Set up the directory strucure
-set(LOGDIRECTORY "${PROFREGR_SOURCE_DIR}/log")
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROFREGR_SOURCE_DIR}/modules/")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROFREGR_SOURCE_DIR}/lib")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROFREGR_SOURCE_DIR}/bin")
+set(LOGDIRECTORY "${DIPBAC_SOURCE_DIR}/log")
+#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${DIPBAC_SOURCE_DIR}/lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${DIPBAC_SOURCE_DIR}/bin")
 
 # Make sure we build shared libraries
-set(BUILD_SHARED_LIBS ON)
+#set(BUILD_SHARED_LIBS ON)
 
 # Add extra directories for finding header files
-include_directories("${PROFREGR_SOURCE_DIR}/include")
+include_directories("${DIPBAC_SOURCE_DIR}/include")
+include_directories("${DIPBAC_SOURCE_DIR}/CPP_Base/include")
 
 # Add extra directories for finding libraries
-link_directories("${PROFREGR_SOURCE_DIR}/lib")
+#link_directories("${DIPBAC_SOURCE_DIR}/lib")
 
 # Testing
 #enable_testing()
@@ -34,8 +34,9 @@ link_directories("${PROFREGR_SOURCE_DIR}/lib")
 # "make test" will be used to run the test
 #add_custom_target(check COMMAND ${CMAKE_TEST_COMMAND})
 
-add_executable(profileRegression profileRegression.cpp)
+add_executable(DiPBaCpp DiPBaCpp.cpp)
 #set_target_properties(profileRegression PROPERTIES COMPILE_FLAGS "-fopenmp")
-target_link_libraries (profileRegression armadillo)
-target_link_libraries (profileRegression goto2)
-target_link_libraries (profileRegression gfortran)
+target_link_libraries (DiPBaCpp armadillo)
+target_link_libraries (DiPBaCpp goto2)
+target_link_libraries (DiPBaCpp gfortran)
+

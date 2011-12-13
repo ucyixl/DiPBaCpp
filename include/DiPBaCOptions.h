@@ -1,10 +1,9 @@
-/// \file profileRegressionOptions.h
+/// \file DiPBaCOptions.h
 /// \author David Hastie
-/// \date 24 Jan 2011
-/// \brief Header file for options class for profile regression
+/// \brief Header file for options class for DiPBaCpp
 
-#ifndef PROFILEREGRESSIONOPTIONS_H_
-#define PROFILEREGRESSIONOPTIONS_H_
+#ifndef DIPBACOPTIONS_H_
+#define DIPBACOPTIONS_H_
 
 // Standard includes
 #include<vector>
@@ -20,13 +19,13 @@ using std::ofstream;
 using std::string;
 using std::time;
 
-/// \class profRegrOptions profileRegressionOptions.h "profileRegression/ProfileRegressionOptions.h"
-/// \brief A class for profile regression options
-class profRegrOptions{
+/// \class diPBaCOptions DiPBaCOptions.h "DiPBaCOptions.h"
+/// \brief A class for DiPBaC options
+class diPBaCOptions{
 
 	public:
 		/// \brief Default constructor
-		profRegrOptions() {
+		diPBaCOptions() {
 			/* ---------- Default Values -------------------*/
 			// Default values for the command line arguments
 			// File names
@@ -55,7 +54,7 @@ class profRegrOptions{
 		};
 
 		/// \brief Default destructor
-		~profRegrOptions(){};
+		~diPBaCOptions(){};
 
 		/// \brief Return the number of sweeps
 		unsigned int nSweeps() const{
@@ -230,7 +229,7 @@ class profRegrOptions{
 		}
 
 		// Copy operator
-		profRegrOptions& operator=(const profRegrOptions& options){
+		diPBaCOptions& operator=(const diPBaCOptions& options){
 
 			_inFileName = options.inFileName();
 			_outFileStem = options.outFileStem();
@@ -291,4 +290,4 @@ class profRegrOptions{
 
 };
 
-#endif // PROFILEREGRESSIONOPTIONS_H_
+#endif // DIPBACOPTIONS_H_
