@@ -1,4 +1,4 @@
-########## DiPBaC++: C++ and R code version 1.0.0 ##################
+########## DiPBaC++: C++ and R code version 1.0.1 ##################
 
 ### Author ###
 David Hastie, Imperial College London
@@ -27,7 +27,7 @@ Hastie et al. 2011. Previously this project was called profile regression.
 
 
 ### ChangeLog: ###
-This is the first version of the this software, but the software
+This is the first major version of the this software, but the software
 was previously available from the author in the profileRegression archive
 Changes since profileRegression version 2.0.1
    - Changes to this README, in particular noting that it was --fixedAlloc not 
@@ -38,6 +38,10 @@ Changes since profileRegression version 2.0.1
      argument to R calcPredictions function.
    - Fixed bugs in the C++ for implementation of variable selection for Normal 
      covariates
+Changes since DiPBaCpp 1.0.0
+   - Added calculation of log odds ratio into predictions
+   - Hot fixed a bug with the R package where the C++ being called for 
+     computing the dissimilarity matrix was calling the wrong package.
    	
 ### Known bugs and issues: ###
    - Variable selection for Normal covariates is only partially tested. C++ seems
