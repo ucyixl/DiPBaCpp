@@ -4,39 +4,43 @@ project(DIPBAC)
 # Name of the project this creates DIPBAC_SOURCE_DIR as being the location
 # of this file
 
-# Turn on debugging warnings and profiling
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -pg -Wall")
-# Build as optimised code
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-
 # Built-in modules
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 
 # Set up the directory strucure
 set(LOGDIRECTORY "${DIPBAC_SOURCE_DIR}/log")
-#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${DIPBAC_SOURCE_DIR}/lib")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${DIPBAC_SOURCE_DIR}/bin")
-
-# Make sure we build shared libraries
-#set(BUILD_SHARED_LIBS ON)
 
 # Add extra directories for finding header files
 include_directories("${DIPBAC_SOURCE_DIR}/include")
 include_directories("${DIPBAC_SOURCE_DIR}/CPP_Base/include")
 
-# Add extra directories for finding libraries
-#link_directories("${DIPBAC_SOURCE_DIR}/lib")
+# Turn on debugging warnings and profiling
+if(${CMAKE_BUILD_TYPE} STREQUAL "Develop")
+    set(CMAKE_CXX_FLAGS_DEVELOP "${CMAKE_CXX_FLAGS}")
 
-# Testing
-#enable_testing()
-# This command means "make check" will build the tests 
-# "make test" will be used to run the test
-#add_custom_target(check COMMAND ${CMAKE_TEST_COMMAND})
+    # Build a debugging version
+    add_executable(DiPBaCpp_Debug DiPBaC.cpp)
+    set_target_properties(DiPBaCpp_Debug PROPERTIES COMPILE_FLAGS "-g -Wall" LINK_FLAGS "-g -Wall")	
+    target_link_libraries (DiPBaCpp_Debug armadillo)
+    target_link_libraries (DiPBaCpp_Debug goto2)
+    target_link_libraries (DiPBaCpp_Debug gfortran)
 
+    # Build a profiling version
+    add_executable(DiPBaCpp_Profile DiPBaC.cpp)
+    set_target_properties(DiPBaCpp_Profile PROPERTIES COMPILE_FLAGS "-pg -g -Wall"  LINK_FLAGS "-pg -g -Wall")	
+    target_link_libraries (DiPBaCpp_Profile armadillo)
+    target_link_libraries (DiPBaCpp_Profile goto2)
+    target_link_libraries (DiPBaCpp_Profile gfortran)
+
+endif(${CMAKE_BUILD_TYPE} STREQUAL "Develop")
+
+# Build as optimised code
 add_executable(DiPBaCpp DiPBaC.cpp)
-#set_target_properties(profileRegression PROPERTIES COMPILE_FLAGS "-fopenmp")
+set_target_properties(DiPBaCpp PROPERTIES COMPILE_FLAGS "-O3"  LINK_FLAGS "-O3")	
 target_link_libraries (DiPBaCpp armadillo)
 target_link_libraries (DiPBaCpp goto2)
 target_link_libraries (DiPBaCpp gfortran)
+
 
