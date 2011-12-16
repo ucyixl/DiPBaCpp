@@ -1,5 +1,7 @@
 /*~
 /CMakeFiles/
-/*.txt
 /Makefile
 /*.cmake
+CMakeCache.txt
+.project
+.cproject
