@@ -142,7 +142,7 @@ calcDissimilarityMatrix<-function(runInfoObj){
       
    # Call the C++ to compute the dissimilarity matrix
    disSimMat<-.Call('calcDisSimMat',fileName,nSweeps,nBurn,nFilter,nSubjects,
-                       nPredictSubjects, PACKAGE = 'profRegr')
+                       nPredictSubjects, PACKAGE = 'DiPBaC')
 
    disSimMatPred<-NULL              
    if(nPredictSubjects>0){
@@ -1174,16 +1174,16 @@ computeRatioOfVariance<-function(runInfoObj){
 }
 
 # Calculate predictions, and if possible assess predictive performance
-calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwell=F,fullSweepPredictions=F){
-
+calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwell=F,fullSweepPredictions=F,fullSweepLogOR=F){
+	
    attach(riskProfObj)
    attach(riskProfClusObj)
    attach(clusObjRunInfoObj)
-
+	
    firstLine<-2+nBurn/nFilter
    lastLine<-1+(nSweeps+nBurn)/nFilter
    nSamples<-lastLine-firstLine+1
-      
+   
    # First of all we see if there a covariate file has been supplied
    if(nPredictSubjects==0){
 		detach(clusObjRunInfoObj)
@@ -1226,42 +1226,41 @@ calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwel
       betaMat<-matrix(betaMat[firstLine:lastLine,],ncol=nConfounders)
    }
    
-   predictedY<-matrix(0,nSamples,nPredictSubjects)
-   
-   
    # Already done the allocation in the C++
    if(doRaoBlackwell){
   		# Construct the RB theta file name
       thetaFileName<-file.path(directoryPath,paste(fileStem,'_predictThetaRaoBlackwell.txt',sep=''))
       # Read the RB theta data
       thetaMat<-matrix(scan(thetaFileName,what=double(),quiet=T),byrow=T,ncol=nPredictSubjects)
-      thetaMat<-thetaMat[firstLine:nrow(thetaMat),]   
+      thetaMat<-thetaMat[firstLine:nrow(thetaMat),]
+      
    }else{
       # Construct the file names
       zFileName <- file.path(directoryPath,paste(fileStem,'_z.txt',sep=''))
-	   zFile<-file(zFileName,open="r")
+ 	   zFile<-file(zFileName,open="r")
 		thetaFileName<-file.path(directoryPath,paste(fileStem,'_theta.txt',sep=''))
 	   thetaFile<-file(thetaFileName,open="r")
 		nClustersFileName<-file.path(directoryPath,paste(fileStem,'_nClusters.txt',sep=''))
 		nClustersFile<-file(nClustersFileName,open="r")
-
+		
 		thetaMat<-matrix(0,nSamples,nPredictSubjects)
-		for(sweep in firstLine:lastLine){
+      for(sweep in firstLine:lastLine){
 		   if(sweep==firstLine){
 			   skipVal<-firstLine-1
 			}else{
-				skipVal<-0
+		      skipVal<-0
 			}
 			currZ<-1+scan(zFile,what=integer(),skip=skipVal,n=nSubjects+nPredictSubjects,quiet=T)
-			currZ<-currZ[(nSubjects+1):length(currZ)]
+         tmpCurrZ<-currZ
+         currZ<-currZ[(nSubjects+1):length(currZ)]
 			currNClusters<-scan(nClustersFile,skip=skipVal,n=1,what=integer(),quiet=T)
 			currTheta<-scan(thetaFile,skip=skipVal,n=currNClusters,what=double(),quiet=T)
-			thetaMat[sweep-firstLine+1,]<-currTheta[currZ]
-		 }
-		 close(zFile)
-	    close(thetaFile)
-		 close(nClustersFile)
-	}
+         thetaMat[sweep-firstLine+1,]<-currTheta[currZ]
+		}
+		close(zFile)
+	   close(thetaFile)
+		close(nClustersFile)
+   }
    
    # Use the values of theta to derive the predicted values   
    predictedY<-matrix(0,nSamples,nPredictSubjects)
@@ -1306,13 +1305,22 @@ calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwel
    if(fullSweepPredictions){
       output$predictedYPerSweep<-predictedY
    }
+   if(fullSweepLogOR){
+      logORPerSweep<-matrix(0,ncol=ncol(predictedY),nrow=nrow(predictedY))
+      for(i in 1:nrow(thetaMat)){
+         # Always relative to the first prediction subject
+         logORPerSweep[i,]<-thetaMat[i,]-thetaMat[i,1]
+      }
+      output$logORPerSweep<-logORPerSweep
+   }
 	detach(clusObjRunInfoObj)
 	detach(riskProfClusObj)
 	detach(riskProfObj)		
    
 	return(output)
-
+	
 }
+
 
 # For a particular clustering, show the cluster values of a separate variable
 computeAssociatedVariable<-function(subjectValues,clusObj,clusterPlotOrder,latexFile=NULL){
