@@ -17,7 +17,7 @@ include_directories("${DIPBAC_SOURCE_DIR}/include")
 include_directories("${DIPBAC_SOURCE_DIR}/CPP_Base/include")
 
 # Turn on debugging warnings and profiling
-if(${CMAKE_BUILD_TYPE} STREQUAL "Develop")
+if(CMAKE_BUILD_TYPE MATCHES "Develop")
     set(CMAKE_CXX_FLAGS_DEVELOP "${CMAKE_CXX_FLAGS}")
 
     # Build a debugging version
@@ -34,7 +34,7 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Develop")
     target_link_libraries (DiPBaCpp_Profile goto2)
     target_link_libraries (DiPBaCpp_Profile gfortran)
 
-endif(${CMAKE_BUILD_TYPE} STREQUAL "Develop")
+endif(CMAKE_BUILD_TYPE MATCHES "Develop")
 
 # Build as optimised code
 add_executable(DiPBaCpp DiPBaC.cpp)
