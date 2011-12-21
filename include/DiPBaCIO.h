@@ -1055,6 +1055,10 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 					outFiles.push_back(new ofstream(fileName.c_str()));
 				}
 			}
+			if(nPredictSubjects>0){
+				fileName = fileStem + "_predictPackYears.txt";
+				outFiles.push_back(new ofstream(fileName.c_str()));
+			}
 			if(varSelectType.compare("None")!=0){
 				fileName = fileStem + "_omega.txt";
 				outFiles.push_back(new ofstream(fileName.c_str()));
@@ -1087,7 +1091,7 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		int thetaInd=-1,betaInd=-1,thetaPropInd=-1,betaPropInd=-1,epsilonInd=-1;
 		int sigmaEpsilonInd=-1,epsilonPropInd=-1,omegaInd=-1,rhoInd=-1;
 		int rhoOmegaPropInd=-1,gammaInd=-1,nullPhiInd=-1,nullDeltaInd=-1,nullMuInd=-1;
-		int predictThetaRaoBlackwellInd=-1;
+		int predictThetaRaoBlackwellInd=-1,predictPackYearsInd=-1;
 
 		int r=0;
 		nClustersInd=r++;
@@ -1127,7 +1131,9 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 				predictThetaRaoBlackwellInd=r++;
 			}
 		}
-
+		if(nPredictSubjects>0){
+			predictPackYearsInd=r++;
+		}
 		if(varSelectType.compare("None")!=0){
 			omegaInd=r++;
 			rhoInd=r++;
@@ -1276,11 +1282,19 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 			}
 			// And print the expected theta for the prediction subjects
 			if(i>=nSubjects){
-				*(outFiles[predictThetaRaoBlackwellInd]) << params.workPredictExpectedTheta(i-nSubjects);
+				if(includeResponse){
+					*(outFiles[predictThetaRaoBlackwellInd]) << params.workPredictExpectedTheta(i-nSubjects);
+					if(i<nSubjects+nPredictSubjects-1){
+						*(outFiles[predictThetaRaoBlackwellInd]) << " ";
+					}else{
+						*(outFiles[predictThetaRaoBlackwellInd]) << endl;
+					}
+				}
+				*(outFiles[predictPackYearsInd]) << params.workPredictExpectedPackYears(i-nSubjects);
 				if(i<nSubjects+nPredictSubjects-1){
-					*(outFiles[predictThetaRaoBlackwellInd]) << " ";
+					*(outFiles[predictPackYearsInd]) << " ";
 				}else{
-					*(outFiles[predictThetaRaoBlackwellInd]) << endl;
+					*(outFiles[predictPackYearsInd]) << endl;
 				}
 			}
 		}
