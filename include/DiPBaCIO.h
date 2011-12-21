@@ -1276,11 +1276,13 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 			}
 			// And print the expected theta for the prediction subjects
 			if(i>=nSubjects){
-				*(outFiles[predictThetaRaoBlackwellInd]) << params.workPredictExpectedTheta(i-nSubjects);
-				if(i<nSubjects+nPredictSubjects-1){
-					*(outFiles[predictThetaRaoBlackwellInd]) << " ";
-				}else{
-					*(outFiles[predictThetaRaoBlackwellInd]) << endl;
+				if(includeResponse){
+					*(outFiles[predictThetaRaoBlackwellInd]) << params.workPredictExpectedTheta(i-nSubjects);
+					if(i<nSubjects+nPredictSubjects-1){
+						*(outFiles[predictThetaRaoBlackwellInd]) << " ";
+					}else{
+						*(outFiles[predictThetaRaoBlackwellInd]) << endl;
+					}
 				}
 			}
 		}
