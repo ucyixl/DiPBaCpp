@@ -2849,7 +2849,8 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			// ICare analysis this is always the case.
 			if(i>=nSubjects){
 				for(unsigned int k=1;k<5;k++){
-					expectedPackYears+=(double)k*exp(currentParams.logPhi(c,3,k));
+					expectedPackYears+=(double)k*exp(currentParams.logPhi(c,3,k))
+											*pzGivenXy[c];
 				}
 			}
 		}
