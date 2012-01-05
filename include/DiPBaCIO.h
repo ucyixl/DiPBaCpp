@@ -1289,12 +1289,15 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 					}else{
 						*(outFiles[predictThetaRaoBlackwellInd]) << endl;
 					}
+
 				}
 				*(outFiles[predictPackYearsInd]) << params.workPredictExpectedPackYears(i-nSubjects);
 				if(i<nSubjects+nPredictSubjects-1){
 					*(outFiles[predictPackYearsInd]) << " ";
 				}else{
 					*(outFiles[predictPackYearsInd]) << endl;
+
+
 				}
 			}
 		}
