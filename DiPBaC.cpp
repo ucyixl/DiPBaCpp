@@ -196,6 +196,11 @@ int main(int argc, char*  argv[]){
 		diPBaCSampler.addProposal("metropolisHastingsForRhoOmega",1.0,1,firstSweep,&metropolisHastingsForRhoOmega);
 	}
 
+	if(options.outcomeType().compare("Normal")==0){
+		// Gibbs for sigmaSqY for Normal response model
+		diPBaCSampler.addProposal("gibbsForSigmaSqY",1.0,1,1,&gibbsForSigmaSqY);
+	}
+
 
 	// Gibbs update for the allocation parameters
 	diPBaCSampler.addProposal("gibbsForZ",1.0,1,1,&gibbsForZ);
