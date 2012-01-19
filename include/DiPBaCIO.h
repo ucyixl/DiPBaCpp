@@ -54,7 +54,7 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 			cout << "--nProgress=<unsigned int>" << endl << "\tThe number of sweeps at which to print a" << endl << "progress update (500)" << endl;
 			cout << "--nFilter=<unsigned int>" << endl << "\tThe frequency (in sweeps) with which to write" << endl << "\tthe output to file (1)" << endl;
 			cout << "--seed=<unsigned int>" << endl << "\tThe value for the seed for the random number" << endl << "\tgenerator (current time)" << endl;
-			cout << "--yModel=<string>" << endl << "\tThe model type for the outcome variable. Options are" << endl << "\tcurrently 'Bernoulli','Poisson' and 'Binomial' (Bernoulli)" << endl;
+			cout << "--yModel=<string>" << endl << "\tThe model type for the outcome variable. Options are" << endl << "\tcurrently 'Bernoulli','Poisson','Binomial' and 'Normal' (Bernoulli)" << endl;
 			cout << "--xModel=<string>" << endl << "\tThe model type for the covariates. Options are" << endl << "\tcurrently 'Discrete' and 'Normal' (Discrete)" << endl;
 			cout << "--alpha=<double>" << endl << "\tThe value to be used if alpha is to remain fixed." << endl << "\tIf a negative value is used then alpha is updated (-1)" << endl;
 			cout << "--excludeY" << endl << "\tIf included only the covariate data X is modelled (not included)" << endl;
@@ -109,12 +109,17 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 				}else if(inString.find("--yModel")!=string::npos){
 					size_t pos = inString.find("=")+1;
 					string outcomeType = inString.substr(pos,inString.size()-pos);
-					if(outcomeType.compare("Poisson")!=0&&outcomeType.compare("Bernoulli")!=0&&outcomeType.compare("Binomial")!=0){
+					if(outcomeType.compare("Poisson")!=0&&outcomeType.compare("Bernoulli")!=0&&
+							outcomeType.compare("Binomial")!=0&&outcomeType.compare("Normal")!=0){
 						// Illegal outcome model entered
 						wasError=true;
 						break;
 					}
 					options.outcomeType(outcomeType);
+					if(outcomeType.compare("Normal")==0&&options.responseExtraVar()){
+						cout << "Response extra variation not permitted with Normal response" << endl;
+						options.responseExtraVar(false);
+					}
 				}else if(inString.find("--xModel")!=string::npos){
 					size_t pos = inString.find("=")+1;
 					string covariateType = inString.substr(pos,inString.size()-pos);
@@ -132,7 +137,11 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 				}else if(inString.find("--excludeY")!=string::npos){
 					options.includeResponse(false);
 				}else if(inString.find("--extraYVar")!=string::npos){
-					options.responseExtraVar(true);
+					if(options.outcomeType().compare("Normal")!=0){
+						options.responseExtraVar(true);
+					}else{
+						cout << "Response extra variation not permitted with Normal response" << endl;
+					}
 				}else if(inString.find("--varSelect")!=string::npos){
 						size_t pos = inString.find("=")+1;
 						string varSelectType = inString.substr(pos,inString.size()-pos);
@@ -188,7 +197,8 @@ void importDiPBaCData(const string& fitFilename,const string& predictFilename,di
 	unsigned int& nPredictSubjects=dataset.nPredictSubjects();
 	vector<unsigned int>& nCategories=dataset.nCategories();
 	vector<bool>& ordinalIndic=dataset.ordinalIndic();
-	vector<unsigned int>& y=dataset.y();
+	vector<unsigned int>& discreteY=dataset.discreteY();
+	vector<double>& continuousY=dataset.continuousY();
 	vector<vector<int> >& discreteX=dataset.discreteX();
 	vector<vector<double> >& continuousX=dataset.continuousX();
 	vector<string>& covNames=dataset.covariateNames();
@@ -246,7 +256,8 @@ void importDiPBaCData(const string& fitFilename,const string& predictFilename,di
 	}
 
 	// Get the data
-	y.resize(nSubjects);
+	discreteY.resize(nSubjects);
+	continuousY.resize(nSubjects);
 	discreteX.resize(nSubjects+nPredictSubjects);
 	continuousX.resize(nSubjects+nPredictSubjects);
 	W.resize(nSubjects);
@@ -261,7 +272,11 @@ void importDiPBaCData(const string& fitFilename,const string& predictFilename,di
 	vector<double> meanX(nCovariates,0);
 	vector<unsigned int> nXNotMissing(nCovariates,0);
 	for(unsigned int i=0;i<nSubjects;i++){
-		inputFile >> y[i];
+		if(outcomeType.compare("Normal")==0){
+			inputFile >> continuousY[i];
+		}else{
+			inputFile >> discreteY[i];
+		}
 		discreteX[i].resize(nCovariates);
 		continuousX[i].resize(nCovariates);
 		missingX[i].resize(nCovariates);
@@ -523,9 +538,19 @@ void readHyperParamsFromFile(const string& filename,diPBaCHyperParams& hyperPara
 			string tmpStr = inString.substr(pos,inString.size()-pos);
 			double bRho = (double)atof(tmpStr.c_str());
 			hyperParams.bRho(bRho);
+		}else if(inString.find("shapeSigmaSqY")==0){
+			size_t pos = inString.find("=")+1;
+			string tmpStr = inString.substr(pos,inString.size()-pos);
+			double shapeSigmaSqY = (double)atof(tmpStr.c_str());
+			hyperParams.shapeSigmaSqY(shapeSigmaSqY);
+		}else if(inString.find("scaleSigmaSqY")==0){
+			size_t pos = inString.find("=")+1;
+			string tmpStr = inString.substr(pos,inString.size()-pos);
+			double scaleSigmaSqY = (double)atof(tmpStr.c_str());
+			hyperParams.scaleSigmaSqY(scaleSigmaSqY);
 		}
-	}
 
+	}
 
 }
 
@@ -928,6 +953,14 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 			params.beta(j,-2.0+4.0*unifRand());
 		}
 
+		if(outcomeType.compare("Normal")==0){
+			boost::gamma_distribution<double> gammaDist(hyperParams.shapeSigmaSqY());
+			randomGamma gammaRand(rndGenerator,gammaDist);
+			double sigmaSqY=hyperParams.scaleSigmaSqY()/(gammaRand());
+			params.sigmaSqY(sigmaSqY);
+
+		}
+
 		// And also the extra variation values if necessary
 		if(responseExtraVar){
 			double a=5,b=2;
@@ -1042,6 +1075,10 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 				outFiles.push_back(new ofstream(fileName.c_str()));
 				fileName = fileStem + "_betaProp.txt";
 				outFiles.push_back(new ofstream(fileName.c_str()));
+				if(outcomeType.compare("Normal")==0){
+					fileName = fileStem + "_sigmaSqY.txt";
+					outFiles.push_back(new ofstream(fileName.c_str()));
+				}
 				if(responseExtraVar){
 					fileName = fileStem + "_epsilon.txt";
 					outFiles.push_back(new ofstream(fileName.c_str()));
@@ -1084,7 +1121,7 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		// File indices
 		int nClustersInd=-1,psiInd=-1,phiInd=-1,deltaInd=-1,muInd=-1,SigmaInd=-1,zInd=-1,entropyInd=-1,alphaInd=-1;
 		int logPostInd=-1,nMembersInd=-1,alphaPropInd,deltaPropInd=-1;
-		int thetaInd=-1,betaInd=-1,thetaPropInd=-1,betaPropInd=-1,epsilonInd=-1;
+		int thetaInd=-1,betaInd=-1,thetaPropInd=-1,betaPropInd=-1,sigmaSqYInd=-1,epsilonInd=-1;
 		int sigmaEpsilonInd=-1,epsilonPropInd=-1,omegaInd=-1,rhoInd=-1;
 		int rhoOmegaPropInd=-1,gammaInd=-1,nullPhiInd=-1,nullDeltaInd=-1,nullMuInd=-1;
 		int predictThetaRaoBlackwellInd=-1;
@@ -1118,6 +1155,9 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 			betaInd=r++;
 			thetaPropInd=r++;
 			betaPropInd=r++;
+			if(outcomeType.compare("Normal")==0){
+				sigmaSqYInd=r++;
+			}
 			if(responseExtraVar){
 				epsilonInd=r++;
 				sigmaEpsilonInd=r++;
@@ -1252,6 +1292,7 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 
 
 		if(includeResponse){
+			*(outFiles[sigmaSqYInd]) << params.sigmaSqY() << endl;
 			// Print beta
 			for(unsigned int j=0;j<nConfounders;j++){
 				*(outFiles[betaInd]) << params.beta(j);
@@ -1578,6 +1619,11 @@ string storeLogFileData(const diPBaCOptions& options,
 	if(options.varSelectType().compare("None")!=0){
 		tmpStr << "aRho: " << hyperParams.aRho() << endl;
 		tmpStr << "bRho: " << hyperParams.aRho() << endl;
+	}
+
+	if(dataset.outcomeType().compare("Normal")==0){
+		tmpStr << "shapeSigmaSqY: " << hyperParams.shapeSigmaSqY() << endl;
+		tmpStr << "scaleSigmaSqY: " << hyperParams.scaleSigmaSqY() << endl;
 	}
 
 	tmpStr << endl << options.nSweeps()+options.nBurn() << " sweeps done in " <<
