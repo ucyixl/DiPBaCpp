@@ -1292,7 +1292,7 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 
 
 		if(includeResponse){
-			*(outFiles[sigmaSqYInd]) << params.sigmaSqY();
+			*(outFiles[sigmaSqYInd]) << params.sigmaSqY() << endl;
 			// Print beta
 			for(unsigned int j=0;j<nConfounders;j++){
 				*(outFiles[betaInd]) << params.beta(j);
