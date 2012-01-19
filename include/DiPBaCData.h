@@ -262,10 +262,12 @@ class diPBaCData{
 			return _continuousY[i];
 		}
 
-
 		/// \brief Return the covariate matrix
 		const vector<vector<int> >& discreteX() const{
-			return _discreteX;double/// \brief Return the covariate matrix
+			return _discreteX;
+		}
+
+		/// \brief Return the covariate matrix
 		vector<vector<int> >& discreteX(){
 			return _discreteX;
 		}

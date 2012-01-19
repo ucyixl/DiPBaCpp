@@ -1678,7 +1678,7 @@ double logPYiGivenZiWiBernoulli(const diPBaCParams& params, const diPBaCData& da
 	}
 
 	double p=1.0/(1.0+exp(-lambda));
-	return logPdfBernoulli(dataset.y(i),p);
+	return logPdfBernoulli(dataset.discreteY(i),p);
 }
 
 double logPYiGivenZiWiBernoulliExtraVar(const diPBaCParams& params,
@@ -1689,7 +1689,7 @@ double logPYiGivenZiWiBernoulliExtraVar(const diPBaCParams& params,
 	double lambda=params.lambda(i);
 
 	double p=1.0/(1.0+exp(-lambda));
-	return logPdfBernoulli(dataset.y(i),p);
+	return logPdfBernoulli(dataset.discreteY(i),p);
 }
 
 double logPYiGivenZiWiBinomial(const diPBaCParams& params, const diPBaCData& dataset,
@@ -1703,7 +1703,7 @@ double logPYiGivenZiWiBinomial(const diPBaCParams& params, const diPBaCData& dat
 	}
 
 	double p=1.0/(1.0+exp(-lambda));
-	return logPdfBinomial(dataset.y(i),dataset.nTrials(i),p);
+	return logPdfBinomial(dataset.discreteY(i),dataset.nTrials(i),p);
 }
 
 double logPYiGivenZiWiBinomialExtraVar(const diPBaCParams& params,
@@ -1714,7 +1714,7 @@ double logPYiGivenZiWiBinomialExtraVar(const diPBaCParams& params,
 	double lambda=params.lambda(i);
 
 	double p=1.0/(1.0+exp(-lambda));
-	return logPdfBinomial(dataset.y(i),dataset.nTrials(i),p);
+	return logPdfBinomial(dataset.discreteY(i),dataset.nTrials(i),p);
 }
 
 double logPYiGivenZiWiPoisson(const diPBaCParams& params, const diPBaCData& dataset,
@@ -1729,7 +1729,7 @@ double logPYiGivenZiWiPoisson(const diPBaCParams& params, const diPBaCData& data
 	lambda+=dataset.logOffset(i);
 
 	double mu =exp(lambda);
-	return logPdfPoisson(dataset.y(i),mu);
+	return logPdfPoisson(dataset.discreteY(i),mu);
 }
 
 double logPYiGivenZiWiPoissonExtraVar(const diPBaCParams& params,
@@ -1740,7 +1740,7 @@ double logPYiGivenZiWiPoissonExtraVar(const diPBaCParams& params,
 	double lambda=params.lambda(i);
 
 	double mu=exp(lambda);
-	return logPdfPoisson(dataset.y(i),mu);
+	return logPdfPoisson(dataset.discreteY(i),mu);
 }
 
 double logPYiGivenZiWiNormal(const diPBaCParams& params, const diPBaCData& dataset,
@@ -1753,7 +1753,7 @@ double logPYiGivenZiWiNormal(const diPBaCParams& params, const diPBaCData& datas
 		mu+=params.beta(j)*dataset.W(i,j);
 	}
 
-	return logPdfNormal(dataset.y(i),mu,sqrt(params.sigmaSqY()));
+	return logPdfNormal(dataset.continuousY(i),mu,sqrt(params.sigmaSqY()));
 }
 
 vector<double> diPBaCLogPost(const diPBaCParams& params,
