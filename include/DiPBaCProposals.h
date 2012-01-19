@@ -2595,7 +2595,49 @@ void metropolisHastingsForRhoOmega(mcmcChain<diPBaCParams>& chain,
 
 }
 
+// Gibbs for update of sigmaSqY (Normal response case)
+void gibbsForSigmaSqY(mcmcChain<diPBaCParams>& chain,
+						unsigned int& nTry,unsigned int& nAccept,
+						const mcmcModel<diPBaCParams,
+										diPBaCOptions,
+										diPBaCData>& model,
+						diPBaCPropParams& propParams,
+						baseGeneratorType& rndGenerator){
 
+	mcmcState<diPBaCParams>& currentState = chain.currentState();
+	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
+
+	const diPBaCData& dataset = model.dataset();
+
+	unsigned int nSubjects = currentParams.nSubjects();
+	unsigned int nConfounders = dataset.nConfounders();
+
+	nTry++;
+	nAccept++;
+
+	double sumVal=0.0;
+	for(unsigned int i=0;i<nSubjects;i++){
+		int Zi = currentParams.z(i);
+
+		double mu = currentParams.theta(Zi);
+		for(unsigned int j=0;j<nConfounders;j++){
+			mu+=currentParams.beta(j)*dataset.W(i,j);
+		}
+
+		sumVal+=pow(dataset.continuousY(i)-mu,2.0);
+	}
+
+	double posteriorShape = hyperParams.shapeSigmaSqY()+(double)nSubjects/2.0;
+	double posteriorScale = hyperParams.scaleSigmaSqY()+0.5*sumVal;
+
+	boost::gamma_distribution<double> gammaDist(posteriorShape);
+	randomGamma gammaRand(rndGenerator,gammaDist);
+	double sigmaSqY=posteriorScale/(gammaRand());
+	currentParams.sigmaSqY(sigmaSqY);
+
+
+}
 /*********** BLOCK 5 p(Z|.) **********************************/
 
 // Gibbs update for the allocation variables
@@ -2758,6 +2800,8 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				logPYiGivenZiWi = &logPYiGivenZiWiBinomial;
 			}else if(outcomeType.compare("Poisson")==0){
 				logPYiGivenZiWi = &logPYiGivenZiWiPoisson;
+			}else if(outcomeType.compare("Normal")==0){
+				logPYiGivenZiWi = &logPYiGivenZiWiNormal;
 			}
 		}
 	}

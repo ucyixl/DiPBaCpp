@@ -150,6 +150,9 @@ class diPBaCHyperParams{
 			_aRho = 0.5;
 			_bRho = 0.5;
 
+			_shapeSigmaSqY = 2.5;
+			_scaleSigmaSqY = 2.5;
+
 		}
 
 		double shapeAlpha() const{
@@ -326,6 +329,22 @@ class diPBaCHyperParams{
 			_bRho = b;
 		}
 
+		double shapeSigmaSqY() const{
+			return _shapeSigmaSqY;
+		}
+
+		void shapeSigmaSqY(const double& s){
+			_shapeSigmaSqY = s;
+		}
+
+		double scaleSigmaSqY() const{
+			return _scaleSigmaSqY;
+		}
+
+		void scaleSigmaSqY(const double& r){
+			_scaleSigmaSqY = r;
+		}
+
 		// Copy operator
 		diPBaCHyperParams& operator=(const diPBaCHyperParams& hyperParams){
 			_shapeAlpha = hyperParams.shapeAlpha();
@@ -348,6 +367,8 @@ class diPBaCHyperParams{
 			_bTauEpsilon = hyperParams.bTauEpsilon();
 			_aRho = hyperParams.aRho();
 			_bRho = hyperParams.bRho();
+			_shapeSigmaSqY = hyperParams.shapeSigmaSqY();
+			_scaleSigmaSqY = hyperParams.scaleSigmaSqY();
 			return *this;
 		}
 
@@ -402,6 +423,11 @@ class diPBaCHyperParams{
 		// Prior is rho ~ Beta(a,b)
 		double _aRho;
 		double _bRho;
+
+		//Hyper parameter for prior for sigma_y^2 (for normal response model)
+		// Prior is sigma_y^2 ~ InvGamma(shapeSigmaSqY,scaleSigmaSqY)
+		double _shapeSigmaSqY;
+		double _scaleSigmaSqY;
 
 };
 
@@ -1270,6 +1296,17 @@ class diPBaCParams{
 		}
 
 
+		/// \brief Return the parameter sigmaSqY
+		double sigmaSqY() const{
+			return _sigmaSqY;
+		}
+
+		/// \brief Set the parameter sigmaSqY
+		void sigmaSqY(const double& sigmaSqYVal){
+			_sigmaSqY=sigmaSqYVal;
+		}
+
+
 		const diPBaCHyperParams& hyperParams() const{
 			return _hyperParams;
 		}
@@ -1493,6 +1530,7 @@ class diPBaCParams{
 			_gamma = params.gamma();
 			_rho = params.rho();
 			_omega = params.omega();
+			_sigmaSqY = params.sigmaSqY();
 			_hyperParams = params.hyperParams();
 			_workNXInCluster=params.workNXInCluster();
 			_workMaxZi=params.workMaxZi();
@@ -1586,6 +1624,9 @@ class diPBaCParams{
 
 		/// \brief Prior parameters for rho
 		vector<unsigned int> _omega;
+
+		/// \brief Prior variance for Y model when response is Normal
+		double _sigmaSqY;
 
 		/// NOTE: hyper parameters
 		/// \brief The hyper parameter object
@@ -1702,6 +1743,19 @@ double logPYiGivenZiWiPoissonExtraVar(const diPBaCParams& params,
 	return logPdfPoisson(dataset.y(i),mu);
 }
 
+double logPYiGivenZiWiNormal(const diPBaCParams& params, const diPBaCData& dataset,
+						const unsigned int& nConfounders,const int& zi,
+						const unsigned int& i){
+
+	double mu;
+	mu=params.theta(zi);
+	for(unsigned int j=0;j<nConfounders;j++){
+		mu+=params.beta(j)*dataset.W(i,j);
+	}
+
+	return logPdfNormal(dataset.y(i),mu,sqrt(params.sigmaSqY()));
+}
+
 vector<double> diPBaCLogPost(const diPBaCParams& params,
 								const mcmcModel<diPBaCParams,
 												diPBaCOptions,
@@ -1784,6 +1838,8 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 					extraVarPriorMean[i]+=dataset.logOffset(i);
 				}
 			}
+		}else if(outcomeType.compare("Normal")==0){
+			logPYiGivenZiWi = &logPYiGivenZiWiNormal;
 		}
 
 		for(unsigned int i=0;i<nSubjects;i++){
@@ -1795,6 +1851,7 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 	// Now need to add in the prior (i.e. p(z,params) in above notation)
 	double logPrior=0.0;
 
+	/// THIS NEEDS CORRECTING - SEE NOTES
 	unsigned int nNotEmpty=0;
 	for(unsigned int c=0;c<maxNClusters;c++){
 		if(params.workNXInCluster(c)>0){
@@ -1804,6 +1861,7 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 	}
 	logPrior+=((double)nNotEmpty)*log(params.alpha());
 	logPrior-=lgamma(params.alpha()+(double)nSubjects);
+	/// END OF PART NEEDING CORRECTIONs
 
 	// Prior for alpha
 	if(fixedAlpha<0){
@@ -2079,7 +2137,10 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 				extraVarPriorMean[i]+=dataset.logOffset(i);
 			}
 		}
+	}else if(outcomeType.compare("Normal")==0){
+		logPYiGivenZiWi = &logPYiGivenZiWiNormal;
 	}
+
 
 	for(unsigned int i=0;i<nSubjects;i++){
 		int zi = params.z(i);
