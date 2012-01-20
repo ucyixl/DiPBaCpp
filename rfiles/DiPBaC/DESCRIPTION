@@ -1,9 +1,9 @@
 Package: DiPBaC
 Type: Package
 Title: Post processing for C++ DiPBaC
-Version: 1.0.1
-Date: 2011-12-13
-Author: David Hastie
+Version: 1.1.0
+Date: 2012-01-19
+Author: David Hastie and Silvia Liverani
 Maintainer: David Hastie <d.hastie@imperial.ac.uk>
 Description: Post processing for C++ Dirichlet Process Bayesian Clustering
 License: What license is it under?
@@ -11,4 +11,4 @@ LazyLoad: yes
 Depends: Rcpp (>= 0.8.3), cluster, clue, ggplot2
 LinkingTo: Rcpp
 SystemRequirements: GNU make
-Packaged: 2011-12-07 17:46:32 UTC; dhastie
+Packaged: 2011-12-07 17:46:32 UTC;

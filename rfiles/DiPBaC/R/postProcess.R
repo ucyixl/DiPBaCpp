@@ -389,7 +389,9 @@ calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
                currRisk<-exp(currLambda)                     
             }else if(yModel=="Bernoulli"||yModel=="Binomial"){
                currRisk<-1.0/(1.0+exp(-currLambda))  
-            }
+            }else if(yModel=="Normal"){
+				currRisk<-currLambda
+			}
             riskArray[sweep-firstLine+1,c]<-mean(currRisk)
             thetaArray[sweep-firstLine+1,c]<-mean(currTheta[currZ[optAlloc[[c]]]])
          }
@@ -468,7 +470,7 @@ calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
    empiricals<-rep(0,nClusters)
    if(!is.null(yModel)){
       for(c in 1:nClusters){
-         if(yModel=='Bernoulli'){
+         if(yModel=='Bernoulli'||yModel=='Normal'){
             empiricals[c]<-mean(yMat[optAlloc[[c]],1])
          }else if(yModel=='Binomial'){
             empiricals[c]<-mean(yMat[optAlloc[[c]],1]/yMat[optAlloc[[c]],2])
@@ -522,6 +524,10 @@ plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=T,orderBy=NULL,wh
    attach(riskProfObj)
    attach(riskProfClusObj)
    attach(clusObjRunInfoObj)
+   
+   if(yModel=="Normal"){
+	   showRelativeRisk<-F
+   }
    
    if(useProfileStar){
       profile<-profileStar
@@ -699,7 +705,7 @@ plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=T,orderBy=NULL,wh
       plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=upperRisk,colour=as.factor(fillColor)),size=1.5)
       plotObj<-plotObj+scale_fill_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
                scale_colour_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
-               opts(legend.position="none")+labs(x="Cluster",y=ifelse(showRelativeRisk,'RR',ifelse(yModel=="Bernoulli"||yModel=="Binomial","Probability","E[Count]")))
+               opts(legend.position="none")+labs(x="Cluster",y=ifelse(showRelativeRisk,'RR',ifelse(yModel=="Bernoulli"||yModel=="Binomial","Probability","E[Y]")))
       plotObj<-plotObj+opts(axis.title.y=theme_text(size=10,angle=90),axis.title.x=theme_text(size=10))
       plotObj<-plotObj+opts(title=ifelse(showRelativeRisk,'Relative Risk','Risk'),plot.title=theme_text(size=10))
       # Margin order is (top,right,bottom,left) 
@@ -715,7 +721,7 @@ plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=T,orderBy=NULL,wh
          opts(legend.position="none")
    plotObj<-plotObj+opts(title='Empirical Data',plot.title=theme_text(size=10))
    plotObj<-plotObj+opts(axis.title.x=theme_text(size=10),axis.title.y=theme_text(size=10,angle=90))
-   plotObj<-plotObj+labs(y=ifelse(yModel=="Bernoulli","Proportion of cases",ifelse(yModel=="Binomial","Avg Proportion of occurrence","Avg Count")),x="Cluster")
+   plotObj<-plotObj+labs(y=ifelse(yModel=="Bernoulli","Proportion of cases",ifelse(yModel=="Binomial","Avg Proportion of occurrence",ifelse(yModel=="Poisson","Avg Count","Avg Y"))),x="Cluster")
    plotObj<-plotObj+opts(print.margin=unit(c(0,0,0,0),'lines'))+opts(plot.margin=unit(c(0.15,0.5,0.5,1),'lines'))
    print(plotObj,vp=viewport(layout.pos.row=3:4,layout.pos.col=1))
       
@@ -1292,7 +1298,9 @@ calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwel
          }
       }else if(yModel=='Poisson'){
          predictedY[sweep,]<-exp(lambda)
-      }      
+      }else if(yModel=='Normal'){
+		 predictedY[sweep,]<-lambda 
+	  }      
    }   
    if(responseProvided){
       bias<-apply(predictedY,2,mean)-predictYMat[,1]
@@ -1548,7 +1556,7 @@ computeDivergenceAB<-function(riskProfileObjA,riskProfileObjB,weightsVecA,summar
             sigmaB<-as.matrix(covariateSigmaB[c2,,])
             paramsA<-list("mu"=muA,"sigma"=sigmaA)
             paramsB<-list("mu"=muB,"sigma"=sigmaB)
-            KLXAB[c1,c2]<-computeKullbackLiebler(paramsA,paramsB,"Normal",eps=KLThresh)
+            KLXAB[c1,c2]<-computeKullbackLiebler(paramsA,paramsB,"MultivariateNormal",eps=KLThresh)
          }
       }
    }
@@ -1644,7 +1652,7 @@ computeKullbackLiebler<-function(paramsA,paramsB,distribution,eps=10e-08){
          out<-out+dpois(x,lambdaA)*(dpois(x,lambdaA,log=T)-dpois(x,lambdaB,log=T))
          x<-x+1
       }
-   }else if(distribution=='Normal'){
+   }else if(distribution=='MultivariateNormal'){
       muA<-paramsA$mu
       sigmaA<-paramsA$sigma
       muB<-paramsB$mu

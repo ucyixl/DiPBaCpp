@@ -213,28 +213,53 @@ class diPBaCData{
 		}
 
 		/// \brief Return the output vector
-		const vector<unsigned int>& y() const{
-			return _y;
+		const vector<unsigned int>& discreteY() const{
+			return _discreteY;
 		}
 
 		/// \brief Return the output vector
-		vector<unsigned int>& y() {
-			return _y;
+		vector<unsigned int>& discreteY() {
+			return _discreteY;
 		}
 
 		/// \brief Set the output vector
-		void y(const vector<unsigned int>& yVec){
-			_y.clear();
-			_y.resize(yVec.size());
-			_y.insert(_y.begin(),yVec.begin(),yVec.end());
+		void discreteY(const vector<unsigned int>& yVec){
+			_discreteY.clear();
+			_discreteY.resize(yVec.size());
+			_discreteY.insert(_discreteY.begin(),yVec.begin(),yVec.end());
 		}
 
 		/// \brief Return the output value for the ith subject
-		unsigned int y(const unsigned int& i) const{
+		unsigned int discreteY(const unsigned int& i) const{
 			if(i<0||i>_nSubjects){
 				throw std::range_error("y subscript i out of range");
 			}
-			return _y[i];
+			return _discreteY[i];
+		}
+
+		/// \brief Return the output vector
+		const vector<double>& continuousY() const{
+			return _continuousY;
+		}
+
+		/// \brief Return the output vector
+		vector<double>& continuousY() {
+			return _continuousY;
+		}
+
+		/// \brief Set the output vector
+		void continuousY(const vector<double>& yVec){
+			_continuousY.clear();
+			_continuousY.resize(yVec.size());
+			_continuousY.insert(_continuousY.begin(),yVec.begin(),yVec.end());
+		}
+
+		/// \brief Return the output value for the ith subject
+		double continuousY(const unsigned int& i) const{
+			if(i<0||i>_nSubjects){
+				throw std::range_error("y subscript i out of range");
+			}
+			return _continuousY[i];
 		}
 
 		/// \brief Return the covariate matrix
@@ -399,7 +424,11 @@ class diPBaCData{
 
 
 		/// \brief A vector of the output variables
-		vector<unsigned int> _y;
+		vector<unsigned int> _discreteY;
+
+		/// \brief A vector of the output variables
+		vector<double> _continuousY;
+
 
 		/// \brief A matrix (vector of vectors) of the covariate data
 		/// \note this is a signed int because missing values are typically stored
