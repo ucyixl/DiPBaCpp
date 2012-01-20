@@ -23,7 +23,7 @@ class diPBaCData{
 
 	public:
 		/// \brief Default constructor
-		diPBaCData(): _nSubjects(0), _nCovariates(0), _nConfounders(0), _nPredictSubjects(0) {};
+		diPBaCData(): _nSubjects(0), _nCovariates(0), _nFixedEffects(0), _nPredictSubjects(0) {};
 
 		/// \brief Default destructor
 		~diPBaCData(){};
@@ -63,19 +63,19 @@ class diPBaCData{
 			_nCovariates = nCov;
 		}
 
-		/// \brief Return the number of confounders
-		unsigned int nConfounders() const{
-			return _nConfounders;
+		/// \brief Return the number of fixed effectss
+		unsigned int nFixedEffects() const{
+			return _nFixedEffects;
 		}
 
-		/// \brief Return the number of confounders
-		unsigned int& nConfounders(){
-			return _nConfounders;
+		/// \brief Return the number of fixed effectss
+		unsigned int& nFixedEffects(){
+			return _nFixedEffects;
 		}
 
-		/// \brief Set the number of confounders
-		void nConfounders(const unsigned int& nConf){
-			_nConfounders = nConf;
+		/// \brief Set the number of fixed effectss
+		void nFixedEffects(const unsigned int& nConf){
+			_nFixedEffects = nConf;
 		}
 
 		/// \brief Return the number of subjects
@@ -144,53 +144,28 @@ class diPBaCData{
 			return _covariateNames[j];
 		}
 
-		/// \brief Return the vector of the confounder names
-		vector<string> confounderNames() const{
-			return _confounderNames;
+		/// \brief Return the vector of the fixed effects names
+		vector<string> fixedEffectNames() const{
+			return _fixedEffectNames;
 		}
 
-		/// \brief Return the vector of the confounder names
-		vector<string>& confounderNames(){
-			return _confounderNames;
+		/// \brief Return the vector of the fixed effects names
+		vector<string>& fixedEffectNames(){
+			return _fixedEffectNames;
 		}
 
-		/// \brief Set the vector of the confounder names
-		void confounderNames(const vector<string>& confNames){
-			_confounderNames.clear();
-			_confounderNames.resize(confNames.size());
-			_confounderNames.insert(_confounderNames.begin(),confNames.begin(),confNames.end());
+		/// \brief Set the vector of the fixed effects names
+		void fixedEffectNames(const vector<string>& fixEffNames){
+			_fixedEffectNames.clear();
+			_fixedEffectNames.resize(fixEffNames.size());
+			_fixedEffectNames.insert(_fixedEffectNames.begin(),fixEffNames.begin(),fixEffNames.end());
 		}
 
-		/// \brief Return name for confounder j
-		string confounderNames(const unsigned int& j) const{
-			return _confounderNames[j];
+		/// \brief Return name for fixed effects j
+		string fixedEffectNames(const unsigned int& j) const{
+			return _fixedEffectNames[j];
 		}
 
-
-		/// \brief Return the vector of ordinal indicators
-		vector<bool> ordinalIndic() const{
-			return _ordinalIndic;
-		}
-
-		/// \brief Return the vector of ordinal indicators
-		vector<bool>& ordinalIndic(){
-			return _ordinalIndic;
-		}
-
-		/// \brief Set the vector ordinal indicators
-		void ordinalIndic(const vector<bool>& ordInd){
-			_ordinalIndic.clear();
-			_ordinalIndic.resize(ordInd.size());
-			_ordinalIndic.insert(_ordinalIndic.begin(),ordInd.begin(),ordInd.end());
-		}
-
-		/// \brief Return whether the jth covariate is ordinal
-		unsigned int ordinalIndic(const unsigned int& j) const{
-			if(j<0||j>_nCovariates){
-				throw std::range_error("ordinalIndic subscript j out of range");
-			}
-			return _ordinalIndic[j];
-		}
 
 		/// \brief Return the outcome model type
 		const string& outcomeType() const{
@@ -327,12 +302,12 @@ class diPBaCData{
 			return _nCovariatesNotMissing;
 		}
 
-		/// \brief Return the confounder matrix
+		/// \brief Return the fixed effects matrix
 		const vector<vector<double> >& W() const{
 			return _W;
 		}
 
-		/// \brief Return the confounder matrix
+		/// \brief Return the fixed effects matrix
 		vector<vector<double> >& W(){
 			return _W;
 		}
@@ -372,30 +347,6 @@ class diPBaCData{
 			return _nTrials[i];
 		}
 
-		/// \brief Return whether any of the covariates are ordinal
-		bool anyOrdinal() const{
-			bool out=false;
-			for(unsigned int j=0;j<_nCovariates;j++){
-				out=out || _ordinalIndic[j];
-				if(out){
-					return(out);
-				}
-			}
-			return(out);
-		}
-
-		/// \brief Return whether any of the covariates are categorical
-		bool anyCategorical() const{
-			bool out=false;
-			for(unsigned int j=0;j<_nCovariates;j++){
-				out=out || !_ordinalIndic[j];
-				if(out){
-					return(out);
-				}
-			}
-			return(out);
-		}
-
 
 	private:
 		/// \brief The number of subjects
@@ -404,14 +355,11 @@ class diPBaCData{
 		/// \brief The number of covariates
 		unsigned int _nCovariates;
 
-		/// \brief The number of confounder covariates
-		unsigned int _nConfounders;
+		/// \brief The number of fixed effects covariates
+		unsigned int _nFixedEffects;
 
 		/// \brief The number of subjects we are making predictions for
 		unsigned int _nPredictSubjects;
-
-		/// \brief A vector indicating whether covariates are ordinal
-		vector<bool> _ordinalIndic;
 
 		/// \brief A vector of the number of categories for each covariate
 		vector<unsigned int> _nCategories;
@@ -450,12 +398,12 @@ class diPBaCData{
 		/// \brief A matrix of the number of non missing covariates for each subject
 		vector<unsigned int> _nCovariatesNotMissing;
 
-		/// \brief A matrix of the confounder covariates
+		/// \brief A matrix of the fixed effects covariates
 		/// \note This may need to changed to be signed or double
 		vector<vector<double> > _W;
 
-		/// \brief A vector of confounder names
-		vector<string> _confounderNames;
+		/// \brief A vector of fixed effects names
+		vector<string> _fixedEffectNames;
 
 		/// \brief A vector of logOffsets (only used in the Poisson model)
 		vector<double> _logOffset;

@@ -76,7 +76,7 @@ int main(int argc, char*  argv[]){
 
 	// Set the proposal parameters
 	diPBaCPropParams proposalParams(options.nSweeps(),dataset.nCovariates(),
-										dataset.nConfounders());
+										dataset.nFixedEffects());
 	diPBaCSampler.proposalParams(proposalParams);
 
 	// The gibbs update for the active V
@@ -85,15 +85,8 @@ int main(int argc, char*  argv[]){
 
 	if(options.covariateType().compare("Discrete")==0){
 		// For discrete X data we do a mixture of Categorical and ordinal updates
-		if(dataset.anyCategorical()){
-			//  Update for the active phi parameters
-			diPBaCSampler.addProposal("updateForPhiActive",1.0,1,1,&updateForPhiActive);
-		}
-
-		if(dataset.anyOrdinal()){
-			// Adaptive MH for active delta
-			diPBaCSampler.addProposal("metropolisHastingsForDeltaActive",1.0,1,1,&metropolisHastingsForDeltaActive);
-		}
+		//  Update for the active phi parameters
+		diPBaCSampler.addProposal("updateForPhiActive",1.0,1,1,&updateForPhiActive);
 
 	}else if(options.covariateType().compare("Normal")==0){
 		// Need to add the proposals for the normal case
@@ -137,15 +130,8 @@ int main(int argc, char*  argv[]){
 
 	if(options.covariateType().compare("Discrete")==0){
 		// For discrete X data we do a mixture of Categorical and ordinal updates
-		if(dataset.anyCategorical()){
-			//  Update for the inactive phi parameters
-			diPBaCSampler.addProposal("gibbsForPhiInActive",1.0,1,1,&gibbsForPhiInActive);
-		}
-
-		if(dataset.anyOrdinal()){
-			// Adaptive MH for inactive delta
-			diPBaCSampler.addProposal("metropolisHastingsForDeltaInActive",1.0,1,1,&metropolisHastingsForDeltaInActive);
-		}
+		//  Update for the inactive phi parameters
+		diPBaCSampler.addProposal("gibbsForPhiInActive",1.0,1,1,&gibbsForPhiInActive);
 
 	}else if(options.covariateType().compare("Normal")==0){
 		// Need to add the proposals for the normal case
@@ -174,7 +160,7 @@ int main(int argc, char*  argv[]){
 
 	if(options.includeResponse()){
 		// Adaptive MH for beta
-		if(dataset.nConfounders()>0){
+		if(dataset.nFixedEffects()>0){
 			diPBaCSampler.addProposal("metropolisHastingsForBeta",1.0,1,1,&metropolisHastingsForBeta);
 		}
 
