@@ -1,0 +1,3 @@
+This folder can be used for output for running the examples, but we do not 
+recommend using this folder for live data, as if you update your distribution 
+the folder will be overwritten.

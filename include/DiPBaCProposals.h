@@ -27,7 +27,6 @@
 #include "DiPBaCModel.h"
 #include "DiPBaCData.h"
 
-
 using std::vector;
 using std::accumulate;
 using std::numeric_limits;
@@ -42,7 +41,7 @@ class diPBaCPropParams{
 		diPBaCPropParams() {};
 
 		diPBaCPropParams(const unsigned int& nSweeps,const unsigned int& nCovariates,
-								const unsigned int& nConfounders){
+								const unsigned int& nFixedEffects){
 				_thetaStdDev=1.0;
 				_thetaStdDevLower=0.1;
 				_thetaStdDevUpper=99.9;
@@ -54,34 +53,14 @@ class diPBaCPropParams{
 				_thetaUpdateFreq=25;
 				_thetaAnyUpdates=true;
 
-				_nTryDelta.resize(nCovariates);
-				_nAcceptDelta.resize(nCovariates);
-				_nLocalAcceptDelta.resize(nCovariates);
-				_nResetDelta.resize(nCovariates);
-				_deltaStdDev.resize(nCovariates);
-				_deltaStdDevLower.resize(nCovariates);
-				_deltaStdDevUpper.resize(nCovariates);
-				for(unsigned int j=0;j<nCovariates;j++){
-					_deltaStdDev[j]=1.0;
-					_deltaStdDevLower[j]=0.1;
-					_deltaStdDevUpper[j]=99.9;
-					_nTryDelta[j]=0;
-					_nAcceptDelta[j]=0;
-					_nLocalAcceptDelta[j]=0;
-					_nResetDelta[j]=0;
-				}
-				_deltaAcceptTarget = 0.44;
-				_deltaUpdateFreq = 100;
-				_deltaAnyUpdates=true;
-
-				_nTryBeta.resize(nConfounders);
-				_nAcceptBeta.resize(nConfounders);
-				_nLocalAcceptBeta.resize(nConfounders);
-				_nResetBeta.resize(nConfounders);
-				_betaStdDev.resize(nConfounders);
-				_betaStdDevLower.resize(nConfounders);
-				_betaStdDevUpper.resize(nConfounders);
-				for(unsigned int j=0;j<nConfounders;j++){
+				_nTryBeta.resize(nFixedEffects);
+				_nAcceptBeta.resize(nFixedEffects);
+				_nLocalAcceptBeta.resize(nFixedEffects);
+				_nResetBeta.resize(nFixedEffects);
+				_betaStdDev.resize(nFixedEffects);
+				_betaStdDevLower.resize(nFixedEffects);
+				_betaStdDevUpper.resize(nFixedEffects);
+				for(unsigned int j=0;j<nFixedEffects;j++){
 					_betaStdDev[j]=1.0;
 					_betaStdDevLower[j]=0.1;
 					_betaStdDevUpper[j]=99.9;
@@ -141,114 +120,6 @@ class diPBaCPropParams{
 		};
 
 		~diPBaCPropParams(){};
-
-		vector<unsigned int> nTryDelta() const{
-			return _nTryDelta;
-		}
-
-		unsigned int nTryDelta(const unsigned int& j) const{
-			return _nTryDelta[j];
-		}
-
-		vector<unsigned int> nAcceptDelta() const{
-			return _nAcceptDelta;
-		}
-
-		double deltaAcceptRate(const unsigned int& j) const{
-			if(_nTryDelta[j]>0){
-				return (double)_nAcceptDelta[j]/(double)_nTryDelta[j];
-			}else{
-				return 0.0;
-			}
-		}
-
-		unsigned int deltaUpdateFreq() const{
-			return _deltaUpdateFreq;
-		}
-
-		vector<unsigned int> nLocalAcceptDelta() const{
-			return _nLocalAcceptDelta;
-		}
-
-
-		double deltaLocalAcceptRate(const unsigned int& j) const{
-					return (double)_nLocalAcceptDelta[j]/(double)_deltaUpdateFreq;
-		}
-
-
-		double deltaAcceptTarget() const{
-			return _deltaAcceptTarget;
-		}
-
-		void deltaAddTry(const unsigned int& j){
-			_nTryDelta[j]++;
-		}
-
-		void deltaAddAccept(const unsigned int& j){
-			_nAcceptDelta[j]++;
-			_nLocalAcceptDelta[j]++;
-		}
-
-		void deltaLocalReset(const unsigned int& j){
-			_nLocalAcceptDelta[j]=0;
-		}
-
-		vector<unsigned int> nResetDelta() const{
-			return _nResetDelta;
-		}
-
-		void deltaStdDevReset(const unsigned int& j){
-			_deltaStdDev[j] = 1.0;
-			_nResetDelta[j]++;
-			_deltaStdDevLower[j] = pow(10.0,-((double)_nResetDelta[j]+1.0));
-			_deltaStdDevUpper[j] = 100.0-pow(10.0,-((double)_nResetDelta[j]+1.0));
-		}
-
-		vector<double>& deltaStdDev(){
-			return _deltaStdDev;
-		}
-
-		vector<double> deltaStdDev() const{
-			return _deltaStdDev;
-		}
-
-		double& deltaStdDev(const unsigned int& j){
-			return _deltaStdDev[j];
-		}
-
-		const double& deltaStdDev(const unsigned int& j) const{
-			return _deltaStdDev[j];
-		}
-
-		vector<double> deltaStdDevLower() const{
-			return _deltaStdDevLower;
-		}
-
-		double deltaStdDevLower(const unsigned int& j) const{
-			return _deltaStdDevLower[j];
-		}
-
-		vector<double> deltaStdDevUpper() const{
-			return _deltaStdDevUpper;
-		}
-
-		double deltaStdDevUpper(const unsigned int& j) const{
-			return _deltaStdDevUpper[j];
-		}
-		// Member function for setting the standard deviation for
-		// proposal for theta for covariate j
-		void deltaStdDev(const unsigned int& j,const double& sd){
-			_deltaStdDev[j]=sd;
-		}
-
-		bool deltaAnyUpdates() const{
-			return _deltaAnyUpdates;
-		}
-
-		void deltaAnyUpdates(const bool& newStatus){
-			_deltaAnyUpdates = newStatus;
-		}
-
 
 
 		unsigned int nTryTheta() const{
@@ -435,7 +306,7 @@ class diPBaCPropParams{
 		}
 
 		// Member function for setting the standard deviation for
-		// proposal for beta for confounder j
+		// proposal for beta for fixed effect j
 		void betaStdDev(const unsigned int& j,const double& sd){
 			_betaStdDev[j]=sd;
 		}
@@ -524,7 +395,7 @@ class diPBaCPropParams{
 		}
 
 		// Member function for setting the standard deviation for
-		// proposal for beta for confounder j
+		// proposal for beta for fixed effect j
 		void alphaStdDev(const double& sd){
 			_alphaStdDev=sd;
 		}
@@ -717,7 +588,7 @@ class diPBaCPropParams{
 		}
 
 		// Member function for setting the standard deviation for
-		// proposal for beta for confounder j
+		// proposal for beta for fixed effect j
 		void lambdaStdDev(const double& sd){
 			_lambdaStdDev=sd;
 		}
@@ -733,16 +604,6 @@ class diPBaCPropParams{
 
 		// Need to define a copy iterator
 		diPBaCPropParams& operator=(const diPBaCPropParams& propParams){
-			_nTryDelta=propParams.nTryDelta();
-			_nAcceptDelta=propParams.nAcceptDelta();
-			_nLocalAcceptDelta=propParams.nLocalAcceptDelta();
-			_nResetDelta=propParams.nResetDelta();
-			_deltaStdDev=propParams.deltaStdDev();
-			_deltaStdDevLower=propParams.deltaStdDevLower();
-			_deltaStdDevUpper=propParams.deltaStdDevUpper();
-			_deltaAcceptTarget=propParams.deltaAcceptTarget();
-			_deltaUpdateFreq=propParams.deltaUpdateFreq();
-			_deltaAnyUpdates=propParams.deltaAnyUpdates();
 			_nTryTheta=propParams.nTryTheta();
 			_nAcceptTheta=propParams.nAcceptTheta();
 			_nLocalAcceptTheta=propParams.nLocalAcceptTheta();
@@ -798,16 +659,6 @@ class diPBaCPropParams{
 		}
 
 	private:
-		vector<unsigned int> _nTryDelta;
-		vector<unsigned int> _nAcceptDelta;
-		vector<unsigned int> _nLocalAcceptDelta;
-		vector<unsigned int> _nResetDelta;
-		vector<double> _deltaStdDev;
-		vector<double> _deltaStdDevLower;
-		vector<double> _deltaStdDevUpper;
-		double _deltaAcceptTarget;
-		unsigned int _deltaUpdateFreq;
-		bool _deltaAnyUpdates;
 		unsigned int _nTryTheta;
 		unsigned int _nAcceptTheta;
 		unsigned int _nLocalAcceptTheta;
@@ -862,7 +713,7 @@ class diPBaCPropParams{
 };
 
 /*********** BLOCK 1 p(v^A,Theta^A,u|.) **********************************/
-// A=Active, and Theta contains: phi, delta, mu, Tau, gamma, theta
+// A=Active, and Theta contains: phi, mu, Tau, gamma, theta
 // We proceed by sampling from p(v^A,Theta^A|.) i.e. marginalising out the u
 // and then sampling from p(u|v^A,Theta^A,.). The first of these steps, is achieved
 // in a number of stages, updating the various components in turn, and then
@@ -934,8 +785,6 @@ void updateForPhiActive(mcmcChain<diPBaCParams>& chain,
 	// Find the number of subjects
 	unsigned int nSubjects = dataset.nSubjects();
 
-	vector<bool> ordinalIndic = dataset.ordinalIndic();
-
 	// Define a uniform random number generator
 	boost::uniform_real<double> unifDist(0,1);
 	randomUniform unifRand(rndGenerator,unifDist);
@@ -945,259 +794,59 @@ void updateForPhiActive(mcmcChain<diPBaCParams>& chain,
 	for(unsigned int c=0;c<=maxZ;c++){
 		// Loop over the covariates
 		for(unsigned int j=0;j<nCovariates;j++){
-			if(!ordinalIndic[j]){
-				nTry++;
+			nTry++;
 
-				if(varSelectType.compare("Continuous")==0){
-					currentLogPost=logCondPostPhicj(currentParams,model,c,j);
-				}
+			if(varSelectType.compare("Continuous")==0){
+				currentLogPost=logCondPostPhicj(currentParams,model,c,j);
+			}
 
-				unsigned int nCategories = currentParams.nCategories(j);
-				// We are updating phis
-				// First we must count how many individuals have Xij in each of the
-				// possible categories for covariate j.
-				vector<double> dirichParams(nCategories,hyperParams.aPhi(j));
-				double gammacj = currentParams.gamma(c,j);
-				for(unsigned int i=0;i<nSubjects;i++){
-					int zi = currentParams.z(i);
-					if(zi==(int)c){
-						int Xij = dataset.discreteX(i,j);
-						// When no variable selection will always add 1.
-						// In the binary variable selection case
-						// this will add a 1 only when the
-						// variable is switched on (as required)
-						// In the continuous case this seems like a sensible proposal
-						dirichParams[Xij]=dirichParams[Xij]+gammacj;
-					}
-				}
-				vector<double> currentLogPhi(nCategories);
-				currentLogPhi=currentParams.logPhi(c,j);
-
-				vector<double> proposedLogPhi(nCategories);
-				proposedLogPhi=dirichletRand(rndGenerator,dirichParams);
-				for(unsigned int p=0;p<nCategories;p++){
-					proposedLogPhi[p]=log(proposedLogPhi[p]);
-				}
-				currentParams.logPhi(c,j,proposedLogPhi);
-				// If no variable selection or binary variable selection
-				// this is a sample from full conditional so no accept reject
-				// step need. If it is continuous variable selection we
-				// need an accept reject decision
-				if(varSelectType.compare("Continuous")==0){
-					double proposedLogPost = logCondPostPhicj(currentParams,model,c,j);
-					double logAcceptRatio=0.0;
-					logAcceptRatio=proposedLogPost-currentLogPost;
-					logAcceptRatio+=logPdfDirichlet(currentLogPhi,dirichParams,true);
-					logAcceptRatio-=logPdfDirichlet(proposedLogPhi,dirichParams,true);
-					if(unifRand()<exp(logAcceptRatio)){
-						// Move accepted
-						nAccept++;
-					}else{
-						// Move rejected
-						// Reset phi
-						currentParams.logPhi(c,j,currentLogPhi);
-					}
-				}else{
-					nAccept++;
+			unsigned int nCategories = currentParams.nCategories(j);
+			// We are updating phis
+			// First we must count how many individuals have Xij in each of the
+			// possible categories for covariate j.
+			vector<double> dirichParams(nCategories,hyperParams.aPhi(j));
+			double gammacj = currentParams.gamma(c,j);
+			for(unsigned int i=0;i<nSubjects;i++){
+				int zi = currentParams.z(i);
+				if(zi==(int)c){
+					int Xij = dataset.discreteX(i,j);
+					// When no variable selection will always add 1.
+					// In the binary variable selection case
+					// this will add a 1 only when the
+					// variable is switched on (as required)
+					// In the continuous case this seems like a sensible proposal
+					dirichParams[Xij]=dirichParams[Xij]+gammacj;
 				}
 			}
-		}
+			vector<double> currentLogPhi(nCategories);
+			currentLogPhi=currentParams.logPhi(c,j);
 
-	}
-
-}
-
-
-// Adaptive Metropolis Hastings move for delta
-void metropolisHastingsForDeltaActive(mcmcChain<diPBaCParams>& chain,
-								unsigned int& nTry,unsigned int& nAccept,
-								const mcmcModel<diPBaCParams,
-												diPBaCOptions,
-												diPBaCData>& model,
-								diPBaCPropParams& propParams,
-								baseGeneratorType& rndGenerator){
-
-	mcmcState<diPBaCParams>& currentState = chain.currentState();
-	diPBaCParams& currentParams = currentState.parameters();
-	diPBaCHyperParams hyperParams = currentParams.hyperParams();
-
-	const diPBaCData& dataset = model.dataset();
-
-	// Find the number of clusters
-	unsigned int maxZ = currentParams.workMaxZi();
-	// Find the number of covariates
-	unsigned int nCovariates = currentParams.nCovariates();
-	vector<unsigned int> nCats = currentParams.nCategories();
-	// Find the number of subjects
-	unsigned int nSubjects = dataset.nSubjects();
-
-	vector<bool> ordinalIndic = dataset.ordinalIndic();
-
-	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
-
-	// Delta target acceptance rate
-	double deltaTargetRate = propParams.deltaAcceptTarget();
-	unsigned int deltaUpdateFreq = propParams.deltaUpdateFreq();
-
-	// This is part of the conditional log posterior that will be used in the
-	// acceptance ratio. We compute the quantities here and can then keep them updated easily
-	// at each iteration. We use the phi (instead of delta) because these are
-	// updated with the correct probs everytime delta is updated
-	vector<double> currentLogPXiGivenZ(nSubjects);
-	for(unsigned int i=0;i<nSubjects;i++){
-		currentLogPXiGivenZ[i]=currentParams.workLogPXiGivenZi(i);
-	}
-
-	// Now we loop over the clusters and covariates, and if the covariate is
-	// ordinal then we try an update
-
-	for(unsigned int c=0;c<=maxZ;c++){
-		// Loop over the covariates
-		for(unsigned int j=0;j<nCovariates;j++){
-			if(ordinalIndic[j]){
-				unsigned int nCategories = currentParams.nCategories(j);
-
-				// We are updating deltas
-				// We will use an adaptive Metropolis within Gibbs step, with a
-				// truncated normal distribution
-
-				double& stdDev = propParams.deltaStdDev(j);
-
-				vector<double> deltaProp(nCategories-1);
-				deltaProp = currentParams.delta(c,j);
-				vector<double> deltaCurrent(nCategories-1);
-				deltaCurrent = currentParams.delta(c,j);
-				double logAcceptRatio = 0.0;
-				bool autoReject = false;
-				normal_distribution<double> norm01(0,1);
-				if(nCategories>2){
-					// Note we put a lower an upper bound on our proposals, to
-					// prevent them wandering into space and the sampler getting stuck
-					// We account for this in the posterior, as we restrict delta
-					// to these intervals (i.e. use a truncated rather than standard
-					// normal when determining phi)
-					// The prob of delta being more extreme is less than 10E-10.
-					double lower=hyperParams.aDelta();
-					double upper=hyperParams.bDelta();
-					deltaProp[0] = truncNormalRand(rndGenerator,
-										deltaProp[0],
-										stdDev,
-										"B",
-										lower,
-										deltaProp[1]);
-
-					for(unsigned int p=1;p<nCategories-2;p++){
-						deltaProp[p] = truncNormalRand(rndGenerator,
-														deltaProp[p],
-														stdDev,
-														"B",
-														deltaProp[p-1],
-														deltaProp[p+1]);
-					}
-
-					deltaProp[nCategories-2] = truncNormalRand(rndGenerator,
-															deltaProp[nCategories-2],
-															stdDev,
-															"B",
-															deltaProp[nCategories-3],
-															upper);
-
-					// Now calculate the contribution to the acceptance ratio
-
-					if(deltaCurrent[0]>deltaProp[1]){
-						// Reverse move not possible so must be rejected
-						autoReject = true;
-					}else{
-
-						logAcceptRatio = logPdfTruncatedNormal(deltaCurrent[0],deltaProp[0],stdDev,
-												"B",lower,deltaProp[1])-
-											logPdfTruncatedNormal(deltaProp[0],deltaCurrent[0],stdDev,
-													"B",lower,deltaCurrent[1]);
-
-					}
-					for(unsigned int p=1;p<nCategories-2;p++){
-						if(deltaCurrent[p]>deltaProp[p+1]){
-							// Reverse move not possible so must be rejected
-							autoReject = true;
-						}else{
-							logAcceptRatio += logPdfTruncatedNormal(deltaCurrent[p],deltaProp[p],stdDev,
-													"B",deltaCurrent[p-1],deltaProp[p+1])-
-												logPdfTruncatedNormal(deltaProp[p],deltaCurrent[p],stdDev,
-														"B",deltaProp[p-1],deltaCurrent[p+1]);
-
-						}
-
-
-					}
-					logAcceptRatio += logPdfTruncatedNormal(deltaCurrent[nCategories-2],deltaProp[nCategories-2],stdDev,
-											"B",deltaCurrent[nCategories-3],upper)-
-										logPdfTruncatedNormal(deltaProp[nCategories-2],deltaCurrent[nCategories-2],stdDev,
-												"B",deltaProp[nCategories-3],upper);
-
-				}else{
-					boost::normal_distribution<double> normDist(deltaProp[0],stdDev);
-					randomNormal normRand(rndGenerator,normDist);
-					deltaProp[0] = normRand();
-					// In this case the contribution to the acceptance ratio
-					// cancels with the reverse move
-					logAcceptRatio=0.0;
-				}
-
-				// Set the proposed parameters
-				currentParams.delta(c,j,deltaProp);
-
-				vector<double> proposedLogPXiGivenZ(nSubjects);
-
-				// Now compute the adjusted values computed above
-				if(!autoReject){
-					for(unsigned int i=0; i<nSubjects;i++){
-						int zi = currentParams.z(i);
-						if(zi==(int)c){
-							proposedLogPXiGivenZ[i]=currentParams.workLogPXiGivenZi(i);
-						}else{
-							proposedLogPXiGivenZ[i]=currentLogPXiGivenZ[i];
-						}
-						logAcceptRatio+=(proposedLogPXiGivenZ[i]-currentLogPXiGivenZ[i]);
-					}
-				}else{
-					logAcceptRatio = -(numeric_limits<double>::max());
-
-				}
-				propParams.deltaAddTry(j);
-				nTry++;
+			vector<double> proposedLogPhi(nCategories);
+			proposedLogPhi=dirichletRand(rndGenerator,dirichParams);
+			for(unsigned int p=0;p<nCategories;p++){
+				proposedLogPhi[p]=log(proposedLogPhi[p]);
+			}
+			currentParams.logPhi(c,j,proposedLogPhi);
+			// If no variable selection or binary variable selection
+			// this is a sample from full conditional so no accept reject
+			// step need. If it is continuous variable selection we
+			// need an accept reject decision
+			if(varSelectType.compare("Continuous")==0){
+				double proposedLogPost = logCondPostPhicj(currentParams,model,c,j);
+				double logAcceptRatio=0.0;
+				logAcceptRatio=proposedLogPost-currentLogPost;
+				logAcceptRatio+=logPdfDirichlet(currentLogPhi,dirichParams,true);
+				logAcceptRatio-=logPdfDirichlet(proposedLogPhi,dirichParams,true);
 				if(unifRand()<exp(logAcceptRatio)){
+					// Move accepted
 					nAccept++;
-					propParams.deltaAddAccept(j);
-					currentLogPXiGivenZ.assign(proposedLogPXiGivenZ.begin(),proposedLogPXiGivenZ.end());
-
-					// Also update the proposal standard deviation
-					if(propParams.nTryDelta(j)%deltaUpdateFreq==0){
-						stdDev += 10*(propParams.deltaLocalAcceptRate(j)-deltaTargetRate)/
-										pow((double)(propParams.nTryDelta(j)/deltaUpdateFreq)+2.0,0.75);
-						propParams.deltaAnyUpdates(true);
-						if(stdDev>propParams.deltaStdDevUpper(j)||stdDev<propParams.deltaStdDevLower(j)){
-							propParams.deltaStdDevReset(j);
-						}
-						propParams.deltaLocalReset(j);
-					}
 				}else{
-					// Make the proposed vec back to the current vec (so we can
-					// use in the next iteration)
-					currentParams.delta(c,j,deltaCurrent);
-					// Otherwise update the proposal standard deviation
-					if(propParams.nTryDelta(j)%deltaUpdateFreq==0){
-						stdDev += 10*(propParams.deltaLocalAcceptRate(j)-deltaTargetRate)/
-										pow((double)(propParams.nTryDelta(j)/deltaUpdateFreq)+2.0,0.75);
-						propParams.deltaAnyUpdates(true);
-						if(stdDev>propParams.deltaStdDevUpper(j)||stdDev<propParams.deltaStdDevLower(j)){
-							propParams.deltaStdDevReset(j);
-						}
-						propParams.deltaLocalReset(j);
-					}
-
+					// Move rejected
+					// Reset phi
+					currentParams.logPhi(c,j,currentLogPhi);
 				}
+			}else{
+				nAccept++;
 			}
 
 		}
@@ -1511,10 +1160,6 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 	unsigned int maxZ = currentParams.workMaxZi();
 	string varSelectType = model.options().varSelectType();
 	string covariateType = model.options().covariateType();
-	bool anyOrdinal=false;
-	if(covariateType.compare("Discrete")==0){
-		anyOrdinal=model.dataset().anyOrdinal();
-	}
 
 	boost::uniform_real<double> unifDist(0,1);
 	randomUniform unifRand(rndGenerator,unifDist);
@@ -1547,7 +1192,7 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 	if(unifRand()<exp(logAcceptRatio)){
 		//nAccept++;
 		// Switch the labels
-		currentParams.switchLabels(c1,c2,covariateType,varSelectType,anyOrdinal);
+		currentParams.switchLabels(c1,c2,covariateType,varSelectType);
 	}
 
 	// Move 2 - swap labels of 2 randomly selected neighbouring clusters,
@@ -1561,7 +1206,7 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 	if(unifRand()<exp(logAcceptRatio)){
 		//nAccept++;
 		// Switch the labels
-		currentParams.switchLabels(c1,c1+1,covariateType,varSelectType,anyOrdinal);
+		currentParams.switchLabels(c1,c1+1,covariateType,varSelectType);
 
 		// Also switch the v's
 		double v1=currentParams.v(c1);
@@ -1608,7 +1253,7 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 
 	if(unifRand()<exp(logAcceptRatio)){
 		nAccept++;
-		currentParams.switchLabels(c1,c1+1,covariateType,varSelectType,anyOrdinal);
+		currentParams.switchLabels(c1,c1+1,covariateType,varSelectType);
 		double currPsiC1 = exp(currentParams.logPsi(c1));
 		double currPsiC1Plus1 = exp(currentParams.logPsi(c1+1));
 		double sumCurrPsi = currPsiC1+currPsiC1Plus1;
@@ -1852,7 +1497,7 @@ void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 
 /*********** BLOCK 3 p(Theta^I|.) **********************************/
 // I=Inactive. Sample the inactive cluster variables from the prior
-// Theta contains phi, delta, mu, Tau, gamma, theta. Only need to sample
+// Theta contains phi, mu, Tau, gamma, theta. Only need to sample
 // up to maxNClusters = max_i{Ci}. Several different routines here for
 // each of the variables
 
@@ -1867,7 +1512,6 @@ void gibbsForPhiInActive(mcmcChain<diPBaCParams>& chain,
 	diPBaCParams& currentParams = currentState.parameters();
 	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
-	const diPBaCData& dataset = model.dataset();
 	string varSelectType = model.options().varSelectType();
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -1875,8 +1519,6 @@ void gibbsForPhiInActive(mcmcChain<diPBaCParams>& chain,
 
 	// Find the number of covariates
 	unsigned int nCovariates = currentParams.nCovariates();
-
-	vector<bool> ordinalIndic = dataset.ordinalIndic();
 
 	// Define a uniform random number generator
 	boost::uniform_real<double> unifDist(0,1);
@@ -1888,197 +1530,21 @@ void gibbsForPhiInActive(mcmcChain<diPBaCParams>& chain,
 	for(unsigned int c=maxZ+1;c<maxNClusters;c++){
 		// Loop over the covariates
 		for(unsigned int j=0;j<nCovariates;j++){
-			if(!ordinalIndic[j]){
+			unsigned int nCategories = currentParams.nCategories(j);
+			vector<double> dirichParams(nCategories,hyperParams.aPhi(j));
+			vector<double> proposedLogPhi(nCategories);
+			proposedLogPhi=dirichletRand(rndGenerator,dirichParams);
 
-				unsigned int nCategories = currentParams.nCategories(j);
-				vector<double> dirichParams(nCategories,hyperParams.aPhi(j));
-				vector<double> proposedLogPhi(nCategories);
-				proposedLogPhi=dirichletRand(rndGenerator,dirichParams);
-
-				for(unsigned int p=0;p<nCategories;p++){
-					proposedLogPhi[p]=log(proposedLogPhi[p]);
-				}
-				currentParams.logPhi(c,j,proposedLogPhi);
+			for(unsigned int p=0;p<nCategories;p++){
+				proposedLogPhi[p]=log(proposedLogPhi[p]);
 			}
+			currentParams.logPhi(c,j,proposedLogPhi);
 		}
-
 	}
+
 
 }
 
-
-// Adaptive Metropolis Hastings move for delta
-void metropolisHastingsForDeltaInActive(mcmcChain<diPBaCParams>& chain,
-								unsigned int& nTry,unsigned int& nAccept,
-								const mcmcModel<diPBaCParams,
-												diPBaCOptions,
-												diPBaCData>& model,
-								diPBaCPropParams& propParams,
-								baseGeneratorType& rndGenerator){
-
-	mcmcState<diPBaCParams>& currentState = chain.currentState();
-	diPBaCParams& currentParams = currentState.parameters();
-	diPBaCHyperParams hyperParams = currentParams.hyperParams();
-
-	const diPBaCData& dataset = model.dataset();
-
-	// Find the number of clusters
-	unsigned int maxZ = currentParams.workMaxZi();
-	unsigned int maxNClusters = currentParams.maxNClusters();
-	// Find the number of covariates
-	unsigned int nCovariates = currentParams.nCovariates();
-	vector<unsigned int> nCats = currentParams.nCategories();
-
-	vector<bool> ordinalIndic = dataset.ordinalIndic();
-
-	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
-
-	// Delta target acceptance rate
-	double deltaTargetRate = propParams.deltaAcceptTarget();
-	unsigned int deltaUpdateFreq = propParams.deltaUpdateFreq();
-
-	// Now we loop over the clusters and covariates, and if the covariate is
-	// ordinal then we try an update
-
-	for(unsigned int c=maxZ+1;c<maxNClusters;c++){
-		// Loop over the covariates
-		for(unsigned int j=0;j<nCovariates;j++){
-			if(ordinalIndic[j]){
-				unsigned int nCategories = currentParams.nCategories(j);
-
-				// We are updating deltas
-				// We will use an adaptive Metropolis within Gibbs step, with a
-				// truncated normal distribution
-
-				double& stdDev = propParams.deltaStdDev(j);
-
-				vector<double> deltaProp(nCategories-1);
-				deltaProp = currentParams.delta(c,j);
-				vector<double> deltaCurrent(nCategories-1);
-				deltaCurrent = currentParams.delta(c,j);
-				double logAcceptRatio = 0.0;
-				bool autoReject = false;
-				normal_distribution<double> norm01(0,1);
-				if(nCategories>2){
-					// Note we put a lower an upper bound on our proposals, to
-					// prevent them wandering into space and the sampler getting stuck
-					// We account for this in the posterior, as we restrict delta
-					// to these intervals (i.e. use a truncated rather than standard
-					// normal when determining phi)
-					// The prob of delta being more extreme is less than 10E-10.
-					double lower=hyperParams.aDelta();
-					double upper=hyperParams.bDelta();
-					deltaProp[0] = truncNormalRand(rndGenerator,
-										deltaProp[0],
-										stdDev,
-										"B",
-										lower,
-										deltaProp[1]);
-
-					for(unsigned int p=1;p<nCategories-2;p++){
-						deltaProp[p] = truncNormalRand(rndGenerator,
-														deltaProp[p],
-														stdDev,
-														"B",
-														deltaProp[p-1],
-														deltaProp[p+1]);
-					}
-
-					deltaProp[nCategories-2] = truncNormalRand(rndGenerator,
-															deltaProp[nCategories-2],
-															stdDev,
-															"B",
-															deltaProp[nCategories-3],
-															upper);
-
-					// Now calculate the contribution to the acceptance ratio
-
-					if(deltaCurrent[0]>deltaProp[1]){
-						// Reverse move not possible so must be rejected
-						autoReject = true;
-					}else{
-
-						logAcceptRatio = logPdfTruncatedNormal(deltaCurrent[0],deltaProp[0],stdDev,
-												"B",lower,deltaProp[1])-
-											logPdfTruncatedNormal(deltaProp[0],deltaCurrent[0],stdDev,
-													"B",lower,deltaCurrent[1]);
-
-					}
-					for(unsigned int p=1;p<nCategories-2;p++){
-						if(deltaCurrent[p]>deltaProp[p+1]){
-							// Reverse move not possible so must be rejected
-							autoReject = true;
-						}else{
-							logAcceptRatio += logPdfTruncatedNormal(deltaCurrent[p],deltaProp[p],stdDev,
-													"B",deltaCurrent[p-1],deltaProp[p+1])-
-												logPdfTruncatedNormal(deltaProp[p],deltaCurrent[p],stdDev,
-														"B",deltaProp[p-1],deltaCurrent[p+1]);
-
-						}
-
-
-					}
-					logAcceptRatio += logPdfTruncatedNormal(deltaCurrent[nCategories-2],deltaProp[nCategories-2],stdDev,
-											"B",deltaCurrent[nCategories-3],upper)-
-										logPdfTruncatedNormal(deltaProp[nCategories-2],deltaCurrent[nCategories-2],stdDev,
-												"B",deltaProp[nCategories-3],upper);
-
-				}else{
-					boost::normal_distribution<double> normDist(deltaProp[0],stdDev);
-					randomNormal normRand(rndGenerator,normDist);
-					deltaProp[0] = normRand();
-					// In this case the contribution to the acceptance ratio
-					// cancels with the reverse move
-					logAcceptRatio=0.0;
-				}
-
-				// Set the proposed parameters
-				currentParams.delta(c,j,deltaProp);
-
-				// Now compute the adjusted values computed above
-				if(autoReject){
-					logAcceptRatio = -(numeric_limits<double>::max());
-				}
-				propParams.deltaAddTry(j);
-				nTry++;
-				if(unifRand()<exp(logAcceptRatio)){
-					nAccept++;
-					propParams.deltaAddAccept(j);
-					// Also update the proposal standard deviation
-					if(propParams.nTryDelta(j)%deltaUpdateFreq==0){
-						stdDev += 10*(propParams.deltaLocalAcceptRate(j)-deltaTargetRate)/
-										pow((double)(propParams.nTryDelta(j)/deltaUpdateFreq)+2.0,0.75);
-						propParams.deltaAnyUpdates(true);
-						if(stdDev>propParams.deltaStdDevUpper(j)||stdDev<propParams.deltaStdDevLower(j)){
-							propParams.deltaStdDevReset(j);
-						}
-						propParams.deltaLocalReset(j);
-					}
-				}else{
-					// Make the proposed vec back to the current vec (so we can
-					// use in the next iteration)
-					currentParams.delta(c,j,deltaCurrent);
-					// Otherwise update the proposal standard deviation
-					if(propParams.nTryDelta(j)%deltaUpdateFreq==0){
-						stdDev += 10*(propParams.deltaLocalAcceptRate(j)-deltaTargetRate)/
-										pow((double)(propParams.nTryDelta(j)/deltaUpdateFreq)+2.0,0.75);
-						propParams.deltaAnyUpdates(true);
-						if(stdDev>propParams.deltaStdDevUpper(j)||stdDev<propParams.deltaStdDevLower(j)){
-							propParams.deltaStdDevReset(j);
-						}
-						propParams.deltaLocalReset(j);
-					}
-
-				}
-			}
-
-		}
-
-	}
-
-}
 
 // Gibbs update for mu in Normal covariate case
 void gibbsForMuInActive(mcmcChain<diPBaCParams>& chain,
@@ -2262,7 +1728,7 @@ void metropolisHastingsForBeta(mcmcChain<diPBaCParams>& chain,
 	diPBaCParams& currentParams = currentState.parameters();
 
 	// Find the number of clusters
-	unsigned int nConfounders = currentParams.nConfounders();
+	unsigned int nFixedEffects = currentParams.nFixedEffects();
 
 	// Define a uniform random number generator
 	boost::uniform_real<double> unifDist(0,1);
@@ -2276,7 +1742,7 @@ void metropolisHastingsForBeta(mcmcChain<diPBaCParams>& chain,
 
 	double currentCondLogPost = logCondPostThetaBeta(currentParams,model);
 
-	for(unsigned int j=0;j<nConfounders;j++){
+	for(unsigned int j=0;j<nFixedEffects;j++){
 		nTry++;
 		propParams.betaAddTry(j);
 		double& stdDev = propParams.betaStdDev(j);
@@ -2421,12 +1887,12 @@ void gibbsForTauEpsilon(mcmcChain<diPBaCParams>& chain,
 	const string& outcomeType = model.dataset().outcomeType();
 
 	unsigned int nSubjects=dataset.nSubjects();
-	unsigned int nConfounders=dataset.nConfounders();
+	unsigned int nFixedEffects=dataset.nFixedEffects();
 
 	nTry++;
 	nAccept++;
 
-	double a=hyperParams.aTauEpsilon(),b=hyperParams.bTauEpsilon();
+	double a=hyperParams.shapeTauEpsilon(),b=hyperParams.rateTauEpsilon();
 
 	double sumEpsilon = 0.0;
 	vector<double> meanVec(nSubjects,0.0);
@@ -2436,7 +1902,7 @@ void gibbsForTauEpsilon(mcmcChain<diPBaCParams>& chain,
 	for(unsigned int i=0;i<nSubjects;i++){
 		int zi=currentParams.z(i);
 		double meanVal=meanVec[i]+currentParams.theta(zi);
-		for(unsigned int j=0;j<nConfounders;j++){
+		for(unsigned int j=0;j<nFixedEffects;j++){
 			meanVal+=currentParams.beta(j)*dataset.W(i,j);
 		}
 		double eps = currentParams.lambda(i)-meanVal;
@@ -2611,7 +2077,7 @@ void gibbsForSigmaSqY(mcmcChain<diPBaCParams>& chain,
 	const diPBaCData& dataset = model.dataset();
 
 	unsigned int nSubjects = currentParams.nSubjects();
-	unsigned int nConfounders = dataset.nConfounders();
+	unsigned int nFixedEffects = dataset.nFixedEffects();
 
 	nTry++;
 	nAccept++;
@@ -2621,7 +2087,7 @@ void gibbsForSigmaSqY(mcmcChain<diPBaCParams>& chain,
 		int Zi = currentParams.z(i);
 
 		double mu = currentParams.theta(Zi);
-		for(unsigned int j=0;j<nConfounders;j++){
+		for(unsigned int j=0;j<nFixedEffects;j++){
 			mu+=currentParams.beta(j)*dataset.W(i,j);
 		}
 
@@ -2657,7 +2123,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int nPredictSubjects=dataset.nPredictSubjects();
 	unsigned int maxNClusters=currentParams.maxNClusters();
-	unsigned int nConfounders=dataset.nConfounders();
+	unsigned int nFixedEffects=dataset.nFixedEffects();
 	unsigned int nCovariates=dataset.nCovariates();
 	vector<unsigned int>nCategories=dataset.nCategories();
 	const vector<vector<bool> >& missingX=dataset.missingX();
@@ -2828,7 +2294,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				for(unsigned int c=0;c<maxNClusters;c++){
 					if(u[i]<psi[c]){
 						double meanVal=meanVec[i]+currentParams.theta(c);
-						for(unsigned int j=0;j<nConfounders;j++){
+						for(unsigned int j=0;j<nFixedEffects;j++){
 							meanVal+=currentParams.beta(j)*dataset.W(i,j);
 						}
 
@@ -2840,7 +2306,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				// In this case the Y go in directly
 				for(unsigned int c=0;c<maxNClusters;c++){
 					if(u[i]<psi[c]){
-						logPyXz[c]+=logPYiGivenZiWi(currentParams,dataset,nConfounders,c,i);
+						logPyXz[c]+=logPYiGivenZiWi(currentParams,dataset,nFixedEffects,c,i);
 					}
 				}
 			}

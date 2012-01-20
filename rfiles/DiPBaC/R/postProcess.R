@@ -84,23 +84,23 @@ readRunInfo<-function(directoryPath,fileStem='output'){
    inputFileName<-gsub(' ','',inputFileName)
    inputFileName<-gsub('\t','',inputFileName)
       
-   # Get covariate and confounder information
+   # Get covariate and fixed effect information
    inputData<-readLines(inputFileName)
    inputData<-gsub("\t"," ",inputData)
    nCovariates<-as.integer(inputData[2])
-   nConfounders<-as.integer(inputData[3+nCovariates])
+   nFixedEffects<-as.integer(inputData[3+nCovariates])
    nExtraRows<-0
    nCategories<-NULL
    if(xModel=='Discrete'){
-      nExtraRows<-2
-      nCategories<-inputData[(4+nCovariates+nConfounders)]
+      nExtraRows<-1
+      nCategories<-inputData[(4+nCovariates+nFixedEffects)]
       nCategories<-as.integer(unlist(strsplit(nCategories," ")))
    }
 
    # Covariate names
    covNames<-inputData[3:(2+nCovariates)]
 
-   xMat<-inputData[(4+nCovariates+nConfounders+nExtraRows):length(inputData)]
+   xMat<-inputData[(4+nCovariates+nFixedEffects+nExtraRows):length(inputData)]
    xMat<-matrix(as.numeric(unlist(strsplit(xMat," "))),nrow=nSubjects,byrow=T)   
    yMat<-NULL
    wMat<-NULL     
@@ -114,8 +114,8 @@ readRunInfo<-function(directoryPath,fileStem='output'){
          yMat<-cbind(yMat,nTrials)
       }
    
-      if(nConfounders>0){
-         wMat<-as.matrix(xMat[,(2+nCovariates):(1+nCovariates+nConfounders)])
+      if(nFixedEffects>0){
+         wMat<-as.matrix(xMat[,(2+nCovariates):(1+nCovariates+nFixedEffects)])
       }
    }
    xMat<-matrix(xMat[,2:(nCovariates+1)],nrow=nSubjects)
@@ -127,7 +127,7 @@ readRunInfo<-function(directoryPath,fileStem='output'){
                    "covNames"=covNames,"xModel"=xModel,
                    "includeResponse"=includeResponse,"yModel"=yModel,
                    "varSelect"=varSelect,"varSelectType"=varSelectType,
-                   "nCovariates"=nCovariates,"nConfounders"=nConfounders,
+                   "nCovariates"=nCovariates,"nFixedEffects"=nFixedEffects,
                    "nCategories"=nCategories,"xMat"=xMat,"yMat"=yMat,"wMat"=wMat))
     
 }
@@ -247,7 +247,7 @@ calcOptimalClustering<-function(disSimObj,maxNClusters=NULL){
 
 # Function to take the optimal clustering and computing the risk and probability
 # profile
-calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
+calcAvgRiskAndProfile<-function(clusObj,includeFixedEffects=F){
 
    attach(clusObj)
    attach(clusObjRunInfoObj)
@@ -299,8 +299,8 @@ calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
       thetaFileName <- file.path(directoryPath,paste(fileStem,'_theta.txt',sep=''))
       thetaFile<-file(thetaFileName,open="r")
       
-      if(nConfounders>0){
-         # Construct the confounder file name
+      if(nFixedEffects>0){
+         # Construct the fixed effect coefficient file name
          betaFileName <-file.path(directoryPath,paste(fileStem,'_beta.txt',sep=''))
          betaFile<-file(betaFileName,open="r")
       }
@@ -321,8 +321,8 @@ calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
       # Initialise the object for storing the risks
       riskArray<-array(0,dim=c(nSamples,nClusters))
       thetaArray<-array(0,dim=c(nSamples,nClusters))
-      if(nConfounders>0){
-         betaArray<-array(0,dim=c(nSamples,nConfounders))
+      if(nFixedEffects>0){
+         betaArray<-array(0,dim=c(nSamples,nFixedEffects))
       }
    }else{
       riskArray<-NULL
@@ -374,14 +374,14 @@ calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
       if(includeResponse){
          # Get the risk data corresponding to this sweep
          currTheta<-scan(thetaFile,what=double(),skip=skipVal,n=currMaxNClusters,quiet=T)
-         if(nConfounders>0){
-            currBeta<-scan(betaFile,what=double(),skip=skipVal,n=nConfounders,quiet=T)
+         if(nFixedEffects>0){
+            currBeta<-scan(betaFile,what=double(),skip=skipVal,n=nFixedEffects,quiet=T)
             betaArray[sweep-firstLine+1,]<-currBeta
          }
          # Calculate the average risk (over subjects) for each cluster
          for(c in 1:nClusters){
             currLambda<-currTheta[currZ[optAlloc[[c]]]]
-            if(includeConfounders&&nConfounders>0){
+            if(includeFixedEffects&&nFixedEffects>0){
                currLambda<-currLambda+as.matrix(wMat[optAlloc[[c]],])%*%currBeta
             }
             
@@ -504,7 +504,7 @@ calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
    
    if(includeResponse){
       close(thetaFile)
-      if(nConfounders>0){
+      if(nFixedEffects>0){
          close(betaFile)
       }
    }
@@ -519,7 +519,7 @@ calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
 
 
 # Plot output values
-plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=T,orderBy=NULL,whichClusters=NULL,whichCovariates=NULL,useProfileStar=F){
+plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=F,orderBy=NULL,whichClusters=NULL,whichCovariates=NULL,useProfileStar=F){
    
    attach(riskProfObj)
    attach(riskProfClusObj)
@@ -888,187 +888,6 @@ plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=T,orderBy=NULL,wh
    
 }
 
-# Plot output values
-plotRiskProfileRank<-function(riskProfObj,outFile,covariatesOnXAxis=F,clusterOrder=NULL,associatedVariable=NULL,useProfileStar=F,whichCovariates=NULL){
-   
-   attach(riskProfObj)
-   attach(riskProfClusObj)
-   attach(clusObjRunInfoObj)
-   
-   if(covariatesOnXAxis){
-      png(outFile,width=800,height=1200)
-   }else{
-      png(outFile,width=1200,height=800)      
-   }
-   if(includeResponse){
-      risk<-apply(risk,2,mean)
-   }
-   
-   if(useProfileStar){
-      profile<-profileStar
-   }
-   
-   nOrigCovariates<-nCovariates
-   if(!is.null(whichCovariates)){
-      if(xModel=='Discrete'){
-         profile<-profile[,,whichCovariates,]
-         nCategories<-nCategories[whichCovariates]
-      }else if(xModel=='Normal'){
-         profile<-profile[,,whichCovariates]         
-         profileStdDev<-profileStdDev[,,whichCovariates,whichCovariates]
-      }
-      xMat<-matrix(xMat[,whichCovariates],nrow=nSubjects)
-      covNames<-covNames[whichCovariates]
-      nOrigCovariates<-nCovariates
-      nCovariates<-length(whichCovariates)
-   }
-   # Average over sweeps
-   if(xModel=='Discrete'){
-      # Read in the raw X data
-      rawXFileName<-gsub('.txt','_RawX.txt',inputFileName)
-      if(file.exists(rawXFileName)){
-         rawXData<-readLines(rawXFileName)
-         rawXData<-rawXData[(nOrigCovariates+3):length(rawXData)]
-         rawXData<-matrix(as.numeric(unlist(strsplit(rawXData," "))),nrow=nSubjects,byrow=T)
-         if(!is.null(whichCovariates)){
-            rawXData<-matrix(rawXData[,whichCovariates],nrow=nSubjects)   
-         }
-      }else{
-         rawXData<-xMat
-      }
-      profile<-apply(profile,2:4,mean)
-      tmp<-array(dim=c(nClusters,nCovariates))
-      for(j in 1:nCovariates){
-         catValueVec<-rep(0,nCategories[j])
-         for(p in 1:nCategories[j]){
-            catValueVec[p]<-mean(rawXData[xMat[,j]==(p-1),j])
-         }
-         if(covNames[j]=='CessationTime'||covNames[j]=='StartAge'){
-            difVal<-mean(diff(catValueVec[2:length(catValueVec)]))
-            catValueVec[1]<-catValueVec[2]-difVal
-         }
-         if(catValueVec[1]>catValueVec[nCategories[j]]){
-            catValueVec<--catValueVec
-         }
-         for(c in 1:nClusters){
-            tmp[c,j]<-profile[c,j,(1:nCategories[j])]%*%catValueVec  
-         }
-      }
-      profile<-tmp
-   }else{
-      profile<-apply(profile,2:3,mean)
-   }
-   
-   if(is.null(clusterOrder)){
-      if(includeResponse){
-         orderStat<-risk
-      }else{
-         # Order by the first covariate
-         orderStat<-profile[,1]         
-      }
-      meanSortIndex<-order(orderStat,decreasing=F)
-      clusterOrder<-meanSortIndex
-   }else{
-      meanSortIndex<-clusterOrder
-   }
-   
-   if(includeResponse){
-      # Reorder the risk matrix
-      risk<-risk[meanSortIndex]
-      # Rescale between 0 to 1
-      risk<-(risk-min(risk))/(max(risk)-min(risk))
-   }
-   # Reorder the profile summaries
-   profile<-profile[meanSortIndex,]
-   profile<-sweep(profile,2,apply(profile,2,min))/(sweep(profile,2,apply(profile,2,max),FUN="+")-sweep(profile,2,apply(profile,2,min),FUN="+"))
-   # Reorder the cluster sizes
-   clusterSizes<-clusterSizes[meanSortIndex]
-   # Create the data frame for plotting
-   x<-c()
-   y<-c()
-   z<-c()
-   covLabels<-rep('',ifelse(includeResponse,nCovariates+1,nCovariates))
-   tileOrders<-c()
-   for(j in 1:nCovariates){
-      if(covariatesOnXAxis){
-         x<-c(x,rep(j+1.5,nClusters))
-         y<-c(y,nClusters:1)
-         covLabels[j+1]<-covNames[j]
-      }else{
-         x<-c(x,1:nClusters)
-         y<-c(y,rep(nCovariates-j+1+ifelse(!is.null(associatedVariable),1.5,0),nClusters))
-         covLabels[nCovariates-j+1+ifelse(!is.null(associatedVariable),1,0)]<-covNames[j]
-      }
-      z<-c(z,profile[,j])
-      tileOrders<-c(tileOrders,order(order(profile[,j],decreasing=F),decreasing=F))
-   }
-   if(includeResponse){
-      if(covariatesOnXAxis){
-         x<-c(x,rep(1,nClusters))
-         y<-c(y,nClusters:1)
-         covLabels[1]<-'Risk'
-      }else{
-         x<-c(x,1:nClusters)
-         y<-c(y,rep(nCovariates+1.5+ifelse(!is.null(associatedVariable),1.5,0),nClusters))
-         covLabels[nCovariates+1+ifelse(!is.null(associatedVariable),1,0)]<-'Risk'
-      }
-      z<-c(z,risk)
-      tileOrders<-c(tileOrders,order(order(risk,decreasing=F),decreasing=F))
-   }
-   if(!is.null(associatedVariable)){
-      clusterAssocValues<-c(0,nClusters)
-      for(c in 1:nClusters){
-         relData<-na.omit(associatedVariable$values[clustering==clusterOrder[c]])
-         clusterAssocValues[c]<-mean(relData)         
-      }
-      clusterAssocValues<-(clusterAssocValues-min(clusterAssocValues))/(max(clusterAssocValues)-min(clusterAssocValues))
-      if(covariatesOnXAxis){
-         x<-c(x,rep(nCovariates+2,nClusters))
-         y<-c(y,nClusters:1)
-         covLabels[nCovariates+2]<-associatedVariable$name
-      }else{
-         x<-c(x,1:nClusters)
-         y<-c(y,rep(1,nClusters))
-         covLabels[1]<-associatedVariable$name
-      }
-      z<-c(z,clusterAssocValues)
-      tileOrders<-c(tileOrders,order(order(clusterAssocValues,decreasing=F),decreasing=F))
-   }
-   if(covariatesOnXAxis){
-      clusterLabels<-paste(nClusters:1,' (',rev(clusterSizes),')',sep='')
-   }else{
-      clusterLabels<-paste(1:nClusters,' (',clusterSizes,')',sep='')
-   }
-   plotDF<-data.frame(x=x,y=y,z=z,tileOrders=tileOrders)
-   xBreakVec<-sort(unique(x))
-   yBreakVec<-sort(unique(y))
-   p <- ggplot(plotDF)
-   p<-p+geom_tile(aes(x=x,y=y,fill=z,height=0.9,width=0.9))
-   p<-p+geom_text(aes(x=x,y=y,label=tileOrders),colour="black",size=12)
-   p<-p+scale_fill_gradient2(mid="white", high=muted("red"), low=muted("blue"),midpoint=0.5)
-   if(covariatesOnXAxis){
-      p<-p+scale_y_continuous(name='Cluster',breaks=yBreakVec,labels=clusterLabels)
-      p<-p+scale_x_continuous(name='',breaks=xBreakVec,labels=covLabels)      
-   }else{
-      p<-p+scale_y_continuous(name='',breaks=yBreakVec,labels=covLabels)
-      p<-p+scale_x_continuous(name='Cluster',breaks=xBreakVec,labels=clusterLabels)
-   }
-   p<-p+opts(legend.position="none")+opts(print.margin=unit(c(0,0,0,0),'lines'))
-   p<-p+opts(axis.text.y=theme_text(colour="black",size=20))
-   p<-p+opts(axis.text.x=theme_text(colour="black",size=20)) 
-   p<-p+opts(axis.title.x=theme_text(size=20))
-   print(p)
-   
-   dev.off()
-	
-	detach(clusObjRunInfoObj)
-	detach(riskProfClusObj)
-   detach(riskProfObj)
-   
-   return(meanSortIndex)
-   
-} 
-
 plotClustering<-function(clusObj,outFile,clusterPlotOrder=NULL,whichCovariates=NULL){
    
    attach(clusObj)
@@ -1117,67 +936,6 @@ plotClustering<-function(clusObj,outFile,clusterPlotOrder=NULL,whichCovariates=N
 	return(list("rawXDist"=d,"rawXprincipalComponents"=principalComp,"rawXIncludeVec"=includeVec))
 }
 
-# Show the continuous hyperparameter for variable selection
-summariseVarSelectRho<-function(runInfoObj){
-   
-   attach(runInfoObj)
-   # Rho file name
-   rhoFileName <- file.path(directoryPath,paste(fileStem,'_rho.txt',sep=''))
-
-   rhoMat<-matrix(scan(rhoFileName,what=double(),quiet=T),ncol=nCovariates,byrow=T)
-   
-   # Restrict to after burn in
-   firstLine<-2+nBurn/nFilter
-   lastLine<-1+(nBurn+nSweeps)/nFilter
-   
-   rhoMat<-rhoMat[firstLine:lastLine,]
-   
-   rhoMean<-apply(rhoMat,2,mean)
-   rhoMedian<-apply(rhoMat,2,median)
-   rhoLowerCI<-apply(rhoMat,2,quantile,0.05)
-   rhoUpperCI<-apply(rhoMat,2,quantile,0.95)
-   
-   output<-list("rho"=rhoMat,"rhoMean"=rhoMean,"rhoMedian"=rhoMedian,"rhoLowerCI"=rhoLowerCI,"rhoUpperCI"=rhoUpperCI)
-	detach(runInfoObj)
-   return(output)   
-}
-
-
-
-# Compute Ratio of variances (for extra variation case)
-computeRatioOfVariance<-function(runInfoObj){
-
-   attach(runInfoObj)
-   # Construct the number of clusters file name
-   nClustersFileName <- file.path(directoryPath,paste(fileStem,'_nClusters.txt',sep=''))
-   # Construct the allocation file name
-   zFileName <- file.path(directoryPath,paste(fileStem,'_z.txt',sep=''))
-   # Construct the allocation file name
-   thetaFileName <- file.path(directoryPath,paste(fileStem,'_theta.txt',sep=''))
-   # Construct the allocation file name
-   epsilonFileName <- file.path(directoryPath,paste(fileStem,'_epsilon.txt',sep=''))
-   
-   # Restrict to sweeps after burn in
-   firstLine<-2+nBurn/nFilter
-   lastLine<-1+(nBurn+nSweeps)/nFilter
-   
-   ratioOfVariance<-rep(0,length(lastLine-firstLine+1))
-   for(sweep in firstLine:lastLine){
-      currMaxNClusters<-scan(nClustersFileName,what=integer(),skip=sweep-1,n=1,quiet=T)
-      zCurr<-1+scan(zFileName,what=integer(),skip=sweep-1,n=nSubjects+nPredictSubjects,quiet=T)  
-      zCurr<-zCurr[1:nSubjects]
-      thetaCurr<-scan(thetaFileName,what=double(),skip=sweep-1,n=currMaxNClusters,quiet=T)  
-      thetaCurr<-thetaCurr[zCurr]
-      vTheta<-var(thetaCurr)
-      epsilonCurr<-scan(epsilonFileName,what=double(),skip=sweep-1,n=nSubjects,quiet=T)
-      vEpsilon<-var(epsilonCurr)
-      ratioOfVariance[sweep-firstLine+1]<-vTheta/(vTheta+vEpsilon)
-
-   }
-   detach(runInfoObj)
-   return(ratioOfVariance)   
-   
-}
 
 # Calculate predictions, and if possible assess predictive performance
 calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwell=F,fullSweepPredictions=F,fullSweepLogOR=F){
@@ -1185,6 +943,11 @@ calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwel
    attach(riskProfObj)
    attach(riskProfClusObj)
    attach(clusObjRunInfoObj)
+
+	if(yModel=="Poisson"||yModel=="Normal"){
+		fullSweepLogOR=F
+		cat("Log odds ratio does not make sense for Poisson or Normal response\n")
+	}
 	
    firstLine<-2+nBurn/nFilter
    lastLine<-1+(nSweeps+nBurn)/nFilter
@@ -1198,10 +961,10 @@ calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwel
       stop("No prediction subjects processed by C++\n")
    }
    
-   # Get the response and confounder data if available   
+   # Get the response and fixed effects data if available   
    responseProvided<-F
    extraInfoProvided<-F
-   confoundersProvided<-F
+   fixedEffectsProvided<-F
    if(!is.null(predictResponseFileName)){
       predictResponseData<-scan(predictResponseFileName,quiet=T)
       predictResponseMat<-matrix(predictResponseData[2:length(predictResponseData)],
@@ -1216,20 +979,20 @@ calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwel
       if(all(predictYMat[,1]>-999)){
          responseProvided<-T
       }
-      if(nConfounders>0){
-         confoundersProvided<-T
-         predictWMat<-matrix(predictResponseMat[,2:(nConfounders+1)],nrow=nPredictSubjects)
+      if(nFixedEffects>0){
+         fixedEffectsProvided<-T
+         predictWMat<-matrix(predictResponseMat[,2:(nFixedEffects+1)],nrow=nPredictSubjects)
          # Set missing values to their average or reference value
          predictWMat[predictWMat==-999]<-0
       }
    }
    
-   if(confoundersProvided){
-      # Construct the confounder file name
+   if(fixedEffectsProvided){
+      # Construct the fixed effects coefficients file name
       betaFileName <-file.path(directoryPath,paste(fileStem,'_beta.txt',sep=''))
       # Read the beta data
-      betaMat<-matrix(scan(betaFileName,what=double(),quiet=T),ncol=nConfounders,byrow=T)
-      betaMat<-matrix(betaMat[firstLine:lastLine,],ncol=nConfounders)
+      betaMat<-matrix(scan(betaFileName,what=double(),quiet=T),ncol=nFixedEffects,byrow=T)
+      betaMat<-matrix(betaMat[firstLine:lastLine,],ncol=nFixedEffects)
    }
    
    # Already done the allocation in the C++
@@ -1276,7 +1039,7 @@ calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwel
       }
       
       lambda<-thetaMat[sweep,]
-      if(confoundersProvided){
+      if(fixedEffectsProvided){
          currBeta<-betaMat[sweep,]
          lambda<-lambda+predictWMat%*%currBeta
       }
@@ -1327,6 +1090,67 @@ calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwel
    
 	return(output)
 	
+}
+
+
+# Compute Ratio of variances (for extra variation case)
+computeRatioOfVariance<-function(runInfoObj){
+	
+   attach(runInfoObj)
+   # Construct the number of clusters file name
+   nClustersFileName <- file.path(directoryPath,paste(fileStem,'_nClusters.txt',sep=''))
+   # Construct the allocation file name
+   zFileName <- file.path(directoryPath,paste(fileStem,'_z.txt',sep=''))
+   # Construct the allocation file name
+   thetaFileName <- file.path(directoryPath,paste(fileStem,'_theta.txt',sep=''))
+   # Construct the allocation file name
+   epsilonFileName <- file.path(directoryPath,paste(fileStem,'_epsilon.txt',sep=''))
+   
+   # Restrict to sweeps after burn in
+   firstLine<-2+nBurn/nFilter
+   lastLine<-1+(nBurn+nSweeps)/nFilter
+   
+   ratioOfVariance<-rep(0,length(lastLine-firstLine+1))
+   for(sweep in firstLine:lastLine){
+      currMaxNClusters<-scan(nClustersFileName,what=integer(),skip=sweep-1,n=1,quiet=T)
+      zCurr<-1+scan(zFileName,what=integer(),skip=sweep-1,n=nSubjects+nPredictSubjects,quiet=T)  
+      zCurr<-zCurr[1:nSubjects]
+      thetaCurr<-scan(thetaFileName,what=double(),skip=sweep-1,n=currMaxNClusters,quiet=T)  
+      thetaCurr<-thetaCurr[zCurr]
+      vTheta<-var(thetaCurr)
+      epsilonCurr<-scan(epsilonFileName,what=double(),skip=sweep-1,n=nSubjects,quiet=T)
+      vEpsilon<-var(epsilonCurr)
+      ratioOfVariance[sweep-firstLine+1]<-vTheta/(vTheta+vEpsilon)
+		
+   }
+   detach(runInfoObj)
+   return(ratioOfVariance)   
+   
+}
+
+# Show the continuous hyperparameter for variable selection
+summariseVarSelectRho<-function(runInfoObj){
+   
+   attach(runInfoObj)
+   # Rho file name
+   rhoFileName <- file.path(directoryPath,paste(fileStem,'_rho.txt',sep=''))
+	
+   rhoMat<-matrix(scan(rhoFileName,what=double(),quiet=T),ncol=nCovariates,byrow=T)
+   
+   # Restrict to after burn in
+   firstLine<-2+nBurn/nFilter
+   lastLine<-1+(nBurn+nSweeps)/nFilter
+   
+   rhoMat<-rhoMat[firstLine:lastLine,]
+   
+   rhoMean<-apply(rhoMat,2,mean)
+   rhoMedian<-apply(rhoMat,2,median)
+   rhoLowerCI<-apply(rhoMat,2,quantile,0.05)
+   rhoUpperCI<-apply(rhoMat,2,quantile,0.95)
+   
+   output<-list("rho"=rhoMat,"rhoMean"=rhoMean,"rhoMedian"=rhoMedian,"rhoLowerCI"=rhoLowerCI,"rhoUpperCI"=rhoUpperCI)
+	detach(runInfoObj)
+   return(output)   
 }
 
 
@@ -1423,275 +1247,6 @@ compareClustering<-function(riskProfileObjA,riskProfileObjB,clusterOrder=NULL){
 	
 }
 
-
-# Compute a symmetrized version of the divergence between two profiles
-compareProfiles<-function(riskProfileObjA,riskProfileObjB,weightVecA,weightVecB,summaryFn=mean,KLThresh=10e-08){
-   
-   divergenceABObj<-computeDivergenceAB(riskProfileObjA,riskProfileObjB,weightVecA,summaryFn,KLThresh)
-   divergenceBAObj<-computeDivergenceAB(riskProfileObjB,riskProfileObjA,weightVecB,summaryFn,KLThresh)
-   totalDivergence<-0.5*(divergenceABObj$totalDivergence+divergenceBAObj$totalDivergence)
-   out<-list("totalDivergence"=totalDivergence,"totalDivergenceAB"=divergenceABObj$totalDivergence,
-            "totalDivergenceBA"=divergenceBAObj$totalDivergence,"nClustersA"=divergenceABObj$nClustersA,
-            "nClustersB"=divergenceABObj$nClustersB,"allocationAB"=divergenceABObj$allocation,
-            "allocationBA"=divergenceBAObj$allocation,"divergenceBreakdownAB"=divergenceABObj$divergenceBreakdown,
-            "divergenceBreakdownBA"=divergenceBAObj$divergenceBreakdown)
-
-   return(out)         
-}
-
-
-# Compute a statistic measuring divergence between two profiles
-computeDivergenceAB<-function(riskProfileObjA,riskProfileObjB,weightsVecA,summaryFn=mean,KLThresh=10e-08){
-
-   clusterObjA<-riskProfileObjA$riskProfClusObj
-   clusterObjB<-riskProfileObjB$riskProfClusObj
-   runInfoObjA<-clusterObjA$clusObjRunInfoObj
-   runInfoObjB<-clusterObjB$clusObjRunInfoObj
-      
-   # Make sure the profiles come from the same models
-   xModel<-runInfoObjA$xModel
-   if(xModel!=runInfoObjB$xModel){
-      stop("The X model is not the same for the two profiles")
-   }
-   
-   # Only include the response in the computation if both samples were based on
-   # including the response and the response model is the same in both cases
-   includeResponseA<-runInfoObjA$includeResponse
-   includeResponseB<-runInfoObjB$includeResponse
-   if(includeResponseA&&includeResponseB){
-      includeResponse<-T
-   }else{
-      includeResponse<-F
-   }
-   
-   if(includeResponse){
-      yModelA<-runInfoObjA$yModel
-      yModelB<-runInfoObjA$yModel
-      if(yModelA==yModelB){
-         yModel<-yModelA
-      }else{
-         includeResponse<-F
-      }
-   }
-
-   nClustersA<-clusterObjA$nClusters
-   nClustersB<-clusterObjB$nClusters
-   
-   riskSummaryA<-NULL
-   riskSummaryB<-NULL
-   if(includeResponse){
-      riskSummaryA<-riskProfileObjA$risk
-      riskSummaryA<-apply(riskSummaryA,2,summaryFn)
-      riskSummaryB<-riskProfileObjB$risk
-      riskSummaryB<-apply(riskSummaryB,2,summaryFn)
-   }
-   
-   # We only compare covariates that are in both A and B
-   covNamesA<-runInfoObjA$covNames
-   covNamesB<-runInfoObjB$covNames
-   includeCovA<-covNamesA%in%covNamesB
-   includeCovB<-covNamesB%in%covNamesA
-   covNames<-covNamesA[includeCovA]
-   nCovariates<-length(covNames)
-   
-   # We make sure the covariates are in the same order   
-   if(xModel=='Discrete'){
-      whichAInB<-which(covNamesA%in%covNamesB)
-      whichBInA<-rep(0,nCovariates)
-      for (i in 1:nCovariates){ 
-         whichBInA[i]<-which(covNamesA[whichAInB[i]]==covNamesB)
-      }
-      covariatePhiA<-riskProfileObjA$profile
-      covariatePhiA<-apply(covariatePhiA,2:4,summaryFn)
-      covariatePhiA<-covariatePhiA[,whichAInB,]
-      covariatePhiB<-riskProfileObjB$profile
-      covariatePhiB<-apply(covariatePhiB,2:4,summaryFn)
-      covariatePhiB<-covariatePhiB[,whichBInA,]
-      # Make sure the remaining covariates have the same number of categories      
-      nCategoriesA<-runInfoObjA$nCategories
-      nCategoriesA<-nCategoriesA[whichAInB]
-      nCategoriesB<-runInfoObjB$nCategories
-      nCategoriesB<-nCategoriesA[whichBInA]
-      keepCov<-which(nCategoriesA==nCategoriesB)
-      covariatePhiA<-covariatePhiA[,keepCov,]
-      covariatePhiB<-covariatePhiB[,keepCov,]
-      nCovariates<-length(keepCov)
-      nCategories<-nCategoriesA[keepCov]
-      
-   }else if(xModel=='Normal'){
-      whichAInB<-which(covNamesA%in%covNamesB)
-      whichBInA<-rep(0,nCovariates)
-      for (i in 1:nCovariates){ 
-         whichBInA[i]<-which(covNamesA[whichAInB[i]]==covNamesB)
-      }
-      covariateMuA<-riskProfileObjA$profile
-      covariateMuA<-apply(covariateMuA,2:3,summaryFn)
-      covariateMuA<-covariateMuA[,whichAInB]
-      covariateSigmaA<-riskProfileObjA$profileStdDev
-      covariateSigmaA<-apply(covariateSigmaA,2:4,summaryFn)
-      covariateSigmaA<-covariateSigmaA[,whichAInB,whichAInB]
-      covariateMuB<-riskProfileObjB$profile
-      covariateMuB<-apply(covariateMuB,2:3,summaryFn)
-      covariateMuB<-covariateMuB[,whichBInA]
-      covariateSigmaB<-riskProfileObjB$profileStdDev
-      covariateSigmaB<-apply(covariateSigmaB,2:4,summaryFn)
-      covariateSigmaB<-covariateSigmaB[,whichBInA,whichBInA]
-   }
-   
-   KLXAB<-matrix(0,nrow=nClustersA,ncol=nClustersB)
-   
-   for(c1 in 1:nClustersA){
-      for(c2 in 1:nClustersB){
-         if(xModel=='Discrete'){
-            for(j in 1:nCovariates){
-               for(k in 1:nCategories[j]){
-                  KLXAB[c1,c2]<-KLXAB[c1,c2]+covariatePhiA[c1,j,k]*
-                        log(covariatePhiA[c1,j,k]/covariatePhiB[c2,j,k])
-               }
-            }
-         }else if(xModel=='Normal'){
-            muA<-as.vector(covariateMuA[c1,])
-            sigmaA<-as.matrix(covariateSigmaA[c1,,])
-            muB<-as.vector(covariateMuB[c2,])
-            sigmaB<-as.matrix(covariateSigmaB[c2,,])
-            paramsA<-list("mu"=muA,"sigma"=sigmaA)
-            paramsB<-list("mu"=muB,"sigma"=sigmaB)
-            KLXAB[c1,c2]<-computeKullbackLiebler(paramsA,paramsB,"MultivariateNormal",eps=KLThresh)
-         }
-      }
-   }
-   
-   #Munkers algorithm: to find the optimal allocation   
-   costMat<-KLXAB
-   nRowsCostMat<-nClustersA
-   nColsCostMat<-nClustersB
-   
-   if (nColsCostMat>=nRowsCostMat){
-      #Simple case, number of columns greater than or equal to number of rows
-      # Use built in function to solve
-      optAlloc<-as.integer(solve_LSAP(costMat))
-   }else{
-      # Harder case, more rows than columns
-      # Add dupicates of the columns to allow original columns to be matched to multiple rows
-      nRepeats<-floor(nRowsCostMat/nColsCostMat)
-      if (nRepeats>1){
-         for (r in 1:(nRepeats-1)){
-            costMat<-cbind(costMat,costMat[,(1:nColsCostMat)])
-         }
-      }
-      
-      # Add columns of zeros to make same number of rows and columns
-      nRemain<-nRowsCostMat-nRepeats*nColsCostMat
-      if (nRemain>0){
-         for (r in 1:nRemain)
-            costMat<-cbind(costMat,rep(0,nRowsCostMat))
-      }
-      
-      #solve using the munkers algo
-      optAlloc<-as.integer(solve_LSAP(costMat))
-      
-      # find the ones matched to the zero columns and rematch them
-      notMatched<-which(optAlloc>(nColsCostMat*nRepeats))
-      costMat<-matrix(KLXAB[notMatched,],ncol=nColsCostMat)
-      secondAlloc<-as.integer(solve_LSAP(costMat))
-      optAlloc[notMatched]<-secondAlloc
-      
-      # Make sure the clusters matched originally which are matched to repeats
-      # are reindexed to match to the correct original copy
-      optAlloc<-optAlloc %% nColsCostMat
-      optAlloc[optAlloc==0]<-nColsCostMat 
-   }
-   
-   totalDivergence<-0
-   divBreakdown<-matrix(0,ncol=2,nrow=nClustersA)
-   for (c in 1:nClustersA){
-      responseDivergence<-0
-      if(includeResponse){
-         if (yModel=='Poisson'){
-            paramsA<-list("lambda"=riskSummaryA[c])
-            paramsB<-list("lambda"=riskSummaryB[optAlloc[c]])
-            KLDistribution<-'Poisson'
-         }else if(yModel=='Bernoulli'||yModel=='Binomial'){
-            paramsA<-list("n"=1,"p"=riskSummaryA[c])
-            paramsB<-list("n"=1,"p"=riskSummaryB[optAlloc[c]])
-            KLDistribution<-'Binomial'
-         } 
-         responseDivergence<-computeKullbackLiebler(paramsA,paramsB,KLDistribution,eps=KLThresh)
-      }
-      totalDivergence<-totalDivergence+weightsVecA[c]*0.5*(responseDivergence+KLXAB[c,optAlloc[c]]/nCovariates)
-      divBreakdown[c,]<-c(responseDivergence,KLXAB[c,optAlloc[c]])
-   }
-   
-   output<-list("totalDivergence"=totalDivergence,"nClustersA"=clusterObjA$nClusters,
-               "nClustersB"=clusterObjB$nClusters,"allocation"=optAlloc,"divergenceBreakdown"=divBreakdown)
-   return(output)
-}
-
-# Compute the Kullback Liebler divergence
-computeKullbackLiebler<-function(paramsA,paramsB,distribution,eps=10e-08){
-   
-   if(distribution=='Binomial'){
-      # Get the parameters
-      nA<-paramsA$n
-      pA<-paramsA$p
-      nB<-paramsB$n
-      pB<-paramsB$p
-      # KL divergence between binomials
-      x<-seq(0,min(nA,nB),1)
-      out<-sum(dbinom(x,nA,pA)*(dbinom(x,nA,pA,log=T)-dbinom(x,nB,pB,log=T)))
-   }else if(distribution=='Poisson'){
-      # Get the parameters
-      lambdaA<-paramsA$lambda
-      lambdaB<-paramsB$lambda
-      # KL divergence between Poissons
-      x<-0
-      stopRule<-100
-      out<-0
-      while(stopRule>eps){
-         stopRule<-min(dpois(x,lambdaA),dpois(x,lambdaB))
-         out<-out+dpois(x,lambdaA)*(dpois(x,lambdaA,log=T)-dpois(x,lambdaB,log=T))
-         x<-x+1
-      }
-   }else if(distribution=='MultivariateNormal'){
-      muA<-paramsA$mu
-      sigmaA<-paramsA$sigma
-      muB<-paramsB$mu
-      sigmaB<-paramsB$sigma
-      invSigmaA<-solve(sigmaA)
-      invSigmaB<-solve(sigmaB)
-      lenMu<-length(muA)
-      # NB determinant function returns the log of the determinant
-      logDetSigmaA<-determinant(sigmaA)
-      logDetSigmaA<-logDetSigmaA$modulus
-      logDetSigmaB<-determinant(sigmaB)
-      logDetSigmaB<-logDetSigmaB$modulus
-      out<-0.5*((logDetSigmaB-logDetSigmaA)+sum(diag(invSigmaB%*%sigmaA))+
-               (muB-muA)%*%(invSigmaB%*%(muB-muA))-lenMu)
-            
-   } 
-   return(out)
-}
-
-multivariateNormalPDF<-function(x,mu,Sigma){
-
-	dimX<-length(x)
-	if(dimX==1){
-		return(dnorm(x,mean=mu,sd=sqrt(Sigma)))
-	}else{
-		work<-solve(Sigma)%*%(x-mu)
-		work<--0.5*t(x-mu)%*%work
-		if(work>0){
-			# This can only happen because of rounding in the files produced by the C++
-			# Causing a non positive definite Sigma
-			# It only happens when the clusters is empty, so little harm in setting to 0
-			return(0)
-		}else{
-			work<-work-0.5*(dimX*log(2*pi)+determinant(Sigma)$modulus)
-			return(exp(work))
-		}
-	}
-		
-}
 
 
 

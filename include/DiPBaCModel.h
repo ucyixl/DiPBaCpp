@@ -70,18 +70,14 @@ class diPBaCHyperParams{
 			unsigned int nCovariates = dataset.nCovariates();
 
 			// For alpha
-			_shapeAlpha=1.0;
-			_rateAlpha=0.5;
+			_shapeAlpha=2.0;
+			_rateAlpha=0.4;
 
 			// For Phi
 			_useReciprocalNCatsPhi=false;
 			for(unsigned int j=0;j<_aPhi.size();j++){
-				_aPhi[j]=1.0;
+				_aPhi[j]=0.5;
 			}
-
-			// For Delta
-			_aDelta = -7.5;
-			_bDelta = 7.5;
 
 			if(options.covariateType().compare("Normal")==0){
 				// Values for mu, Tau0, R0, kappa0
@@ -144,8 +140,8 @@ class diPBaCHyperParams{
 			_sigmaBeta = 2.5;
 			_dofBeta = 7;
 
-			_aTauEpsilon = 5.0;
-			_bTauEpsilon = 0.5;
+			_shapeTauEpsilon = 5.0;
+			_rateTauEpsilon = 0.5;
 
 			_aRho = 0.5;
 			_bRho = 0.5;
@@ -191,22 +187,6 @@ class diPBaCHyperParams{
 			return _aPhi[j];
 		}
 
-
-		double aDelta() const{
-			return _aDelta;
-		}
-
-		void aDelta(const double& a){
-			_aDelta = a;
-		}
-
-		double bDelta() const{
-			return _bDelta;
-		}
-
-		void bDelta(const double& b){
-			_bDelta = b;
-		}
 
 		/// \brief Return the hyper parameter Tau0Mu0
 		const arma::vec& mu0() const{
@@ -297,20 +277,20 @@ class diPBaCHyperParams{
 			_dofBeta = dof;
 		}
 
-		double aTauEpsilon() const{
-			return _aTauEpsilon;
+		double shapeTauEpsilon() const{
+			return _shapeTauEpsilon;
 		}
 
-		void aTauEpsilon(const double& a){
-			_aTauEpsilon = a;
+		void shapeTauEpsilon(const double& a){
+			_shapeTauEpsilon = a;
 		}
 
-		double bTauEpsilon() const{
-			return _bTauEpsilon;
+		double rateTauEpsilon() const{
+			return _rateTauEpsilon;
 		}
 
-		void bTauEpsilon(const double& b){
-			_bTauEpsilon = b;
+		void rateTauEpsilon(const double& b){
+			_rateTauEpsilon = b;
 		}
 
 		double aRho() const{
@@ -351,8 +331,6 @@ class diPBaCHyperParams{
 			_rateAlpha = hyperParams.rateAlpha();
 			_useReciprocalNCatsPhi = hyperParams.useReciprocalNCatsPhi();
 			_aPhi = hyperParams.aPhi();
-			_aDelta = hyperParams.aDelta();
-			_bDelta = hyperParams.bDelta();
 			_mu0 = hyperParams.mu0();
 			_Tau0 = hyperParams.Tau0();
 			_R0 = hyperParams.R0();
@@ -363,8 +341,8 @@ class diPBaCHyperParams{
 			_muBeta = hyperParams.muBeta();
 			_sigmaBeta = hyperParams.sigmaBeta();
 			_dofBeta = hyperParams.dofBeta();
-			_aTauEpsilon = hyperParams.aTauEpsilon();
-			_bTauEpsilon = hyperParams.bTauEpsilon();
+			_shapeTauEpsilon = hyperParams.shapeTauEpsilon();
+			_rateTauEpsilon = hyperParams.rateTauEpsilon();
 			_aRho = hyperParams.aRho();
 			_bRho = hyperParams.bRho();
 			_shapeSigmaSqY = hyperParams.shapeSigmaSqY();
@@ -384,11 +362,6 @@ class diPBaCHyperParams{
 		bool _useReciprocalNCatsPhi;
 		vector<double> _aPhi;
 
-		// Hyper parameters for prior for delta_j (discrete ordinal covariates)
-		// Prior is uniform over a < delta_j1< delta_j2<...< delta_j(ncat-1) < b
-		double _aDelta;
-		double _bDelta;
-
 		// Hyper parameters for prior for mu (for Normal covariates)
 		// Prior is mu ~ N(mu0,inv(Tau0))
 		arma::vec _mu0;
@@ -406,7 +379,7 @@ class diPBaCHyperParams{
 		double _sigmaTheta;
 		unsigned int _dofTheta;
 
-		// Hyper parameters for prior for beta (for confounders)
+		// Hyper parameters for prior for beta (for fixed effects)
 		// Prior is location and scale T distribution theta ~ t(mu,sigma,dof)
 		// http://www.mathworks.com/help/toolbox/stats/brn2ivz-145.html
 		double _muBeta;
@@ -414,10 +387,10 @@ class diPBaCHyperParams{
 		unsigned int _dofBeta;
 
 		// Hyper parameters for prior for tauEpsilon (for extra variation)
-		// Prior is tauEpsilon ~ Gamma(a,b)
-		// we use the inverse scale parameterisation so that E[tauEpsilon] = a/b
-		double _aTauEpsilon;
-		double _bTauEpsilon;
+		// Prior is tauEpsilon ~ Gamma(shape,rate)
+		// we use the inverse scale parameterisation so that E[tauEpsilon] = shape/rate
+		double _shapeTauEpsilon;
+		double _rateTauEpsilon;
 
 		// Hyper parameters for prior for tauEpsilon (for variable selection)
 		// Prior is rho ~ Beta(a,b)
@@ -445,7 +418,7 @@ class diPBaCParams{
 
 		/// \brief Function to set the sizes of the various class members
 		void setSizes(const unsigned int& nSubjects,
-				const unsigned int& nCovariates,const unsigned int& nConfounders,
+				const unsigned int& nCovariates,const unsigned int& nFixedEffects,
 				const unsigned int& nPredictSubjects,
 				const vector<unsigned int>& nCategories){
 
@@ -464,7 +437,6 @@ class diPBaCParams{
 			_v.resize(maxNClusters);
 			_logPhi.resize(maxNClusters);
 			_workLogPhiStar.resize(maxNClusters);
-			_delta.resize(maxNClusters);
 			_mu.resize(maxNClusters);
 			_workMuStar.resize(maxNClusters);
 			_Tau.resize(maxNClusters);
@@ -473,12 +445,10 @@ class diPBaCParams{
 			for(unsigned int c=0;c<maxNClusters;c++){
 				if(c==0){
 					_logNullPhi.resize(nCovariates);
-					_nullDelta.resize(nCovariates);
 					_nullMu.zeros(nCovariates);
 				}
 				_logPhi[c].resize(nCovariates);
 				_workLogPhiStar[c].resize(nCovariates);
-				_delta[c].resize(nCovariates);
 				_mu[c].zeros(nCovariates);
 				_workMuStar[c].zeros(nCovariates);
 				_Tau[c].zeros(nCovariates,nCovariates);
@@ -487,19 +457,9 @@ class diPBaCParams{
 				for(unsigned int j=0;j<nCovariates;j++){
 					if(c==0){
 						_logNullPhi[j].resize(nCategories[j]);
-						if(nCategories[j]>0){
-							_nullDelta[j].resize(nCategories[j]-1);
-						}else{
-							_nullDelta[j].resize(0);
-						}
 					}
 					_logPhi[c][j].resize(nCategories[j]);
 					_workLogPhiStar[c][j].resize(nCategories[j]);
-					if(nCategories[j]>0){
-						_delta[c][j].resize(nCategories[j]-1);
-					}else{
-						_delta[c][j].resize(0);
-					}
 					for(unsigned int p=0;p<nCategories[j];p++){
 						// We set logPhi to 0.0 so that we can call
 						// normal member function above when we actually
@@ -507,14 +467,9 @@ class diPBaCParams{
 						// correctly calculated)
 						_logPhi[c][j][p]=0.0;
 						_workLogPhiStar[c][j][p]=0.0;
-						if(p<nCategories[j]-1){
-							_delta[c][j][p]=0.0;
-						}
 						if(c==0){
 							_logNullPhi[j][p]=0.0;
-							if(p<nCategories[j]-1){
-								_nullDelta[j][p]=0.0;
-							}
+
 						}
 					}
 					// Everything in by default
@@ -524,7 +479,7 @@ class diPBaCParams{
 			}
 
 			_theta.resize(maxNClusters);
-			_beta.resize(nConfounders);
+			_beta.resize(nFixedEffects);
 			_u.resize(nSubjects+nPredictSubjects);
 			_lambda.resize(nSubjects);
 			_z.resize(nSubjects+nPredictSubjects);
@@ -567,7 +522,6 @@ class diPBaCParams{
 				_workNXInCluster.resize(nClus);
 				_logPhi.resize(nClus);
 				_workLogPhiStar.resize(nClus);
-				_delta.resize(nClus);
 				_mu.resize(nClus);
 				_workMuStar.resize(nClus);
 				_Tau.resize(nClus);
@@ -577,7 +531,6 @@ class diPBaCParams{
 					_workNXInCluster[c]=0;
 					_logPhi[c].resize(nCov);
 					_workLogPhiStar[c].resize(nCov);
-					_delta[c].resize(nCov);
 					_mu[c].zeros(nCov);
 					_workMuStar[c].zeros(nCov);
 					_Tau[c].zeros(nCov,nCov);
@@ -586,11 +539,6 @@ class diPBaCParams{
 					for(unsigned int j=0;j<nCov;j++){
 						_logPhi[c][j].resize(nCats[j]);
 						_workLogPhiStar[c][j].resize(nCats[j]);
-						if(nCats[j]>0){
-							_delta[c][j].resize(nCats[j]-1);
-						}else{
-							_delta[c][j].resize(0);
-						}
 						for(unsigned int p=0;p<nCats[j];p++){
 							// We set logPhi to 0.0 so that we can call
 							// normal member function above when we actually
@@ -598,9 +546,6 @@ class diPBaCParams{
 							// correctly calculated)
 							_logPhi[c][j][p]=0.0;
 							_workLogPhiStar[c][j][p]=0.0;
-							if(p<nCats[j]-1){
-								_delta[c][j][p]=0.0;
-							}
 						}
 						// Everything in by default
 						// This allows us to write general case with switches.
@@ -620,8 +565,8 @@ class diPBaCParams{
 		unsigned int nCovariates() const{
 			return _logPhi[0].size();
 		}
-		/// \brief Return the number of confounders
-		unsigned int nConfounders() const{
+		/// \brief Return the number of fixed effects
+		unsigned int nFixedEffects() const{
 			return _beta.size();
 		}
 
@@ -784,98 +729,6 @@ class diPBaCParams{
 			return _logNullPhi[j][p];
 		}
 
-
-		/// \brief Return the conditional covariate thresholds
-		const vector<vector<vector<double> > >& delta() const{
-			return _delta;
-		}
-
-		/// \brief Return the conditional covariate thresholds for cluster c, covariate j
-		const vector<double>& delta(const unsigned int& c,const unsigned int& j) const{
-			return _delta[c][j];
-		}
-
-		/// \brief Set the conditional covariate thresholds for cluster c, covariate j
-		void delta(const unsigned int& c,const unsigned int& j,const vector<double>& deltaVec){
-			_delta[c][j]=deltaVec;
-			// Compute logPhi
-			unsigned int nCats = nCategories(j);
-			vector<double> logPhiVec(nCats,0.0);
-			normal_distribution<double> norm01(0.0,1.0);
-			// To prevent the sampler wondering off to delta = +/- inf, in our proposals
-			// we restrict the value of the deltas to be -7.5 < delta < 7.5,
-			// Because we don't use the delta's anywhere (so don't rely on the Normal
-			// theory of Cowles) we can therefore use a truncated normal distribution
-			// to determine the logPhi (this ensures theoretical validity of the sampler)
-			double truncLower = cdf(norm01,_hyperParams.aDelta());
-			double truncUpper = cdf(norm01,_hyperParams.bDelta());
-			double logNormConst = log(truncUpper-truncLower);
-			for(unsigned int p=0;p<nCats;p++){
-				if(p==0){
-					logPhiVec[p]=log(cdf(norm01,deltaVec[p])-truncLower)-logNormConst;
-				}else if(p==nCats-1){
-					logPhiVec[p]=log(truncUpper-cdf(norm01,deltaVec[p-1]))-logNormConst;
-				}else{
-					logPhiVec[p]=log(cdf(norm01,deltaVec[p])-cdf(norm01,deltaVec[p-1]))-logNormConst;
-				}
-				if(isinf(logPhiVec[p])){
-					logPhiVec[p]=-10000;
-				}
-			}
-			// Now update logPhi and the associated working variables
-			logPhi(c,j,logPhiVec);
-		}
-
-		/// \brief Return the conditional threshold for cluster c, covariate j,category p
-		double delta(const unsigned int& c,const unsigned int& j,const unsigned int& p) const{
-			return _delta[c][j][p];
-		}
-
-		/// \brief Return the conditional covariate thresholds for null covariates
-		const vector<vector<double> >& nullDelta() const{
-			return _nullDelta;
-		}
-
-		/// \brief Return the conditional covariate thresholds for null covariate j
-		const vector<double>& nullDelta(const unsigned int& j) const{
-			return _nullDelta[j];
-		}
-
-		/// \brief Set the conditional covariate thresholds for cluster c, covariate j
-		void nullDelta(const unsigned int& j,const vector<double>& nullDeltaVec){
-			_nullDelta[j]=nullDeltaVec;
-			// Compute nullLogPhi
-			unsigned int nCats = nCategories(j);
-			vector<double> logNullPhiVec(nCats,0.0);
-			normal_distribution<double> norm01(0.0,1.0);
-			// To prevent the sampler wondering off to delta = +/- inf, in our proposals
-			// we restrict the value of the deltas to be -7.5 < delta < 7.5,
-			// Because we don't use the delta's anywhere (so don't rely on the Normal
-			// theory of Cowles) we can therefore use a truncated normal distribution
-			// to determine the logPhi (this ensures theoretical validity of the sampler)
-			double truncLower = cdf(norm01,_hyperParams.aDelta());
-			double truncUpper = cdf(norm01,_hyperParams.bDelta());
-			double logNormConst = log(truncUpper-truncLower);
-			for(unsigned int p=0;p<nCats;p++){
-				if(p==0){
-					logNullPhiVec[p]=log(cdf(norm01,nullDeltaVec[p])-truncLower)-logNormConst;
-				}else if(p==nCats-1){
-					logNullPhiVec[p]=log(truncUpper-cdf(norm01,nullDeltaVec[p-1]))-logNormConst;
-				}else{
-					logNullPhiVec[p]=log(cdf(norm01,nullDeltaVec[p])-cdf(norm01,nullDeltaVec[p-1]))-logNormConst;
-				}
-				if(isinf(logNullPhiVec[p])){
-					logNullPhiVec[p]=-10000;
-				}
-			}
-			// Now update logPhi and the associated working variables
-			logNullPhi(j,logNullPhiVec);
-		}
-
-		/// \brief Return the conditional threshold for cluster c, covariate j,category p
-		double nullDelta(const unsigned int& j,const unsigned int& p) const{
-			return _nullDelta[j][p];
-		}
 
 		/// \brief Return the vector of normal means mu
 		const vector<arma::vec>& mu() const{
@@ -1100,11 +953,6 @@ class diPBaCParams{
 
 		/// \brief Set the ith allocation variable to cluster c
 		void z(const unsigned int& i,const int& c,const string& covariateType){
-			// The code below was missing before version 0.8.1
-			// In all cases this would have affected the reported log posterior
-			// In most covariate types it would not have affected the outcome of the chain as the working variables were
-			// updated before they would have been used. However, in the case of the ordinal covariates, this would
-			// have led to a mistake, since the cutoffs acceptance probabilities were dependent on the incorrect values
 			unsigned int nCov = nCovariates();
 
 			if(i<nSubjects()){
@@ -1474,17 +1322,12 @@ class diPBaCParams{
 
 		void switchLabels(const unsigned int& c1,const unsigned int& c2,
 							const string& covariateType,
-							const string& varSelectType,
-							const bool& anyOrdinal){
+							const string& varSelectType){
 
 			//Covariate parameters including working parameters
 			if(covariateType.compare("Discrete")==0){
 				_logPhi[c1].swap(_logPhi[c2]);
 				_workLogPhiStar[c1].swap(_workLogPhiStar[c2]);
-				if(anyOrdinal){
-					_delta[c1].swap(_delta[c2]);
-				}
-
 			}else if(covariateType.compare("Normal")==0){
 				arma::vec muTmp = _mu[c1];
 				_mu[c1]=_mu[c2];
@@ -1530,8 +1373,6 @@ class diPBaCParams{
 			_v = params.v();
 			_logPhi = params.logPhi();
 			_logNullPhi = params.logNullPhi();
-			_delta = params.delta();
-			_nullDelta = params.nullDelta();
 			_mu = params.mu();
 			_nullMu = params.nullMu();
 			_Tau = params.Tau();
@@ -1582,15 +1423,6 @@ class diPBaCParams{
 		/// \brief A matrix containing conditional covariate probabilities
 		/// for the "null" covariates
 		vector<vector<double> > _logNullPhi;
-
-		/// \brief An array containing conditional covariate thresholds for
-		/// ordinal variates - equivalent to _logPhi
-		vector<vector<vector<double> > > _delta;
-
-		/// \brief An array containing conditional covariate thresholds for
-		/// ordinal variates for the null covariates
-		vector<vector<double> > _nullDelta;
-
 
 		/// \brief A vector of armadillo vectors containing covariate means
 		/// for the case of Normal covariates
@@ -1687,12 +1519,12 @@ class diPBaCParams{
 
 
 double logPYiGivenZiWiBernoulli(const diPBaCParams& params, const diPBaCData& dataset,
-						const unsigned int& nConfounders,const int& zi,
+						const unsigned int& nFixedEffects,const int& zi,
 						const unsigned int& i){
 
 	double lambda;
 	lambda=params.theta(zi);
-	for(unsigned int j=0;j<nConfounders;j++){
+	for(unsigned int j=0;j<nFixedEffects;j++){
 		lambda+=params.beta(j)*dataset.W(i,j);
 	}
 
@@ -1702,7 +1534,7 @@ double logPYiGivenZiWiBernoulli(const diPBaCParams& params, const diPBaCData& da
 
 double logPYiGivenZiWiBernoulliExtraVar(const diPBaCParams& params,
 												const diPBaCData& dataset,
-												const unsigned int& nConfounders,const int& zi,
+												const unsigned int& nFixedEffects,const int& zi,
 												const unsigned int& i){
 
 	double lambda=params.lambda(i);
@@ -1712,12 +1544,12 @@ double logPYiGivenZiWiBernoulliExtraVar(const diPBaCParams& params,
 }
 
 double logPYiGivenZiWiBinomial(const diPBaCParams& params, const diPBaCData& dataset,
-						const unsigned int& nConfounders,const int& zi,
+						const unsigned int& nFixedEffects,const int& zi,
 						const unsigned int& i){
 
 	double lambda;
 	lambda=params.theta(zi);
-	for(unsigned int j=0;j<nConfounders;j++){
+	for(unsigned int j=0;j<nFixedEffects;j++){
 		lambda+=params.beta(j)*dataset.W(i,j);
 	}
 
@@ -1727,7 +1559,7 @@ double logPYiGivenZiWiBinomial(const diPBaCParams& params, const diPBaCData& dat
 
 double logPYiGivenZiWiBinomialExtraVar(const diPBaCParams& params,
 												const diPBaCData& dataset,
-												const unsigned int& nConfounders,const int& zi,
+												const unsigned int& nFixedEffects,const int& zi,
 												const unsigned int& i){
 
 	double lambda=params.lambda(i);
@@ -1737,12 +1569,12 @@ double logPYiGivenZiWiBinomialExtraVar(const diPBaCParams& params,
 }
 
 double logPYiGivenZiWiPoisson(const diPBaCParams& params, const diPBaCData& dataset,
-						const unsigned int& nConfounders,const int& zi,
+						const unsigned int& nFixedEffects,const int& zi,
 						const unsigned int& i){
 
 	double lambda;
 	lambda=params.theta(zi);
-	for(unsigned int j=0;j<nConfounders;j++){
+	for(unsigned int j=0;j<nFixedEffects;j++){
 		lambda+=params.beta(j)*dataset.W(i,j);
 	}
 	lambda+=dataset.logOffset(i);
@@ -1753,7 +1585,7 @@ double logPYiGivenZiWiPoisson(const diPBaCParams& params, const diPBaCData& data
 
 double logPYiGivenZiWiPoissonExtraVar(const diPBaCParams& params,
 												const diPBaCData& dataset,
-												const unsigned int& nConfounders,const int& zi,
+												const unsigned int& nFixedEffects,const int& zi,
 												const unsigned int& i){
 
 	double lambda=params.lambda(i);
@@ -1763,12 +1595,12 @@ double logPYiGivenZiWiPoissonExtraVar(const diPBaCParams& params,
 }
 
 double logPYiGivenZiWiNormal(const diPBaCParams& params, const diPBaCData& dataset,
-						const unsigned int& nConfounders,const int& zi,
+						const unsigned int& nFixedEffects,const int& zi,
 						const unsigned int& i){
 
 	double mu;
 	mu=params.theta(zi);
-	for(unsigned int j=0;j<nConfounders;j++){
+	for(unsigned int j=0;j<nFixedEffects;j++){
 		mu+=params.beta(j)*dataset.W(i,j);
 	}
 
@@ -1790,9 +1622,8 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int maxNClusters=params.maxNClusters();
 	unsigned int nCovariates=dataset.nCovariates();
-	unsigned int nConfounders=dataset.nConfounders();
+	unsigned int nFixedEffects=dataset.nFixedEffects();
 	vector<unsigned int> nCategories = dataset.nCategories();
-	vector<bool> ordinalIndic = dataset.ordinalIndic();
 	const diPBaCHyperParams& hyperParams = params.hyperParams();
 
 	// (Augmented) Log Likelihood first
@@ -1823,7 +1654,7 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 					extraVarPriorVal[i]=params.lambda(i);
 					int zi=params.z(i);
 					extraVarPriorMean[i]=params.theta(zi);
-					for(unsigned int j=0;j<nConfounders;j++){
+					for(unsigned int j=0;j<nFixedEffects;j++){
 						extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
 					}
 				}
@@ -1837,7 +1668,7 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 					extraVarPriorVal[i]=params.lambda(i);
 					int zi=params.z(i);
 					extraVarPriorMean[i]=params.theta(zi);
-					for(unsigned int j=0;j<nConfounders;j++){
+					for(unsigned int j=0;j<nFixedEffects;j++){
 						extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
 					}
 				}
@@ -1851,7 +1682,7 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 					extraVarPriorVal[i]=params.lambda(i);
 					int zi=params.z(i);
 					extraVarPriorMean[i]=params.theta(zi);
-					for(unsigned int j=0;j<nConfounders;j++){
+					for(unsigned int j=0;j<nFixedEffects;j++){
 						extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
 					}
 					extraVarPriorMean[i]+=dataset.logOffset(i);
@@ -1863,68 +1694,45 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 
 		for(unsigned int i=0;i<nSubjects;i++){
 			int zi = params.z(i);
-			logLikelihood+=logPYiGivenZiWi(params,dataset,nConfounders,zi,i);
+			logLikelihood+=logPYiGivenZiWi(params,dataset,nFixedEffects,zi,i);
 		}
 	}
 
 	// Now need to add in the prior (i.e. p(z,params) in above notation)
+	// Note we integrate out u and all parameters in Theta with no members
 	double logPrior=0.0;
 
-	/// THIS NEEDS CORRECTING - SEE NOTES
-	unsigned int nNotEmpty=0;
-	for(unsigned int c=0;c<maxNClusters;c++){
-		if(params.workNXInCluster(c)>0){
-			nNotEmpty++;
-			logPrior+=lgamma((double)params.workNXInCluster(c));
-		}
+	// Prior for z
+	for(unsigned int i=0;i<nSubjects;i++){
+		int zi = params.z(i);
+		logPrior+=params.logPsi(zi);
 	}
-	logPrior+=((double)nNotEmpty)*log(params.alpha());
-	logPrior-=lgamma(params.alpha()+(double)nSubjects);
-	/// END OF PART NEEDING CORRECTIONs
+
+	// Prior for V (we only need to include these up to maxNCluster, but we do need
+	// to include all V, whether or not a cluster is empty, as the V themselves
+	//don't correspond to a cluster
+	for(unsigned int c=0;c<maxNClusters;c++){
+		logPrior+=logPdfBeta(params.v(c),1.0,params.alpha());
+	}
 
 	// Prior for alpha
 	if(fixedAlpha<0){
 		logPrior+=logPdfGamma(params.alpha(),hyperParams.shapeAlpha(),hyperParams.rateAlpha());
 	}
 
+	// Prior for phi
 	if(covariateType.compare("Discrete")==0){
 		// If covariate type is discrete
 		for(unsigned int c=0;c<maxNClusters;c++){
 			if(params.workNXInCluster(c)>0){
 				for(unsigned int j=0;j<nCovariates;j++){
-					if(ordinalIndic[j]){
-						// We use a uniform prior just need to check that
-						// it is inside bounds
-						bool insideBounds = true;
-						if(nCategories[j]>0){
-							if(params.delta(c,j,0)<hyperParams.aDelta()){
-								insideBounds = false;
-							}
-							for(unsigned int k=1;k<nCategories[j]-1;k++){
-								if(params.delta(c,j,k)<params.delta(c,j,k-1)){
-									insideBounds = false;
-								}
-							}
-							if(params.delta(c,j,nCategories[j]-2)>hyperParams.bDelta()){
-								insideBounds = false;
-							}
-						}
-						if(!insideBounds){
-							logPrior = -(numeric_limits<double>::max());
-							vector<double> outVec(3);
-							outVec[0]=logLikelihood+logPrior;
-							outVec[1]=logLikelihood;
-							outVec[2]=logPrior;
-							return outVec;
-						}
-					}else{
-						// We use a Dirichlet prior (by default this is equiv to Uniform)
-						vector<double> dirichParams(nCategories[j]);
-						for(unsigned int k=0;k<nCategories[j];k++){
-							dirichParams[k]=hyperParams.aPhi(j);
-						}
-						logPrior+=logPdfDirichlet(params.logPhi(c,j),dirichParams,true);
+					// We use a Dirichlet prior
+					vector<double> dirichParams(nCategories[j]);
+					for(unsigned int k=0;k<nCategories[j];k++){
+						dirichParams[k]=hyperParams.aPhi(j);
 					}
+					logPrior+=logPdfDirichlet(params.logPhi(c,j),dirichParams,true);
+
 				}
 			}
 		}
@@ -1939,6 +1747,8 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 			}
 		}
 	}
+
+	// Prior for variable selection parameters
 	if(varSelectType.compare("None")!=0){
 		if(varSelectType.compare("BinaryCluster")==0){
 			for(unsigned int j=0;j<nCovariates;j++){
@@ -1975,11 +1785,11 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 		}
 
 		// Prior for beta
-		// There were no confounders in the Molitor paper but to be consistent with
+		// There were no fixed effects in the Molitor paper but to be consistent with
 		// theta we use the same distribution (based on same reasoning).
-		// Note we should pre-process variables to standardise the confounders to
+		// Note we should pre-process variables to standardise the fixed effects to
 		// have 0 mean and standard dev of 0.5
-		for(unsigned int j=0;j<nConfounders;j++){
+		for(unsigned int j=0;j<nFixedEffects;j++){
 			logPrior+=logPdfLocationScaleT(params.beta(j),hyperParams.muBeta(),
 					hyperParams.sigmaBeta(),hyperParams.dofBeta());
 		}
@@ -1990,8 +1800,8 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 			for(unsigned int i=0;i<nSubjects;i++){
 				logPrior+=logPdfNormal(extraVarPriorVal[i],extraVarPriorMean[i],sigma);
 			}
-			logPrior+=logPdfGamma(params.tauEpsilon(),hyperParams.aTauEpsilon(),
-									hyperParams.bTauEpsilon());
+			logPrior+=logPdfGamma(params.tauEpsilon(),hyperParams.shapeTauEpsilon(),
+									hyperParams.rateTauEpsilon());
 		}
 	}
 
@@ -2100,7 +1910,7 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 	const bool responseExtraVar = model.options().responseExtraVar();
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int maxNClusters=params.maxNClusters();
-	unsigned int nConfounders=dataset.nConfounders();
+	unsigned int nFixedEffects=dataset.nFixedEffects();
 	const diPBaCHyperParams& hyperParams = params.hyperParams();
 
 	double out=0.0;
@@ -2121,7 +1931,7 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 				extraVarPriorVal[i]=params.lambda(i);
 				int zi=params.z(i);
 				extraVarPriorMean[i]=params.theta(zi);
-				for(unsigned int j=0;j<nConfounders;j++){
+				for(unsigned int j=0;j<nFixedEffects;j++){
 					extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
 				}
 			}
@@ -2135,7 +1945,7 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 				extraVarPriorVal[i]=params.lambda(i);
 				int zi=params.z(i);
 				extraVarPriorMean[i]=params.theta(zi);
-				for(unsigned int j=0;j<nConfounders;j++){
+				for(unsigned int j=0;j<nFixedEffects;j++){
 					extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
 				}
 			}
@@ -2150,7 +1960,7 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 				extraVarPriorVal[i]=params.lambda(i);
 				int zi=params.z(i);
 				extraVarPriorMean[i]=params.theta(zi);
-				for(unsigned int j=0;j<nConfounders;j++){
+				for(unsigned int j=0;j<nFixedEffects;j++){
 					extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
 				}
 				extraVarPriorMean[i]+=dataset.logOffset(i);
@@ -2163,7 +1973,7 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 
 	for(unsigned int i=0;i<nSubjects;i++){
 		int zi = params.z(i);
-		out+=logPYiGivenZiWi(params,dataset,nConfounders,zi,i);
+		out+=logPYiGivenZiWi(params,dataset,nFixedEffects,zi,i);
 	}
 
 	// Prior for theta
@@ -2177,11 +1987,11 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 	}
 
 	// Prior for beta
-	// There were no confounders in the Molitor paper but to be consistent with
+	// There were no fixed effects in the Molitor paper but to be consistent with
 	// theta we use the same distribution (based on same reasoning).
-	// Note we should pre-process variables to standardise the confounders to
+	// Note we should pre-process variables to standardise the fixed effects to
 	// have 0 mean and standard dev of 0.5
-	for(unsigned int j=0;j<nConfounders;j++){
+	for(unsigned int j=0;j<nFixedEffects;j++){
 		out+=logPdfLocationScaleT(params.beta(j),hyperParams.muBeta(),
 				hyperParams.sigmaBeta(),hyperParams.dofBeta());
 	}
@@ -2202,14 +2012,14 @@ double logCondPostLambdaiBernoulli(const diPBaCParams& params,
 								const unsigned int& i){
 
 	const diPBaCData& dataset = model.dataset();
-	unsigned int nConfounders=dataset.nConfounders();
+	unsigned int nFixedEffects=dataset.nFixedEffects();
 
 	int zi = params.z(i);
 	double meanVal = params.theta(zi);
-	for(unsigned int j=0;j<nConfounders;j++){
+	for(unsigned int j=0;j<nFixedEffects;j++){
 		meanVal+=params.beta(j)*dataset.W(i,j);
 	}
-	return logPYiGivenZiWiBernoulliExtraVar(params,dataset,nConfounders,zi,i)
+	return logPYiGivenZiWiBernoulliExtraVar(params,dataset,nFixedEffects,zi,i)
 			+ logPdfNormal(params.lambda(i),meanVal,1.0/sqrt(params.tauEpsilon()));
 
 }
@@ -2221,14 +2031,14 @@ double logCondPostLambdaiBinomial(const diPBaCParams& params,
 								const unsigned int& i){
 
 	const diPBaCData& dataset = model.dataset();
-	unsigned int nConfounders=dataset.nConfounders();
+	unsigned int nFixedEffects=dataset.nFixedEffects();
 
 	int zi = params.z(i);
 	double meanVal = params.theta(zi);
-	for(unsigned int j=0;j<nConfounders;j++){
+	for(unsigned int j=0;j<nFixedEffects;j++){
 		meanVal+=params.beta(j)*dataset.W(i,j);
 	}
-	return logPYiGivenZiWiBinomialExtraVar(params,dataset,nConfounders,zi,i)
+	return logPYiGivenZiWiBinomialExtraVar(params,dataset,nFixedEffects,zi,i)
 			+ logPdfNormal(params.lambda(i),meanVal,1.0/sqrt(params.tauEpsilon()));
 
 }
@@ -2240,16 +2050,16 @@ double logCondPostLambdaiPoisson(const diPBaCParams& params,
 								const unsigned int& i){
 
 	const diPBaCData& dataset = model.dataset();
-	unsigned int nConfounders=dataset.nConfounders();
+	unsigned int nFixedEffects=dataset.nFixedEffects();
 
 	int zi = params.z(i);
 	double meanVal = params.theta(zi);
-	for(unsigned int j=0;j<nConfounders;j++){
+	for(unsigned int j=0;j<nFixedEffects;j++){
 		meanVal+=params.beta(j)*dataset.W(i,j);
 	}
 	meanVal+=dataset.logOffset(i);
 
-	return logPYiGivenZiWiPoissonExtraVar(params,dataset,nConfounders,zi,i)
+	return logPYiGivenZiWiPoissonExtraVar(params,dataset,nFixedEffects,zi,i)
 			+ logPdfNormal(params.lambda(i),meanVal,1.0/sqrt(params.tauEpsilon()));
 
 }

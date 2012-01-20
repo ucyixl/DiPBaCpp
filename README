@@ -1,4 +1,4 @@
-########## DiPBaC++: C++ and R code version 1.0.1 ##################
+########## DiPBaC++: C++ and R code version 1.1.0 ##################
 
 ### Author ###
 David Hastie, Imperial College London
@@ -9,9 +9,10 @@ Program to implement Dirichlet Process Bayesian Clustering as described in
 Hastie et al. 2011. Previously this project was called profile regression.
 
    - Implements an infinite Dirichlet process model
-   - Handles categorical, ordinal or normal covariates
-   - Handles Bernoulli, Binomial or Poisson responses
-   - Handles Extra Variation in the response 
+   - Handles categorical or Normal covariates
+   - Handles Bernoulli, Binomial, Poisson or Normal responses
+   - Handles inclusion of fixed effects in the response model
+   - Handles Extra Variation in the response (for discrete response only)
    - Handles variable selection (tested in Discrete covariate case only)
    - Includes label switching moves for better mixing
    - Allows user to exclude the response from the model
@@ -21,13 +22,39 @@ Hastie et al. 2011. Previously this project was called profile regression.
    - C++ for model fitting
    - Uses Armadillo compiled against Goto blas
    - Adaptive MCMC where appropriate
-   - R package for generating simulate data and post processing
+   - R package for generating simulation data and post processing
    - R plotting functions allow user choice of what to order clusters by
-   - R Functionality for comparison of profile runs
 
 
 ### ChangeLog: ###
-This is the first major version of the this software, but the software
+Changes from from 1.0.1 to 1.1.0
+   - Added normal response (extra response variation not permitted in this case)	
+   - Removed separate handling of ordinal models. NB: IMPORTANT- This means that 
+   	 input files generated for Discrete covariate models for previous versions 
+   	 are no longer compatible with this version, as the line indicating whether
+   	 each covariate or ordinal or not must no longer be included. This has no 
+   	 impact for normal covariates
+   - Restored random (but parsimonious) initial number of clusters
+   - Changed prior of phi to be Dirichlet(0.5,...,0.5) by default instead of 
+     uniform.
+   - Changed prior for alpha to be Gamma(2,0.4)  
+   - Fixed bug with computation of full log posterior introduced in version 
+     1.0.1. This did not affect running of sampler as this is only used for 
+     reporting purposes.
+   - Renamed confounders to fixed effects throughout code
+   - Removed the function that plotted riskProfileRank because scaling was 
+     misleading.
+   - Removed some of the cluster comparison functions from the end of the post 
+     processing R files as these were little used and not really maintained.
+   - Tidied R files for generating simulation data  
+   - Added in missing example files referred to in this README  and added others
+
+Changes from 1.0.0 to 1.0.1
+   - Added calculation of log odds ratio into R computation of predictions
+   - Hot fixed a bug with the R package where the C++ being called for 
+     computing the dissimilarity matrix was calling the wrong package.
+      
+1.0.0 was the first major version of this software, but the software
 was previously available from the author in the profileRegression archive
 Changes since profileRegression version 2.0.1
    - Changes to this README, in particular noting that it was --fixedAlloc not 
@@ -38,10 +65,6 @@ Changes since profileRegression version 2.0.1
      argument to R calcPredictions function.
    - Fixed bugs in the C++ for implementation of variable selection for Normal 
      covariates
-Changes since DiPBaCpp 1.0.0
-   - Added calculation of log odds ratio into predictions
-   - Hot fixed a bug with the R package where the C++ being called for 
-     computing the dissimilarity matrix was calling the wrong package.
    	
 ### Known bugs and issues: ###
    - Variable selection for Normal covariates is only partially tested. C++ seems
@@ -73,12 +96,10 @@ The input file is made up of the
    -No of subjects
    -No of covariates
    -Covariate names (1 per line)
-   -No of confounders
-   -Confounder names (1 per line, only if the no. of confounders > 0)
+   -No of fixed effects
+   -Fixed effect names (1 per line, only if the no. of fixed effects > 0)
    -Number of categories per covariate (only if the covariates are discrete, 
-    i.e. categorical or ordinal)
-   -Binary indicator of whether or not the covariates are ordinal (only if the 
-    covariates are discrete, i.e. categorical or ordinal)
+    i.e. categorical)
    -Data
 
 Each line of the data corresponds to a separate subject and for each subject 
@@ -86,16 +107,16 @@ should be in the order
 y x1 x2 ... xJ w1 w2 ... wM T
 where y is the outcome variable
       x are the covariates
-      w are the confounders
-      T (Poisson and Binomial models only). In the Poisson model T is the offset. 
-	y~Poisson(mu), 
-	log(mu) = theta  + beta%*%W + log(T) 
-	(must be 1 if no offset)
-	In the Binomial model, T is the total number of trials.
-	T should not be present for other response models. 		
+      w are the fixed effects
+      T (Poisson and Binomial models only). 
+      	In the Poisson model T is the offset (must be 1 if no offset)      	 
+			y~Poisson(mu), 
+			log(mu) = theta  + beta%*%W + log(T) 
+		In the Binomial model, T is the total number of trials.
+		T should not be present for other response models. 		
 
 Missing covariates should be denoted with the value -999. There is currently no 
-handling of missing confounders or missing offset. Please note, that even if 
+handling of missing fixed effects or missing offset. Please note, that even if 
 --excludeY is passed, the program expects a response in each row (and also the 
 offset or total number of trials if the yModel is Poisson or Binomial). In other
 words, please prepare the input file as if you were going to be including Y in 
@@ -105,11 +126,21 @@ the data is read, but will be ignored in terms of fitting if the --excludeY
 argument is present.
 
 An example input file for binary outcome and categorical data is given in 
-	data/input/example_binary_discrete_input.txt
+	data/input/example_Bernoulli_Discrete_input.txt
 An example input file for Poisson outcome and categorical data is given in
-	data/input/example_Poisson_discrete_input.txt
+	data/input/example_Poisson_Discrete_input.txt
 An example input file for Poisson outcome and Normal data is given in
 	data/input/example_Poisson_Normal_input.txt
+An example input file for Binomial outcome and Normal data is given in 
+	data/input/example_Binomial_Normal_input.txt
+An example input file for Normal outcome and Normal data is given in
+	data/input/example_Normal_Normal_input.txt
+An example input file for variable selection with Bernoulli outcome and 
+categorical data is given in
+	data/input/example_Var_Select_Bernoulli_Discrete_input.txt
+
+These example datafiles are generated with the datasets in generateData.R in the
+associated R package. 
 
 We recommend you store real data outside the data directory in this package to 
 avoid it being overwritten when the package is updated.
@@ -132,64 +163,59 @@ An example parameter file is provided in
 	data/input/example_hyperparameter_file.txt
 
 The possible hyperparameters are (with definition):
-rAlpha  		- The shape parameter for Gamma prior on alpha 
+shapeAlpha  - The shape parameter for Gamma prior on alpha 
 			  (default=1.0)
-sAlpha  		- The inverse-scale (rate) parameter for the Gamma prior
+rateAlpha  	- The inverse-scale (rate) parameter for the Gamma prior
 			  on alpha (default=0.5)
 useReciprocalNCatsPhi 	- Boolean denoting whether the vector phi_j (for 
 			  covariate j) have all elements equal (only used in the 
 			  discrete covariate case, default=true)
-aPhi			- The vector of parameters for the Dirichlet prior on 
+aPhi		- The vector of parameters for the Dirichlet prior on 
 			  phi_j. Element j corresponds to covariate j which then
 			  has a prior Dirichlet(aPhi[j],aPhi[j],....,aPhi[j]). 
 			  (Only used in discrete case if useReciprocalNCatsPhi 
 			  is false, default=(1 1 1 ... 1))   
-aDelta			- The value of delta_0 for ordinal covariates (only used
-			  in the discrete case for ordinal covariates, 
-			  default=-7.5)
-bDelta			- The value of delta_NCat for ordinal covariates (only 
-			  used in the discrete case for ordinal covariates, 
-			  default=7.5) 
 mu0			- The mean vector for mu_c in the Normal covariate case 
 			  (only used in Normal covariate case, default=empirical 
 			  covariate means)
-Tau0			- The precision matrix for mu_c in the Normal covariate 
+Tau0		- The precision matrix for mu_c in the Normal covariate 
 			  case (only used in Normal covariate case, 
-                          default=inverse of diagonal matrix with elements equal 
-                          to square of empirical range for each covariate) 
+              default=inverse of diagonal matrix with elements equal to square 
+              of empirical range for each covariate) 
 R0			- The matrix parameter for the Wishart distribution for 
 			  Tau_c (only used in Normal covariate case, 
-                          default=1/nCovariates * inverse of empirical 
-                          covariance matrix)
-kapp0			- The degrees of freedom parameter for the Wishart 
-                          distribution for Tau_c (only used in Normal covariate 
-                          case, default=nCovariates).
-muTheta			- The location parameter for the t-Distribution for 
-                          theta_c (only used if response included in model, 
-                          default=0)
-sigmaTheta		- The scale parameter for the t-Distribution for 
-			  theta_c (only used if response included in model, 
-			  default=2.5)
-dofTheta		- The dof parameter for the t-Distribution for theta_c 
-                          (only used if response included in model, default=7)
-muBeta			- The location parameter for the t-Distribution for beta 
-                          (only used when confounders present, default=0)
-sigmaBeta		- The scale parameter for the t-Distribution for beta 
-                          (only used when confouunders present, default=2.5)
-dofBeta			- The dof parameter for the t-Distribution for beta 
-                          (only used when confounders present, default=7)
-aEpsilon		- Shape parameter for gamma distribution for prior for 
-			  precision tau of extra variation errors epsilon (only 
-                          used if extra variation is used i.e. --extraYVar flag 
-   			  is included, default=5.0)
-bEpsilon		- Inverse-scale (rate) parameter for gamma distribution 
-			  for prior for precision tau of extra variation errors 
-			  epsilon (only used if extra variation is used i.e. 
-			  --extraYVar flag is used, default=0.5)
-aRho                    - Parameter for beta distribution for prior on rho in 
-			  variable selection (default=0.5)
-bRho                    - Parameter for beta distribution for prior on rho in 
-			  variable selection (default=0.5)
+              default=1/nCovariates * inverse of empirical covariance matrix)
+kapp0		- The degrees of freedom parameter for the Wishart distribution for 
+              Tau_c (only used in Normal covariate case, default=nCovariates).
+muTheta		- The location parameter for the t-Distribution for theta_c (only 
+			  used if response included in model, default=0)
+sigmaTheta	- The scale parameter for the t-Distribution for theta_c (only used 
+              if response included in model, default=2.5)
+dofTheta	- The degrees of freedom parameter for the t-Distribution for 
+			  theta_c (only used if response included in model, default=7)
+muBeta		- The location parameter for the t-Distribution for beta (only used 
+              when fixed effects present, default=0)
+sigmaBeta	- The scale parameter for the t-Distribution for beta (only used 
+              when fixed effects present, default=2.5)
+dofBeta		- The dof parameter for the t-Distribution for beta (only used when 
+              fixed effects present, default=7)
+shapeTauEpsilon	- Shape parameter for gamma distribution for prior for 
+			  precision tau of extra variation errors epsilon (only used if 
+			  extra variation is used i.e. --extraYVar flag is included, 
+			  default=5.0)
+rateTauEpsilon	- Inverse-scale (rate) parameter for gamma distribution for 
+			  prior for precision tau of extra variation errors epsilon (only 
+			  used if extra variation is used i.e. --extraYVar flag is used, 
+			  default=0.5)
+aRho        - Parameter for beta distribution for prior on rho in variable 
+			  selection (default=0.5)
+bRho        - Parameter for beta distribution for prior on rho in variable 
+			  selection (default=0.5)
+shapeSigmaSqY - Shape parameter of inverse-gamma prior for sigma_Y^2 (only used 
+			  in the Normal response model, default =2.5) 
+scaleSigmaSqY - Scale parameter of inverse-gamma prior for sigma_Y^2 (only used 
+			  in the Normal response model, default =2.5) 
+
 
  
 ### Predictions (at C++ run time) ###
@@ -197,7 +223,7 @@ bRho                    - Parameter for beta distribution for prior on rho in
 The algorithm can now take an input file of predictive scenarios. The first line
 in this file must contain the number of predictive subjects, and then subsequent 
 lines must have the covariate values for each of these subjects. An example file 
-is in example_Normal_predictX.txt in the data/input folder.
+is in example_Poisson_Normal_predictX.txt in the data/input folder.
 
 At each iteration the predictive subjects are assigned to one of the current 
 clusters according to their covariate profiles (but ignoring missing values), or
@@ -266,55 +292,50 @@ For normal covariates, for each covariate the upper plot is the posterior
 distribution for the mean mu, and the lower plot is the posterior distribution 
 of sqrt(Sigma[j,j]) (i.e. the standard deviation for that covariate).    
 
-There are also now two extra plotting functions
->plotRiskProfileRank(riskProfileObj,'../data/out/summaryRank.png')
-This function produces essentially a slimmed down version of the previous plot, 
-showing only the "mean" levels (through the use of a heat map) of each of the 
-clusters
-
+Additionally there is a function for visually plotting the cluster
 >plotClustering(clusObj,'../data/output/cluster.png')
 This function produces a visual representation of how the subjects cluster when 
 plotted against the two principal components.
 
 There is also now an additional function calcPredictions for computing predicted 
 responses, for various prediction scenarios. It is assumed that the predictive 
-allocations or Rao-Blackwell predictions have already been done in C++ (using 
+allocations and Rao-Blackwell predictions have already been done in C++ (using 
 the --predict=<filename> run  time option). The user can provide the function 
 with a file through the predictResponseFileName argument. This file has the 
 number of subjects, followed by a row for each subject, where each row contains 
-values for the response, confounder and offset / number of trials (depending on 
-the response model) where available. Missing values in this file are denoted 
-(-999). If the file is not provided then the response, confounder and offset 
-data is treated as missing for all subjects. If a subject is missing confounder 
-values, then the mean value or 0 category confounder is used in the predictions 
-(i.e. no confounder contribution to predicted response). If the offset / number 
-of trials is missing this value is taken to be 1 when making predictions. If the
-response is provided for all subjects, the predicted responses are compared with
-the observed responses and the bias and rmse are computed.
+values for the response, fixed effects and offset / number of trials (depending 
+on the response model) where available. Missing values in this file are denoted 
+(-999). If the file is not provided then the response, fixed effect and offset 
+data is treated as missing for all subjects. If a subject is missing fixed 
+effect values, then the mean value or 0 category fixed effect is used in the 
+predictions  (i.e. no fixed effect contribution to predicted response). If the 
+offset / number  of trials is missing this value is taken to be 1 when making 
+predictions. If the response is provided for all subjects, the predicted 
+responses are compared with the observed responses and the bias and rmse are 
+computed.
 
 The function can produce predicted values based on simple allocations 
 (the default), or a Rao-Blackwellised estimate of predictions, where 
 the probabilities of allocations are used instead of actually performing a 
 random allocation.
 
-An example file where the observed response is missing is in 
-data/input/example_Poisson_Normal_predictYW_NoObsY.txt (there are no confounders 
-in this example, but these would just be added as columns between the first and 
-last columns). An example of using the function, which would do the Rao 
-Blackwellised predictions, is given by
+An example file where the fixed effects can be provided for prediction but the 
+observed response is missing is data/input/example_Poisson_predictW.txt 
+(there are 2 fixed effects in this example. An example of using the function, 
+which would do the Rao  Blackwellised predictions, is given by
 
 >calcPredictions(riskProfileObj, 
-  predictResponseFileName='../data/input_example_Poisson_Normal_predictYW_NoObsY.txt',
+  predictResponseFileName='../data/input_example_Poisson_Normal_predictW.txt',
   doRaoBlackwell=T)
 
-An example file where the observed response are present is in 
-data/input/example_Poisson_Normal_predictYW_NoObsY.txt (there are no confounders 
-in this example, but these would just be added as columns between the first and 
-last columns). An example of using the function, which would do the simple 
-predictions using the allocations produced by the C++, is given by
+An example file where both the observed response and fixed effects are present 
+is in data/input/example_Poisson_Normal_predictYW.txt (there are no fixed 
+effects  in this example, but these would just be added as columns between the 
+first and last columns). An example of using the function, which would do the 
+simple predictions using the allocations produced by the C++, is given by
 
 >calcPredictions(riskProfileObj,
-  predictResponseFileName='../data/input_example_Poisson_Normal_predictYW_NoObsY.txt',
+  predictResponseFileName='../data/input_example_Poisson_Normal_predictYW.txt',
   doRaoBlackwell=F)
 
 In order to support variable selection runs, the plotRiskProfile and 

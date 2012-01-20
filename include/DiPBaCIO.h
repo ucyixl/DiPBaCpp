@@ -193,10 +193,9 @@ void importDiPBaCData(const string& fitFilename,const string& predictFilename,di
 	}
 	unsigned int& nSubjects=dataset.nSubjects();
 	unsigned int& nCovariates=dataset.nCovariates();
-	unsigned int& nConfounders=dataset.nConfounders();
+	unsigned int& nFixedEffects=dataset.nFixedEffects();
 	unsigned int& nPredictSubjects=dataset.nPredictSubjects();
 	vector<unsigned int>& nCategories=dataset.nCategories();
-	vector<bool>& ordinalIndic=dataset.ordinalIndic();
 	vector<unsigned int>& discreteY=dataset.discreteY();
 	vector<double>& continuousY=dataset.continuousY();
 	vector<vector<int> >& discreteX=dataset.discreteX();
@@ -205,7 +204,7 @@ void importDiPBaCData(const string& fitFilename,const string& predictFilename,di
 	vector<vector<bool> >& missingX=dataset.missingX();
 	vector<unsigned int>& nCovariatesNotMissing=dataset.nCovariatesNotMissing();
 	vector<vector<double> >& W=dataset.W();
-	vector<string>& confNames=dataset.confounderNames();
+	vector<string>& confNames=dataset.fixedEffectNames();
 	string outcomeType = dataset.outcomeType();
 	string covariateType = dataset.covariateType();
 	vector<double>& logOffset=dataset.logOffset();
@@ -219,35 +218,23 @@ void importDiPBaCData(const string& fitFilename,const string& predictFilename,di
 	for(unsigned int i=0;i<nCovariates;i++){
 		inputFile >> covNames[i];
 	}
-	// Get the number of confounders
-	inputFile >> nConfounders;
-	confNames.resize(nConfounders);
-	for(unsigned int i=0;i<nConfounders;i++){
+	// Get the number of fixed effects
+	inputFile >> nFixedEffects;
+	confNames.resize(nFixedEffects);
+	for(unsigned int i=0;i<nFixedEffects;i++){
 		inputFile >> confNames[i];
 	}
 
 	nCategories.resize(nCovariates);
-	ordinalIndic.resize(nCovariates);
 	if(covariateType.compare("Discrete")==0){
 		// Get the number of categories for each covariate
 		for(unsigned int j=0;j<nCovariates;j++){
 			inputFile >> nCategories[j];
 		}
 
-		// Get whether each covariate is ordinal
-		for(unsigned int j=0;j<nCovariates;j++){
-			unsigned int tmp;
-			inputFile >> tmp;
-			if(tmp>0){
-				ordinalIndic[j]=true;
-			}else{
-				ordinalIndic[j]=false;
-			}
-		}
 	}else if(covariateType.compare("Normal")==0){
 		for(unsigned int j=0;j<nCovariates;j++){
 			nCategories[j]=0;
-			ordinalIndic[j]=false;
 		}
 	}
 
@@ -303,8 +290,8 @@ void importDiPBaCData(const string& fitFilename,const string& predictFilename,di
 			}
 
 		}
-		W[i].resize(nConfounders);
-		for(unsigned int j=0;j<nConfounders;j++){
+		W[i].resize(nFixedEffects);
+		for(unsigned int j=0;j<nFixedEffects;j++){
 			inputFile >> W[i][j];
 		}
 		if(outcomeType.compare("Poisson")==0){
@@ -413,16 +400,6 @@ void readHyperParamsFromFile(const string& filename,diPBaCHyperParams& hyperPara
 				tmpStr = tmpStr.substr(pos+1,tmpStr.size()-pos-1);
 			}
 			hyperParams.aPhi(aVec);
-		}else if(inString.find("aDelta")==0){
-			size_t pos = inString.find("=")+1;
-			string tmpStr = inString.substr(pos,inString.size()-pos);
-			double aDelta = (double)atof(tmpStr.c_str());
-			hyperParams.aDelta(aDelta);
-		}else if(inString.find("bDelta")==0){
-			size_t pos = inString.find("=")+1;
-			string tmpStr = inString.substr(pos,inString.size()-pos);
-			double bDelta = (double)atof(tmpStr.c_str());
-			hyperParams.bDelta(bDelta);
 		}else if(inString.find("mu0")==0){
 			size_t pos = inString.find("=")+1;
 			string tmpStr = inString.substr(pos,inString.size()-pos);
@@ -518,16 +495,16 @@ void readHyperParamsFromFile(const string& filename,diPBaCHyperParams& hyperPara
 			string tmpStr = inString.substr(pos,inString.size()-pos);
 			unsigned int dofBeta = (unsigned int)atoi(tmpStr.c_str());
 			hyperParams.dofBeta(dofBeta);
-		}else if(inString.find("aTauEpsilon")==0){
+		}else if(inString.find("shapeTauEpsilon")==0){
 			size_t pos = inString.find("=")+1;
 			string tmpStr = inString.substr(pos,inString.size()-pos);
-			double aTauEpsilon = (double)atof(tmpStr.c_str());
-			hyperParams.aTauEpsilon(aTauEpsilon);
-		}else if(inString.find("bTauEpsilon")==0){
+			double shapeTauEpsilon = (double)atof(tmpStr.c_str());
+			hyperParams.shapeTauEpsilon(shapeTauEpsilon);
+		}else if(inString.find("rateTauEpsilon")==0){
 			size_t pos = inString.find("=")+1;
 			string tmpStr = inString.substr(pos,inString.size()-pos);
-			double bTauEpsilon = (double)atof(tmpStr.c_str());
-			hyperParams.bTauEpsilon(bTauEpsilon);
+			double rateTauEpsilon = (double)atof(tmpStr.c_str());
+			hyperParams.rateTauEpsilon(rateTauEpsilon);
 		}else if(inString.find("aRho")==0){
 			size_t pos = inString.find("=")+1;
 			string tmpStr = inString.substr(pos,inString.size()-pos);
@@ -566,7 +543,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int nCovariates=dataset.nCovariates();
-	unsigned int nConfounders=dataset.nConfounders();
+	unsigned int nFixedEffects=dataset.nFixedEffects();
 	unsigned int nPredictSubjects=dataset.nPredictSubjects();
 	string covariateType = options.covariateType();
 	string outcomeType = options.outcomeType();
@@ -577,8 +554,6 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 
 	vector<unsigned int> nCategories;
 	nCategories = dataset.nCategories();
-	vector<bool> ordinalIndic;
-	ordinalIndic = dataset.ordinalIndic();
 
 	// Set the hyper parameters to their default values
 	hyperParams.setSizes(nCovariates);
@@ -591,7 +566,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	// Allocate the right sizes for each of the parameter variables
 	// This also switches "on" all variable indicators (gamma)
 	// This gets changed below if variable selection is being done
-	params.setSizes(nSubjects,nCovariates,nConfounders,nPredictSubjects,nCategories);
+	params.setSizes(nSubjects,nCovariates,nFixedEffects,nPredictSubjects,nCategories);
 	unsigned int maxNClusters = params.maxNClusters();
 
 	// Copy the dataset X matrix to a working object in params
@@ -603,46 +578,60 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	boost::uniform_real<double> unifDist(0,1);
 	randomUniform unifRand(rndGenerator,unifDist);
 
-	// Constrain the initialisation of alpha and allocations for parsimonious initialisation
-	double alpha=1.0;
+	boost::gamma_distribution<double> gammaDist(hyperParams.shapeAlpha());
+	randomGamma gammaRand(rndGenerator,gammaDist);
+
+	double alpha=gammaRand()/hyperParams.rateAlpha();
 	if(options.fixedAlpha()>0){
 		alpha=options.fixedAlpha();
 	}
 	params.alpha(alpha);
 
-	vector<unsigned int> nXInCluster(maxNClusters,0);
-	unsigned int maxZ=0;
-	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
-		int c=(int)(maxNClusters*unifRand()/10.0);
-		params.z(i,c,covariateType);
-		if(c>(int)maxZ){
-			maxZ=c;
-		}
-		if(i<nSubjects){
-			nXInCluster[c]++;
-		}
-	}
-	params.workNXInCluster(nXInCluster);
-	params.workMaxZi(maxZ);
-	params.maxNClusters(maxZ+1);
-
-	// Sample v (for logPsi)
-	// This is sampled from the posterior given the z vector above
-	// Prior comes from the conjugacy of the dirichlet and multinomial
-	// See Ishwaran and James 2001
-	vector<unsigned int> sumCPlus1ToMaxMembers(maxZ+1,0);
-	for(int c=maxZ-1;c>=0;c--){
-		sumCPlus1ToMaxMembers[c]=sumCPlus1ToMaxMembers[c+1]+params.workNXInCluster(c+1);
-	}
-
+	// Sample v (for logPsi) from the prior
 	double tmp=0.0;
-	for(unsigned int c=0;c<=maxZ;c++){
-		double vVal = betaRand(rndGenerator,1.0+params.workNXInCluster(c),alpha+sumCPlus1ToMaxMembers[c]);
+	for(unsigned int c=0;c<=maxNClusters;c++){
+		double vVal = betaRand(rndGenerator,1.0,alpha);
 		params.v(c,vVal);
 		// Set logPsi
 		params.logPsi(c,tmp+log(vVal));
 		tmp += log(1-vVal);
 	}
+
+
+
+	vector<unsigned int> nXInCluster(maxNClusters,0);
+	unsigned int maxZ=0;
+	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
+		double cumSum=0.0;
+		bool iAllocated=false;
+		double u=unifRand();
+		for(unsigned int c=0;c<maxNClusters-1;c++){
+			if(u<cumSum+exp(params.logPsi(c))){
+				params.z(i,c,covariateType);
+				if(c>(int)maxZ){
+					maxZ=c;
+				}
+				if(i<nSubjects){
+					nXInCluster[c]++;
+				}
+				iAllocated=true;
+				break;
+			}else{
+				cumSum+=exp(params.logPsi(c));
+			}
+		}
+		// If not allocated put them in the final cluster
+		if(!iAllocated){
+			params.z(i,maxNClusters-1,covariateType);
+			if(i<nSubjects){
+				nXInCluster[maxNClusters-1]++;
+			}
+			maxZ=maxNClusters-1;
+		}
+	}
+	params.workNXInCluster(nXInCluster);
+	params.workMaxZi(maxZ);
+	params.maxNClusters(maxZ+1);
 
 	// Sample u (auxilliary variables). This will determine the maximum number of clusters
 	maxNClusters = maxZ+1;
@@ -723,7 +712,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	params.logPsi(logPsiNew);
 
 	if(covariateType.compare("Discrete")==0){
-		// Sample logPhi and or delta
+		// Sample logPhi
 		// Need to count the number of X[i][j]==p for each covariate and category of p
 		vector<vector<unsigned int> > nXpMembers(nCovariates);
 		for(unsigned int j=0;j<nCovariates;j++){
@@ -743,37 +732,17 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 		normal_distribution<double> norm01(0.0,1.0);
 		for(unsigned int c=0;c<maxNClusters;c++){
 			for(unsigned int j=0;j<nCovariates;j++){
-				if(ordinalIndic[j]){
-					double sumVec=0.0;
-					vector<double> probVec(nCategories[j],0.0000001);
-					for(unsigned int p=0;p<nCategories[j];p++){
-						probVec[p]+=(double)(nXpMembers[j][p])/(double)(nSubjects);
-						sumVec+=probVec[p];
-					}
-					vector<double> deltaVec(nCategories[j]-1);
-					for(unsigned int p=0;p<nCategories[j]-1;p++){
-						// we need to renormalise because don't count missing X
-						// plus we have a 0.0000001 above to stop bad initialisation
-						probVec[p]/=(sumVec);
-						if(p>0){
-							probVec[p]+=probVec[p-1];
-						}
-						deltaVec[p]=quantile(norm01,probVec[p]);
-					}
-					params.delta(c,j,deltaVec);
-				}else{
-					vector<double> dirichParams(nCategories[j]);
-					for(unsigned int p=0;p<nCategories[j];p++){
-						dirichParams[p]=(double)nXpMembers[j][p]+hyperParams.aPhi(j);
-					}
-					vector<double> logDirichSample(nCategories[j]);
-					vector<double> dirichSample(nCategories[j]);
-					dirichSample=dirichletRand(rndGenerator,dirichParams);
-					for(unsigned int p=0;p<nCategories[j];p++){
-						logDirichSample[p]=log(dirichSample[p]);
-					}
-					params.logPhi(c,j,logDirichSample);
+				vector<double> dirichParams(nCategories[j]);
+				for(unsigned int p=0;p<nCategories[j];p++){
+					dirichParams[p]=(double)nXpMembers[j][p]+hyperParams.aPhi(j);
 				}
+				vector<double> logDirichSample(nCategories[j]);
+				vector<double> dirichSample(nCategories[j]);
+				dirichSample=dirichletRand(rndGenerator,dirichParams);
+				for(unsigned int p=0;p<nCategories[j];p++){
+					logDirichSample[p]=log(dirichSample[p]);
+				}
+				params.logPhi(c,j,logDirichSample);
 			}
 		}
 		// Initialise the null parameters for the variable selection case
@@ -787,19 +756,11 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 					probVec[p]+=(double)(nXpMembers[j][p]);
 					sumVec+=(double)nXpMembers[j][p];
 				}
-				if(ordinalIndic[j]){
-					vector<double> deltaVec(nCategories[j]-1);
-					for(unsigned int p=0;p<nCategories[j];p++){
-						deltaVec[p]=quantile(norm01,probVec[p]/sumVec);
-					}
-					params.nullDelta(j,deltaVec);
-				}else{
-					vector<double> logProbVec(nCategories[j]);
-					for(unsigned int p=0;p<nCategories[j];p++){
-						logProbVec[p]=log(probVec[p]/sumVec);
-					}
-					params.logNullPhi(j,logProbVec);
+				vector<double> logProbVec(nCategories[j]);
+				for(unsigned int p=0;p<nCategories[j];p++){
+					logProbVec[p]=log(probVec[p]/sumVec);
 				}
+				params.logNullPhi(j,logProbVec);
 			}
 		}
 
@@ -948,7 +909,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 			// Thetas are randomly between -2 and 2
 			params.theta(c,-2.0+4.0*unifRand());
 		}
-		for(unsigned int j=0;j<nConfounders;j++){
+		for(unsigned int j=0;j<nFixedEffects;j++){
 			// Betas are randomly between -2 and 2
 			params.beta(j,-2.0+4.0*unifRand());
 		}
@@ -976,7 +937,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 				double eps = normalRand();
 				int zi = params.z(i);
 				double meanVal = params.theta(zi);
-				for(unsigned int j=0;j<nConfounders;j++){
+				for(unsigned int j=0;j<nFixedEffects;j++){
 					meanVal+=params.beta(j)*dataset.W(i,j);
 				}
 				if(outcomeType.compare("Poisson")==0){
@@ -1008,7 +969,7 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		unsigned int nPredictSubjects = params.nPredictSubjects();
 		unsigned int maxNClusters = params.maxNClusters();
 		unsigned int nCovariates = params.nCovariates();
-		unsigned int nConfounders = params.nConfounders();
+		unsigned int nFixedEffects = params.nFixedEffects();
 		string covariateType = sampler.model().dataset().covariateType();
 		bool includeResponse = sampler.model().options().includeResponse();
 		bool responseExtraVar = sampler.model().options().responseExtraVar();
@@ -1020,12 +981,8 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		diPBaCPropParams& proposalParams = sampler.proposalParams();
 
 		vector<unsigned int> nCategories;
-		vector<bool> ordinalIndic;
-		bool anyOrdinal = false;
 		if(covariateType.compare("Discrete")==0){
 			nCategories = params.nCategories();
-			ordinalIndic = sampler.model().dataset().ordinalIndic();
-			anyOrdinal = sampler.model().dataset().anyOrdinal();
 		}
 
 		// Check if the files are already open
@@ -1038,10 +995,6 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 			if(covariateType.compare("Discrete")==0){
 				fileName = fileStem + "_phi.txt";
 				outFiles.push_back(new ofstream(fileName.c_str()));
-				if(anyOrdinal){
-					fileName = fileStem + "_delta.txt";
-					outFiles.push_back(new ofstream(fileName.c_str()));
-				}
 			}else if(covariateType.compare("Normal")==0){
 				fileName = fileStem + "_mu.txt";
 				outFiles.push_back(new ofstream(fileName.c_str()));
@@ -1060,10 +1013,6 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 			outFiles.push_back(new ofstream(fileName.c_str()));
 			if(fixedAlpha<0){
 				fileName = fileStem + "_alphaProp.txt";
-				outFiles.push_back(new ofstream(fileName.c_str()));
-			}
-			if(anyOrdinal){
-				fileName = fileStem + "_deltaProp.txt";
 				outFiles.push_back(new ofstream(fileName.c_str()));
 			}
 			if(includeResponse){
@@ -1110,10 +1059,6 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 				if(covariateType.compare("Discrete")==0){
 					fileName = fileStem + "_nullPhi.txt";
 					outFiles.push_back(new ofstream(fileName.c_str()));
-					if(anyOrdinal){
-						fileName = fileStem + "_nullDelta.txt";
-						outFiles.push_back(new ofstream(fileName.c_str()));
-					}
 				}else{
 					fileName = fileStem + "_nullMu.txt";
 					outFiles.push_back(new ofstream(fileName.c_str()));
@@ -1123,11 +1068,11 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		}
 
 		// File indices
-		int nClustersInd=-1,psiInd=-1,phiInd=-1,deltaInd=-1,muInd=-1,SigmaInd=-1,zInd=-1,entropyInd=-1,alphaInd=-1;
-		int logPostInd=-1,nMembersInd=-1,alphaPropInd,deltaPropInd=-1;
+		int nClustersInd=-1,psiInd=-1,phiInd=-1,muInd=-1,SigmaInd=-1,zInd=-1,entropyInd=-1,alphaInd=-1;
+		int logPostInd=-1,nMembersInd=-1,alphaPropInd;
 		int thetaInd=-1,betaInd=-1,thetaPropInd=-1,betaPropInd=-1,sigmaSqYInd=-1,epsilonInd=-1;
 		int sigmaEpsilonInd=-1,epsilonPropInd=-1,omegaInd=-1,rhoInd=-1;
-		int rhoOmegaPropInd=-1,gammaInd=-1,nullPhiInd=-1,nullDeltaInd=-1,nullMuInd=-1;
+		int rhoOmegaPropInd=-1,gammaInd=-1,nullPhiInd=-1,nullMuInd=-1;
 		int predictThetaRaoBlackwellInd=-1,predictPackYearsInd=-1;
 
 		int r=0;
@@ -1135,9 +1080,6 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		psiInd=r++;
 		if(covariateType.compare("Discrete")==0){
 			phiInd=r++;
-			if(anyOrdinal){
-				deltaInd=r++;
-			}
 		}else if(covariateType.compare("Normal")==0){
 			muInd=r++;
 			SigmaInd=r++;
@@ -1149,9 +1091,6 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		nMembersInd=r++;
 		if(fixedAlpha<0){
 			alphaPropInd=r++;
-		}
-		if(anyOrdinal){
-			deltaPropInd=r++;
 		}
 
 		if(includeResponse){
@@ -1183,9 +1122,6 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 			}
 			if(covariateType.compare("Discrete")==0){
 				nullPhiInd=r++;
-				if(anyOrdinal){
-					nullDeltaInd=r++;
-				}
 			}else{
 				nullMuInd=r++;
 			}
@@ -1242,31 +1178,14 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 							// to make reading in R easier
 							*(outFiles[phiInd]) << -999;
 						}
-						if(anyOrdinal){
-							if(p<nCategories[j]-1){
-								if(ordinalIndic[j]){
-									*(outFiles[deltaInd]) << params.delta(c,j,p);
-								}else{
-									*(outFiles[deltaInd]) << -999;
-								}
-							}else{
-								*(outFiles[deltaInd]) << -999;
-							}
-						}
 						if(c<(maxNClusters-1)||p<(maxNCategories-1)||j<(nCovariates-1)){
 							*(outFiles[phiInd]) << " ";
-							if(anyOrdinal){
-								*(outFiles[deltaInd]) << " ";
-							}
 						}
 
 					}
 				}
 			}
 			*(outFiles[phiInd]) << endl;
-			if(anyOrdinal){
-				*(outFiles[deltaInd]) << endl;
-			}
 		}else if(covariateType.compare("Normal")==0){
 			// To make the output comparable with discrete, we will write the
 			// output grouped by covariate (for each cluster)
@@ -1298,11 +1217,13 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 
 
 		if(includeResponse){
-			*(outFiles[sigmaSqYInd]) << params.sigmaSqY() << endl;
+			if(outcomeType.compare("Normal")==0){
+				*(outFiles[sigmaSqYInd]) << params.sigmaSqY() << endl;
+			}
 			// Print beta
-			for(unsigned int j=0;j<nConfounders;j++){
+			for(unsigned int j=0;j<nFixedEffects;j++){
 				*(outFiles[betaInd]) << params.beta(j);
-				if(j<nConfounders-1){
+				if(j<nFixedEffects-1){
 					*(outFiles[betaInd]) << " ";
 				}else{
 					*(outFiles[betaInd]) << endl;
@@ -1367,10 +1288,10 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 			// Print the acceptance rates for beta
 			anyUpdates = proposalParams.betaAnyUpdates();
 			if(anyUpdates){
-				for(unsigned int j=0;j<nConfounders;j++){
+				for(unsigned int j=0;j<nFixedEffects;j++){
 					*(outFiles[betaPropInd]) << sampler.proposalParams().betaAcceptRate(j) <<
 						" " << sampler.proposalParams().betaStdDev(j);
-					if(j<(nConfounders-1)){
+					if(j<(nFixedEffects-1)){
 						*(outFiles[betaPropInd]) << " ";
 					}
 				}
@@ -1386,7 +1307,7 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 				for(unsigned int i=0;i<nSubjects;i++){
 					int zi = params.z(i);
 					double meanVal = meanVec[i]+params.theta(zi);
-					for(unsigned int j=0;j<nConfounders;j++){
+					for(unsigned int j=0;j<nFixedEffects;j++){
 						meanVal+=params.beta(j)*dataset.W(i,j);
 					}
 					double eps=params.lambda(i)-meanVal;
@@ -1421,31 +1342,6 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 			}
 		}
 
-		if(covariateType.compare("Discrete")==0){
-			// Print the acceptance rates and std dev for delta (only if have been updated)
-			anyUpdates = proposalParams.deltaAnyUpdates();
-			unsigned int maxOrdinal=-1;
-			if(anyUpdates){
-				for(unsigned int j=0;j<nCovariates;j++){
-					if(ordinalIndic[j]){
-						maxOrdinal=j;
-					}
-				}
-				for(unsigned int j=0;j<nCovariates;j++){
-					if(ordinalIndic[j]){
-						*(outFiles[deltaPropInd]) << sampler.proposalParams().deltaAcceptRate(j) <<
-								" " << sampler.proposalParams().deltaStdDev(j);
-						if(j<maxOrdinal){
-							*(outFiles[deltaPropInd]) << " ";
-						}else{
-							*(outFiles[deltaPropInd]) << endl;
-						}
-					}
-				}
-				proposalParams.deltaAnyUpdates(false);
-			}
-		}
-
 		if(varSelectType.compare("None")!=0){
 			// Print variable selection related quantities
 			for(unsigned int j=0;j<nCovariates;j++){
@@ -1468,28 +1364,10 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 								*(outFiles[nullPhiInd]) << -999;
 							}
 
-							if(anyOrdinal){
-								if(ordinalIndic[j]){
-									if(p<nCategories[j]-1){
-										*(outFiles[nullDeltaInd]) << params.nullDelta(j,p);
-									}else{
-										*(outFiles[nullDeltaInd]) << -999;
-									}
-								}else{
-									*(outFiles[nullDeltaInd]) << -999;
-								}
-							}
 							if(p<(maxNCategories-1)||j<(nCovariates-1)){
 								*(outFiles[nullPhiInd]) << " ";
-								if(anyOrdinal){
-									*(outFiles[nullDeltaInd]) << " ";
-								}
 							}else{
 								*(outFiles[nullPhiInd]) << endl;
-								if(anyOrdinal){
-									*(outFiles[nullDeltaInd]) << endl;
-								}
-
 							}
 
 						}
@@ -1549,21 +1427,17 @@ string storeLogFileData(const diPBaCOptions& options,
 	for(unsigned int j=0;j<dataset.nCovariates();j++){
 		tmpStr << "\t" << dataset.covariateNames(j);
 		if(options.covariateType().compare("Discrete")==0){
-			if(dataset.ordinalIndic(j)){
-				tmpStr << " (ordinal)";
-			}else{
-				tmpStr << " (categorical)";
-			}
+			tmpStr << " (categorical)";
 		}
 		tmpStr << endl;
 	}
-	if(dataset.nConfounders()>0){
-		tmpStr << "Confounders: " << endl;
-		for(unsigned int j=0;j<dataset.nConfounders();j++){
-			tmpStr << "\t" << dataset.confounderNames(j) << endl;
+	if(dataset.nFixedEffects()>0){
+		tmpStr << "FixedEffects: " << endl;
+		for(unsigned int j=0;j<dataset.nFixedEffects();j++){
+			tmpStr << "\t" << dataset.fixedEffectNames(j) << endl;
 		}
 	}else{
-		tmpStr<< "No confounders" << endl;
+		tmpStr<< "No fixed effects" << endl;
 	}
 	tmpStr << "Model for Y: " << options.outcomeType() << endl;
 	if(options.responseExtraVar()){
@@ -1592,21 +1466,16 @@ string storeLogFileData(const diPBaCOptions& options,
 		tmpStr << "rateAlpha: " << hyperParams.rateAlpha() << endl;
 	}
 	if(options.covariateType().compare("Discrete")==0){
-		if(dataset.anyCategorical()){
-			if(hyperParams.useReciprocalNCatsPhi()){
-				tmpStr << "aPhi[j]: 1/nCategories[j]" << endl;
-			}else{
-				tmpStr << "aPhi[j]: ";
-				for(unsigned int j=0;j<dataset.nCovariates();j++){
-					tmpStr << hyperParams.aPhi(j) << " ";
-				}
-				tmpStr << endl;
+		if(hyperParams.useReciprocalNCatsPhi()){
+			tmpStr << "aPhi[j]: 1/nCategories[j]" << endl;
+		}else{
+			tmpStr << "aPhi[j]: ";
+			for(unsigned int j=0;j<dataset.nCovariates();j++){
+				tmpStr << hyperParams.aPhi(j) << " ";
 			}
+			tmpStr << endl;
 		}
-		if(dataset.anyOrdinal()){
-			tmpStr << "aDelta: " << hyperParams.aDelta() << endl;
-			tmpStr << "bDelta: " << hyperParams.bDelta() << endl;
-		}
+
 	}
 
 	if(options.covariateType().compare("Normal")==0){
@@ -1620,15 +1489,15 @@ string storeLogFileData(const diPBaCOptions& options,
 	tmpStr << "sigmaTheta: " << hyperParams.sigmaTheta() << endl;
 	tmpStr << "dofTheta: " << hyperParams.dofTheta() << endl;
 
-	if(dataset.nConfounders()>0){
+	if(dataset.nFixedEffects()>0){
 		tmpStr << "muBeta: " << hyperParams.muBeta() << endl;
 		tmpStr << "sigmaBeta: " << hyperParams.sigmaBeta() << endl;
 		tmpStr << "dofBeta: " << hyperParams.dofBeta() << endl;
 	}
 
 	if(options.responseExtraVar()){
-		tmpStr << "atauEpsilon: " << hyperParams.aTauEpsilon() << endl;
-		tmpStr << "btauEpsilon: " << hyperParams.bTauEpsilon() << endl;
+		tmpStr << "shapetauEpsilon: " << hyperParams.shapeTauEpsilon() << endl;
+		tmpStr << "ratetauEpsilon: " << hyperParams.rateTauEpsilon() << endl;
 	}
 
 	if(options.varSelectType().compare("None")!=0){
