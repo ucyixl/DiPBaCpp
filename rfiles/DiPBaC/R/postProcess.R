@@ -84,23 +84,23 @@ readRunInfo<-function(directoryPath,fileStem='output'){
    inputFileName<-gsub(' ','',inputFileName)
    inputFileName<-gsub('\t','',inputFileName)
       
-   # Get covariate and confounder information
+   # Get covariate and fixed effect information
    inputData<-readLines(inputFileName)
    inputData<-gsub("\t"," ",inputData)
    nCovariates<-as.integer(inputData[2])
-   nConfounders<-as.integer(inputData[3+nCovariates])
+   nFixedEffects<-as.integer(inputData[3+nCovariates])
    nExtraRows<-0
    nCategories<-NULL
    if(xModel=='Discrete'){
-      nExtraRows<-2
-      nCategories<-inputData[(4+nCovariates+nConfounders)]
+      nExtraRows<-1
+      nCategories<-inputData[(4+nCovariates+nFixedEffects)]
       nCategories<-as.integer(unlist(strsplit(nCategories," ")))
    }
 
    # Covariate names
    covNames<-inputData[3:(2+nCovariates)]
 
-   xMat<-inputData[(4+nCovariates+nConfounders+nExtraRows):length(inputData)]
+   xMat<-inputData[(4+nCovariates+nFixedEffects+nExtraRows):length(inputData)]
    xMat<-matrix(as.numeric(unlist(strsplit(xMat," "))),nrow=nSubjects,byrow=T)   
    yMat<-NULL
    wMat<-NULL     
@@ -114,8 +114,8 @@ readRunInfo<-function(directoryPath,fileStem='output'){
          yMat<-cbind(yMat,nTrials)
       }
    
-      if(nConfounders>0){
-         wMat<-as.matrix(xMat[,(2+nCovariates):(1+nCovariates+nConfounders)])
+      if(nFixedEffects>0){
+         wMat<-as.matrix(xMat[,(2+nCovariates):(1+nCovariates+nFixedEffects)])
       }
    }
    xMat<-matrix(xMat[,2:(nCovariates+1)],nrow=nSubjects)
@@ -127,7 +127,7 @@ readRunInfo<-function(directoryPath,fileStem='output'){
                    "covNames"=covNames,"xModel"=xModel,
                    "includeResponse"=includeResponse,"yModel"=yModel,
                    "varSelect"=varSelect,"varSelectType"=varSelectType,
-                   "nCovariates"=nCovariates,"nConfounders"=nConfounders,
+                   "nCovariates"=nCovariates,"nFixedEffects"=nFixedEffects,
                    "nCategories"=nCategories,"xMat"=xMat,"yMat"=yMat,"wMat"=wMat))
     
 }
@@ -247,7 +247,7 @@ calcOptimalClustering<-function(disSimObj,maxNClusters=NULL){
 
 # Function to take the optimal clustering and computing the risk and probability
 # profile
-calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
+calcAvgRiskAndProfile<-function(clusObj,includeFixedEffects=F){
 
    attach(clusObj)
    attach(clusObjRunInfoObj)
@@ -299,8 +299,8 @@ calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
       thetaFileName <- file.path(directoryPath,paste(fileStem,'_theta.txt',sep=''))
       thetaFile<-file(thetaFileName,open="r")
       
-      if(nConfounders>0){
-         # Construct the confounder file name
+      if(nFixedEffects>0){
+         # Construct the fixed effect coefficient file name
          betaFileName <-file.path(directoryPath,paste(fileStem,'_beta.txt',sep=''))
          betaFile<-file(betaFileName,open="r")
       }
@@ -321,8 +321,8 @@ calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
       # Initialise the object for storing the risks
       riskArray<-array(0,dim=c(nSamples,nClusters))
       thetaArray<-array(0,dim=c(nSamples,nClusters))
-      if(nConfounders>0){
-         betaArray<-array(0,dim=c(nSamples,nConfounders))
+      if(nFixedEffects>0){
+         betaArray<-array(0,dim=c(nSamples,nFixedEffects))
       }
    }else{
       riskArray<-NULL
@@ -374,14 +374,14 @@ calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
       if(includeResponse){
          # Get the risk data corresponding to this sweep
          currTheta<-scan(thetaFile,what=double(),skip=skipVal,n=currMaxNClusters,quiet=T)
-         if(nConfounders>0){
-            currBeta<-scan(betaFile,what=double(),skip=skipVal,n=nConfounders,quiet=T)
+         if(nFixedEffects>0){
+            currBeta<-scan(betaFile,what=double(),skip=skipVal,n=nFixedEffects,quiet=T)
             betaArray[sweep-firstLine+1,]<-currBeta
          }
          # Calculate the average risk (over subjects) for each cluster
          for(c in 1:nClusters){
             currLambda<-currTheta[currZ[optAlloc[[c]]]]
-            if(includeConfounders&&nConfounders>0){
+            if(includeFixedEffects&&nFixedEffects>0){
                currLambda<-currLambda+as.matrix(wMat[optAlloc[[c]],])%*%currBeta
             }
             
@@ -504,7 +504,7 @@ calcAvgRiskAndProfile<-function(clusObj,includeConfounders=F){
    
    if(includeResponse){
       close(thetaFile)
-      if(nConfounders>0){
+      if(nFixedEffects>0){
          close(betaFile)
       }
    }
@@ -888,6 +888,55 @@ plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=T,orderBy=NULL,wh
    
 }
 
+plotClustering<-function(clusObj,outFile,clusterPlotOrder=NULL,whichCovariates=NULL){
+   
+   attach(clusObj)
+   attach(clusObjRunInfoObj)
+   
+   png(outFile,width=1200,height=800)      
+   
+   if(is.null(clusterPlotOrder)){
+      clusterPlotOrder<-1:nClusters
+   }
+   # Read in the raw X data
+   rawXFileName<-gsub('.txt','_RawX.txt',inputFileName)
+   rawXData<-readLines(rawXFileName)
+   rawXData<-rawXData[(nCovariates+3):length(rawXData)]
+   rawXData<-matrix(as.numeric(unlist(strsplit(rawXData," "))),ncol=nCovariates,byrow=T)
+   if('CessationTime'%in%covNames){
+      relInd<-match('CessationTime',covNames)
+      meanCat1<-mean(rawXData[xMat[,relInd]==1,relInd])
+      rawXData[xMat[,relInd]==0,relInd]<-meanCat1+10
+   }
+   rawXData[rawXData==-999]<-NA
+   includeVec<-rep(T,nSubjects)
+   for(i in 1:nSubjects){
+      if(any(is.na(rawXData[i,]))){
+         includeVec[i]<-F
+      }
+   }
+   rawXData<-rawXData[includeVec,]
+   if(!is.null(whichCovariates)){
+      rawXData<-rawXData[,whichCovariates]
+   }
+   clustering<-clustering[includeVec]
+   d<-dist(rawXData)
+   
+   principalComp<-cmdscale(d,k=2)
+   plot(principalComp[,1],principalComp[,2],pch=match(clustering,clusterPlotOrder),
+         col=match(clustering,clusterPlotOrder),xlab="Principal Component 1",ylab="Principal Component 2")
+   title(main="2D visualization of how subjects cluster")
+   legend("topleft",legend=1:nClusters,pch=1:nClusters,col=1:nClusters,bg="white")
+   box()
+   dev.off()
+   
+   detach(clusObjRunInfoObj)
+   detach(clusObj)
+	
+	return(list("rawXDist"=d,"rawXprincipalComponents"=principalComp,"rawXIncludeVec"=includeVec))
+}
+
+
 # Calculate predictions, and if possible assess predictive performance
 calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwell=F,fullSweepPredictions=F,fullSweepLogOR=F){
 	
@@ -912,10 +961,10 @@ calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwel
       stop("No prediction subjects processed by C++\n")
    }
    
-   # Get the response and confounder data if available   
+   # Get the response and fixed effects data if available   
    responseProvided<-F
    extraInfoProvided<-F
-   confoundersProvided<-F
+   fixedEffectsProvided<-F
    if(!is.null(predictResponseFileName)){
       predictResponseData<-scan(predictResponseFileName,quiet=T)
       predictResponseMat<-matrix(predictResponseData[2:length(predictResponseData)],
@@ -930,20 +979,20 @@ calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwel
       if(all(predictYMat[,1]>-999)){
          responseProvided<-T
       }
-      if(nConfounders>0){
-         confoundersProvided<-T
-         predictWMat<-matrix(predictResponseMat[,2:(nConfounders+1)],nrow=nPredictSubjects)
+      if(nFixedEffects>0){
+         fixedEffectsProvided<-T
+         predictWMat<-matrix(predictResponseMat[,2:(nFixedEffects+1)],nrow=nPredictSubjects)
          # Set missing values to their average or reference value
          predictWMat[predictWMat==-999]<-0
       }
    }
    
-   if(confoundersProvided){
-      # Construct the confounder file name
+   if(fixedEffectsProvided){
+      # Construct the fixed effects coefficients file name
       betaFileName <-file.path(directoryPath,paste(fileStem,'_beta.txt',sep=''))
       # Read the beta data
-      betaMat<-matrix(scan(betaFileName,what=double(),quiet=T),ncol=nConfounders,byrow=T)
-      betaMat<-matrix(betaMat[firstLine:lastLine,],ncol=nConfounders)
+      betaMat<-matrix(scan(betaFileName,what=double(),quiet=T),ncol=nFixedEffects,byrow=T)
+      betaMat<-matrix(betaMat[firstLine:lastLine,],ncol=nFixedEffects)
    }
    
    # Already done the allocation in the C++
@@ -990,7 +1039,7 @@ calcPredictions<-function(riskProfObj,predictResponseFileName=NULL,doRaoBlackwel
       }
       
       lambda<-thetaMat[sweep,]
-      if(confoundersProvided){
+      if(fixedEffectsProvided){
          currBeta<-betaMat[sweep,]
          lambda<-lambda+predictWMat%*%currBeta
       }
@@ -1077,6 +1126,31 @@ computeRatioOfVariance<-function(runInfoObj){
    detach(runInfoObj)
    return(ratioOfVariance)   
    
+}
+
+# Show the continuous hyperparameter for variable selection
+summariseVarSelectRho<-function(runInfoObj){
+   
+   attach(runInfoObj)
+   # Rho file name
+   rhoFileName <- file.path(directoryPath,paste(fileStem,'_rho.txt',sep=''))
+	
+   rhoMat<-matrix(scan(rhoFileName,what=double(),quiet=T),ncol=nCovariates,byrow=T)
+   
+   # Restrict to after burn in
+   firstLine<-2+nBurn/nFilter
+   lastLine<-1+(nBurn+nSweeps)/nFilter
+   
+   rhoMat<-rhoMat[firstLine:lastLine,]
+   
+   rhoMean<-apply(rhoMat,2,mean)
+   rhoMedian<-apply(rhoMat,2,median)
+   rhoLowerCI<-apply(rhoMat,2,quantile,0.05)
+   rhoUpperCI<-apply(rhoMat,2,quantile,0.95)
+   
+   output<-list("rho"=rhoMat,"rhoMean"=rhoMean,"rhoMedian"=rhoMedian,"rhoLowerCI"=rhoLowerCI,"rhoUpperCI"=rhoUpperCI)
+	detach(runInfoObj)
+   return(output)   
 }
 
 

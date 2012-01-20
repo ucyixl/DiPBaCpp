@@ -42,12 +42,12 @@ Changes from from 1.0.1 to 1.1.0
      1.0.1. This did not affect running of sampler as this is only used for 
      reporting purposes.
    - Renamed confounders to fixed effects throughout code
-   - *Removed the function that plotted riskProfileRank because scaling was 
+   - Removed the function that plotted riskProfileRank because scaling was 
      misleading.
-   - *Removed some of the cluster comparison functions from the end of the post 
+   - Removed some of the cluster comparison functions from the end of the post 
      processing R files as these were little used and not really maintained.
-   - *Tidied R files for generating simulation data  
-   - *Added in missing example files referred to in this README
+   - Tidied R files for generating simulation data  
+   - Added in missing example files referred to in this README  and added others
 
 Changes from 1.0.0 to 1.0.1
    - Added calculation of log odds ratio into R computation of predictions
@@ -131,6 +131,16 @@ An example input file for Poisson outcome and categorical data is given in
 	data/input/example_Poisson_Discrete_input.txt
 An example input file for Poisson outcome and Normal data is given in
 	data/input/example_Poisson_Normal_input.txt
+An example input file for Binomial outcome and Normal data is given in 
+	data/input/example_Binomial_Normal_input.txt
+An example input file for Normal outcome and Normal data is given in
+	data/input/example_Normal_Normal_input.txt
+An example input file for variable selection with Bernoulli outcome and 
+categorical data is given in
+	data/input/example_Var_Select_Bernoulli_Discrete_input.txt
+
+These example datafiles are generated with the datasets in generateData.R in the
+associated R package. 
 
 We recommend you store real data outside the data directory in this package to 
 avoid it being overwritten when the package is updated.
@@ -213,7 +223,7 @@ scaleSigmaSqY - Scale parameter of inverse-gamma prior for sigma_Y^2 (only used
 The algorithm can now take an input file of predictive scenarios. The first line
 in this file must contain the number of predictive subjects, and then subsequent 
 lines must have the covariate values for each of these subjects. An example file 
-is in example_Normal_predictX.txt in the data/input folder.
+is in example_Poisson_Normal_predictX.txt in the data/input folder.
 
 At each iteration the predictive subjects are assigned to one of the current 
 clusters according to their covariate profiles (but ignoring missing values), or
@@ -238,7 +248,7 @@ An example call of the C++ program (from the main folder)
  --output=data/output/output_example --nSweeps=10000 --nBurn=1000 
  --yModel=Poisson --xModel=Normal --extraYVar 
  --hyper=data/input/example_hyperparameter_file.txt 
- --predict=data/input/example_Normal_predictX.txt
+ --predict=data/input/example_Poisson_Normal_predictX.txt
 
 
 ### Output and post processing: ###
