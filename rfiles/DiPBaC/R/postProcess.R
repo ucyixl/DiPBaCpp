@@ -519,7 +519,7 @@ calcAvgRiskAndProfile<-function(clusObj,includeFixedEffects=F){
 
 
 # Plot output values
-plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=T,orderBy=NULL,whichClusters=NULL,whichCovariates=NULL,useProfileStar=F){
+plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=F,orderBy=NULL,whichClusters=NULL,whichCovariates=NULL,useProfileStar=F){
    
    attach(riskProfObj)
    attach(riskProfClusObj)
