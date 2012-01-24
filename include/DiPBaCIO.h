@@ -578,7 +578,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	boost::uniform_real<double> unifDist(0,1);
 	randomUniform unifRand(rndGenerator,unifDist);
 
-	double alpha=0.5+unifRand();
+	double alpha=4.0+2.0*unifRand();
 	if(options.fixedAlpha()>0){
 		alpha=options.fixedAlpha();
 	}
