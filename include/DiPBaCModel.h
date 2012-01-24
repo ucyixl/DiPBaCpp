@@ -76,7 +76,7 @@ class diPBaCHyperParams{
 			// For Phi
 			_useReciprocalNCatsPhi=false;
 			for(unsigned int j=0;j<_aPhi.size();j++){
-				_aPhi[j]=0.5;
+				_aPhi[j]=1.0;
 			}
 
 			if(options.covariateType().compare("Normal")==0){
