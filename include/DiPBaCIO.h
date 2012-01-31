@@ -101,6 +101,11 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 					string tmpStr = inString.substr(pos,inString.size()-pos);
 					unsigned int nFilter=(unsigned int)atoi(tmpStr.c_str());
 					options.nFilter(nFilter);
+				}else if(inString.find("--nClusInit")!=string::npos){
+					size_t pos = inString.find("=")+1;
+					string tmpStr = inString.substr(pos,inString.size()-pos);
+					unsigned int nClusInit = (unsigned int)atoi(tmpStr.c_str());
+					options.nClusInit(nClusInit);
 				}else if(inString.find("--seed")!=string::npos){
 					size_t pos = inString.find("=")+1;
 					string tmpStr = inString.substr(pos,inString.size()-pos);
@@ -545,6 +550,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	unsigned int nCovariates=dataset.nCovariates();
 	unsigned int nFixedEffects=dataset.nFixedEffects();
 	unsigned int nPredictSubjects=dataset.nPredictSubjects();
+	unsigned int nClusInit = options.nClusInit();
 	string covariateType = options.covariateType();
 	string outcomeType = options.outcomeType();
 	string hyperParamFileName = options.hyperParamFileName();
@@ -566,7 +572,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	// Allocate the right sizes for each of the parameter variables
 	// This also switches "on" all variable indicators (gamma)
 	// This gets changed below if variable selection is being done
-	params.setSizes(nSubjects,nCovariates,nFixedEffects,nPredictSubjects,nCategories);
+	params.setSizes(nSubjects,nCovariates,nFixedEffects,nPredictSubjects,nCategories,nClusInit);
 	unsigned int maxNClusters = params.maxNClusters();
 
 	// Copy the dataset X matrix to a working object in params
