@@ -38,11 +38,15 @@ using std::ofstream;
 using std::string;
 using std::accumulate;
 using std::numeric_limits;
+
+using namespace Eigen;
+
 using boost::math::normal_distribution;
 using boost::math::gamma_distribution;
 using boost::math::beta_distribution;
 using boost::math::students_t_distribution;
 using boost::math::lgamma;
+
 
 class diPBaCHyperParams{
 
@@ -57,9 +61,9 @@ class diPBaCHyperParams{
 		void setSizes(const unsigned int& nCovariates){
 
 			_aPhi.resize(nCovariates);
-			_mu0.zeros(nCovariates);
-			_Tau0.zeros(nCovariates,nCovariates);
-			_R0.zeros(nCovariates,nCovariates);
+			_mu0.setZero(nCovariates);
+			_Tau0.setZero(nCovariates,nCovariates);
+			_R0.setZero(nCovariates,nCovariates);
 		}
 
 		// Set defaults
@@ -83,9 +87,9 @@ class diPBaCHyperParams{
 				// Values for mu, Tau0, R0, kappa0
 				// In the following it is useful to have the rows of X as
 				// Eigen vectors
-				vector<Eigen::VectorXd> xi(nSubjects);
+				vector<VectorXd> xi(nSubjects);
 				for(unsigned int i=0;i<nSubjects;i++){
-					xi[i]=Zeros(nCovariates);
+					xi[i].setZero(nCovariates);
 					for(unsigned int j=0;j<nCovariates;j++){
 						xi[i](j)=dataset.continuousX(i,j);
 					}
@@ -93,8 +97,8 @@ class diPBaCHyperParams{
 
 				// First compute the hyper prior parameters
 				// First compute the hyper parameter for mu_c
-				Eigen::VectorXd mu0=Zeros(nCovariates);
-				Eigen::MatrixXd Sigma0=Zeros(nCovariates,nCovariates);
+				VectorXd mu0=VectorXd::Zero(nCovariates);
+				MatrixXd Sigma0=MatrixXd::Zero(nCovariates,nCovariates);
 				for(unsigned int j=0;j<nCovariates;j++){
 					double meanX=0.0;
 					double minX=0;
@@ -114,13 +118,13 @@ class diPBaCHyperParams{
 					mu0(j)=meanX;
 					Sigma0(j,j)=rangeX*rangeX;
 				}
-				arma::mat Tau0 = Sigma0.inverse();
+				MatrixXd Tau0 = Sigma0.inverse();
 				_Tau0=Tau0;
 				_mu0=mu0;
 
 				// Now we compute the hyper parameters for Tau_c
 				// First we compute the sample covariance
-				Eigen::MatrixXd R=Zeros(nCovariates,nCovariates);
+				MatrixXd R=MatrixXd::Zero(nCovariates,nCovariates);
 
 				for(unsigned int i=0;i<nSubjects;i++){
 					R += (xi[i]-mu0)*((xi[i]-mu0).transpose());
@@ -188,33 +192,33 @@ class diPBaCHyperParams{
 
 
 		/// \brief Return the hyper parameter Tau0Mu0
-		const Eigen::VectorXd& mu0() const{
+		const VectorXd& mu0() const{
 			return _mu0;
 		}
 
 		/// \brief Set the hyper parameter Tau0Mu0
-		void mu0(const Eigen::VectorXd& m0){
+		void mu0(const VectorXd& m0){
 			_mu0 = m0;
 		}
 
 		/// \brief Return the hyper parameter Tau0
-		const Eigen::MatrixXd& Tau0() const{
+		const MatrixXd& Tau0() const{
 			return _Tau0;
 
 		}
 
 		/// \brief Set the hyper parameter Tau0
-		void Tau0(const Eigen::MatrixXd& T0) {
+		void Tau0(const MatrixXd& T0) {
 			_Tau0 = T0;
 		}
 
 		/// \brief Return the hyper parameter R0
-		const Eigen::MatrixXd& R0() const{
+		const MatrixXd& R0() const{
 			return _R0;
 		}
 
 		/// \brief Set the hyper parameter R0
-		void R0(const Eigen::MatrixXd& R) {
+		void R0(const MatrixXd& R) {
 			_R0 = R;
 		}
 
@@ -363,12 +367,12 @@ class diPBaCHyperParams{
 
 		// Hyper parameters for prior for mu (for Normal covariates)
 		// Prior is mu ~ N(mu0,inv(Tau0))
-		Eigen::VectorXd _mu0;
-		Eigen::MatrixXd _Tau0;
+		VectorXd _mu0;
+		MatrixXd _Tau0;
 
 		// Hyper parameters for prior of Tau (for Normal covariates)
 		// Prior is Tau ~ Wishart(R0,kappa0) (which has mean R0*kappa0).
-		Eigen::MatrixXd _R0;
+		MatrixXd _R0;
 		unsigned int _kappa0;
 
 		// Hyper parameters for prior for theta
@@ -449,14 +453,14 @@ class diPBaCParams{
 			for(unsigned int c=0;c<maxNClusters;c++){
 				if(c==0){
 					_logNullPhi.resize(nCovariates);
-					_nullMu.zeros(nCovariates);
+					_nullMu.setZero(nCovariates);
 				}
 				_logPhi[c].resize(nCovariates);
 				_workLogPhiStar[c].resize(nCovariates);
-				_mu[c].zeros(nCovariates);
-				_workMuStar[c].zeros(nCovariates);
-				_Tau[c].zeros(nCovariates,nCovariates);
-				_Sigma[c].zeros(nCovariates,nCovariates);
+				_mu[c].setZero(nCovariates);
+				_workMuStar[c].setZero(nCovariates);
+				_Tau[c].setZero(nCovariates,nCovariates);
+				_Sigma[c].setZero(nCovariates,nCovariates);
 				_gamma[c].resize(nCovariates);
 				for(unsigned int j=0;j<nCovariates;j++){
 					if(c==0){
@@ -534,10 +538,10 @@ class diPBaCParams{
 					_workNXInCluster[c]=0;
 					_logPhi[c].resize(nCov);
 					_workLogPhiStar[c].resize(nCov);
-					_mu[c].zeros(nCov);
-					_workMuStar[c].zeros(nCov);
-					_Tau[c].zeros(nCov,nCov);
-					_Sigma[c].zeros(nCov,nCov);
+					_mu[c].setZero(nCov);
+					_workMuStar[c].setZero(nCov);
+					_Tau[c].setZero(nCov,nCov);
+					_Sigma[c].setZero(nCov,nCov);
 					_gamma[c].resize(nCov);
 					for(unsigned int j=0;j<nCov;j++){
 						_logPhi[c][j].resize(nCats[j]);
@@ -734,12 +738,12 @@ class diPBaCParams{
 
 
 		/// \brief Return the vector of normal means mu
-		const vector<Eigen::VectorXd>& mu() const{
+		const vector<VectorXd>& mu() const{
 			return _mu;
 		}
 
 		/// \brief Return the normal mean mu for cluster c
-		const Eigen::VectorXd& mu(const unsigned int& c) const{
+		const VectorXd& mu(const unsigned int& c) const{
 			return _mu[c];
 		}
 
@@ -749,7 +753,7 @@ class diPBaCParams{
 		}
 
 		/// \brief Set the normal mean for cluster c
-		void mu(const unsigned int& c,const Eigen::VectorXd& muVec){
+		void mu(const unsigned int& c,const VectorXd& muVec){
 
 			_mu[c]=muVec;
 
@@ -759,8 +763,8 @@ class diPBaCParams{
 			if(Sigma(c).trace()>0){
 				// This condition should stop this being evaluated when
 				// mu has been initialised but Sigma hasn't
-				Eigen::VectorXd xi=Zero(nCov);
-				Eigen::VectorXd muStar=Zero(nCov);
+				VectorXd xi=VectorXd::Zero(nCov);
+				VectorXd muStar=VectorXd::Zero(nCov);
 				for(unsigned int j=0;j<nCov;j++){
 					muStar(j)=gamma(c,j)*muVec(j)+(1.0-gamma(c,j))*nullMu(j);
 				}
@@ -779,7 +783,7 @@ class diPBaCParams{
 		}
 
 		/// \brief Return the normal mean mu for null covariates
-		const Eigen::VectorXd& nullMu() const{
+		const VectorXd& nullMu() const{
 			return _nullMu;
 		}
 
@@ -789,7 +793,7 @@ class diPBaCParams{
 		}
 
 		/// \brief Set the normal mean for null covariates
-		void nullMu(const Eigen::VectorXd& nullMuVec){
+		void nullMu(const VectorXd& nullMuVec){
 			_nullMu=nullMuVec;
 
 			unsigned int nClusters = maxNClusters();
@@ -799,10 +803,10 @@ class diPBaCParams{
 			// This condition should stop this being evaluated when
 			// mu has been initialised but Sigma hasn't
 			if(Sigma(0).trace()>0){
-				Eigen::VectorXd xi=Zero(nCov);
-				vector<Eigen::VectorXd> muStar(nClusters);
+				VectorXd xi=VectorXd::Zero(nCov);
+				vector<VectorXd> muStar(nClusters);
 				for(unsigned int c=0;c<nClusters;c++){
-					muStar[c] = Zero(nCov);
+					muStar[c].setZero(nCov);
 					for(unsigned int j=0;j<nCov;j++){
 						muStar[c](j)=gamma(c,j)*mu(c,j)+(1-gamma(c,j))*nullMuVec(j);
 					}
@@ -823,17 +827,17 @@ class diPBaCParams{
 		}
 
 		/// \brief Return the vector of precision matrices Tau
-		const vector<Eigen::MatrixXd>& Tau() const{
+		const vector<MatrixXd>& Tau() const{
 			return _Tau;
 		}
 
 		/// \brief Return the precision matrix Tau for cluster c
-		const Eigen::MatrixXd& Tau(const unsigned int& c) const{
+		const MatrixXd& Tau(const unsigned int& c) const{
 			return _Tau[c];
 		}
 
 		/// \brief Set the precision matrix Tau for cluster c
-		void Tau(const unsigned int& c,const Eigen::MatrixXd& TauMat){
+		void Tau(const unsigned int& c,const MatrixXd& TauMat){
 
 			_Tau[c]=TauMat;
 			Sigma(c,TauMat.inverse());
@@ -841,10 +845,10 @@ class diPBaCParams{
 			unsigned int nSbj = nSubjects();
 			unsigned int nCov = nCovariates();
 
-			Eigen::VectorXd muStar=workMuStar(c);
+			VectorXd muStar=workMuStar(c);
 
 			for(unsigned int i=0;i<nSbj;i++){
-				Eigen::VectorXd xi=Zero(nCov);
+				VectorXd xi=VectorXd::Zero(nCov);
 				if(z(i)==(int)c){
 					for(unsigned int j=0;j<nCov;j++){
 						xi(j)=workContinuousX(i,j);
@@ -860,17 +864,17 @@ class diPBaCParams{
 		}
 
 		/// \brief Return the vector of covariance matrices Sigma
-		const vector<Eigen::MatrixXd>& Sigma() const{
+		const vector<MatrixXd>& Sigma() const{
 			return _Sigma;
 		}
 
 		/// \brief Return the covariance matrix Sigma for cluster c
-		const Eigen::MatrixXd& Sigma(const unsigned int& c) const{
+		const MatrixXd& Sigma(const unsigned int& c) const{
 			return _Sigma[c];
 		}
 
 		/// \brief Set the covariance matrix Sigma for cluster c
-		void Sigma(const unsigned int& c,const Eigen::MatrixXd& SigmaMat){
+		void Sigma(const unsigned int& c,const MatrixXd& SigmaMat){
 			_Sigma[c]=SigmaMat;
 		}
 
@@ -971,8 +975,8 @@ class diPBaCParams{
 
 				}else if(covariateType.compare("Normal")==0){
 					if(Sigma(0).trace()>0){
-						Eigen::VectorXd xi=Zero(nCov);
-						Eigen::VectorXd muStar = workMuStar(c);
+						VectorXd xi=VectorXd::Zero(nCov);
+						VectorXd muStar = workMuStar(c);
 						for(unsigned int j=0;j<nCov;j++){
 							xi(j)=workContinuousX(i,j);
 						}
@@ -1033,8 +1037,8 @@ class diPBaCParams{
 				}
 			}else if(covariateType.compare("Normal")==0){
 				if(Sigma(0).trace()>0){
-					Eigen::VectorXd xi=Zero(nCov);
-					vector<Eigen::VectorXd> muStar(nClusters);
+					VectorXd xi=VectorXd::Zero(nCov);
+					vector<VectorXd> muStar(nClusters);
 					for(unsigned int c=0;c<nClusters;c++){
 						muStar[c] = workMuStar(c);
 						muStar[c](j)=gammaVal*mu(c,j)+(1-gammaVal)*nullMu(j);
@@ -1086,8 +1090,8 @@ class diPBaCParams{
 
 			}else if(covariateType.compare("Normal")==0){
 				if(Sigma(0).trace()>0){
-					Eigen::VectorXd xi=Zero(nCov);
-					Eigen::VectorXd muStar = workMuStar(c);
+					VectorXd xi=VectorXd::Zero(nCov);
+					VectorXd muStar = workMuStar(c);
 					muStar(j)=gammaVal*mu(c,j)+(1-gammaVal)*nullMu(j);
 					_workMuStar[c]=muStar;
 					for(unsigned int i=0;i<nSbj;i++){
@@ -1271,15 +1275,15 @@ class diPBaCParams{
 			_workLogPhiStar[c][j][p]=logPhiStar;
 		}
 
-		const Eigen::VectorXd& workMuStar(const unsigned int& c) const{
+		const VectorXd& workMuStar(const unsigned int& c) const{
 			return _workMuStar[c];
 		}
 
-		const vector<Eigen::VectorXd>& workMuStar() const{
+		const vector<VectorXd>& workMuStar() const{
 			return _workMuStar;
 		}
 
-		void workMuStar(const unsigned int& c,const Eigen::VectorXd& muStar){
+		void workMuStar(const unsigned int& c,const VectorXd& muStar){
 			_workMuStar[c]=muStar;
 		}
 
@@ -1324,16 +1328,16 @@ class diPBaCParams{
 				_logPhi[c1].swap(_logPhi[c2]);
 				_workLogPhiStar[c1].swap(_workLogPhiStar[c2]);
 			}else if(covariateType.compare("Normal")==0){
-				Eigen::VectorXd muTmp = _mu[c1];
+				VectorXd muTmp = _mu[c1];
 				_mu[c1]=_mu[c2];
 				_mu[c2]=muTmp;
-				Eigen::VectorXd workMuStarTmp = _workMuStar[c1];
+				VectorXd workMuStarTmp = _workMuStar[c1];
 				_workMuStar[c1]=_workMuStar[c2];
 				_workMuStar[c2]=workMuStarTmp;
-				Eigen::MatrixXd SigmaTmp = _Sigma[c1];
+				MatrixXd SigmaTmp = _Sigma[c1];
 				_Sigma[c1]=_Sigma[c2];
 				_Sigma[c2]=SigmaTmp;
-				Eigen::MatrixXd TauTmp = _Tau[c1];
+				MatrixXd TauTmp = _Tau[c1];
 				_Tau[c1]=_Tau[c2];
 				_Tau[c2]=TauTmp;
 			}
@@ -1421,19 +1425,19 @@ class diPBaCParams{
 
 		/// \brief A vector of Eigen dynamic vectors containing covariate means
 		/// for the case of Normal covariates
-		vector<Eigen::VectorXd> _mu;
+		vector<VectorXd> _mu;
 
 		/// \brief An Eigen dynamic vector containing covariate means
 		/// for the case of Normal covariates for the null covariates
-		Eigen::VectorXd _nullMu;
+		VectorXd _nullMu;
 
-		/// \brief A vector of armadillo vectors containing covariate covariance
+		/// \brief A vector of Eigen dynamic vectors containing covariate covariance
 		/// matrices for the case of Normal covariates
-		vector<arma::mat> _Sigma;
+		vector<MatrixXd> _Sigma;
 
-		/// \brief A vector of armadillo vectors containing covariate precision
+		/// \brief A vector of Eigen dynamic vectors containing covariate precision
 		/// matrices for the case of Normal covariates
-		vector<arma::mat> _Tau;
+		vector<MatrixXd> _Tau;
 
 		/// \brief A vector of outcome probabilities for each cluster
 		vector<double> _theta;
@@ -1498,7 +1502,7 @@ class diPBaCParams{
 		vector<vector<vector<double> > > _workLogPhiStar;
 
 		/// \brief An array of mu star for variable selection
-		vector<arma::vec> _workMuStar;
+		vector<VectorXd> _workMuStar;
 
 		/// \brief A vector of expected theta values for the prediction subjects
 		vector<double> _workPredictExpectedTheta;

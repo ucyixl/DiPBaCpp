@@ -15,6 +15,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${DIPBAC_SOURCE_DIR}/bin")
 # Add extra directories for finding header files
 include_directories("${DIPBAC_SOURCE_DIR}/include")
 include_directories("${DIPBAC_SOURCE_DIR}/CPP_Base/include")
+include_directories("/usr/local/include/eigen3")
 
 # Turn on debugging warnings and profiling
 if(CMAKE_BUILD_TYPE MATCHES "Develop")
@@ -23,24 +24,15 @@ if(CMAKE_BUILD_TYPE MATCHES "Develop")
     # Build a debugging version
     add_executable(DiPBaCpp_Debug DiPBaC.cpp)
     set_target_properties(DiPBaCpp_Debug PROPERTIES COMPILE_FLAGS "-g -Wall" LINK_FLAGS "-g -Wall")	
-    target_link_libraries (DiPBaCpp_Debug armadillo)
-    target_link_libraries (DiPBaCpp_Debug goto2)
-    target_link_libraries (DiPBaCpp_Debug gfortran)
-
+    
     # Build a profiling version
     add_executable(DiPBaCpp_Profile DiPBaC.cpp)
     set_target_properties(DiPBaCpp_Profile PROPERTIES COMPILE_FLAGS "-pg -g -Wall"  LINK_FLAGS "-pg -g -Wall")	
-    target_link_libraries (DiPBaCpp_Profile armadillo)
-    target_link_libraries (DiPBaCpp_Profile goto2)
-    target_link_libraries (DiPBaCpp_Profile gfortran)
-
+    
 endif(CMAKE_BUILD_TYPE MATCHES "Develop")
 
 # Build as optimised code
 add_executable(DiPBaCpp DiPBaC.cpp)
 set_target_properties(DiPBaCpp PROPERTIES COMPILE_FLAGS "-O3"  LINK_FLAGS "-O3")	
-target_link_libraries (DiPBaCpp armadillo)
-target_link_libraries (DiPBaCpp goto2)
-target_link_libraries (DiPBaCpp gfortran)
 
 
