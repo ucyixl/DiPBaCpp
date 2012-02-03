@@ -39,6 +39,9 @@ class diPBaCOptions{
 			_nBurn=1000;
 			_nProgress=500;
 			_nFilter=1;
+			// The default of 0 initial clusters, means a random number between
+			// 5 and 15 is used at initialisation
+			_nClusInit=0;
 
 			// Random number seed
 			_seed=(long) time(0);
@@ -94,6 +97,16 @@ class diPBaCOptions{
 		/// \brief Set the number of sweeps
 		void nProgress(const unsigned int& nPr){
 			_nProgress=nPr;
+		}
+
+		/// \brief Return the number of progress iterations
+		unsigned int nClusInit() const{
+			return _nClusInit;
+		}
+
+		/// \brief Set the number of sweeps
+		void nClusInit(const unsigned int& nCl){
+			_nClusInit=nCl;
 		}
 
 		/// \brief Return the random number seed
@@ -191,8 +204,6 @@ class diPBaCOptions{
 			_fixedAlpha=alphaVal;
 		}
 
-
-
 		/// \brief Return whether we are including response
 		bool doPrediction() const{
 			return _doPrediction;
@@ -239,6 +250,7 @@ class diPBaCOptions{
 			_nBurn = options.nBurn();
 			_nFilter=options.nFilter();
 			_nProgress=options.nProgress();
+			_nClusInit=options.nClusInit();
 			_seed=options.seed();
 			_outcomeType=options.outcomeType();
 			_covariateType=options.covariateType();
@@ -269,6 +281,8 @@ class diPBaCOptions{
 		unsigned int _nFilter;
 		// The number of iterations to print how sampler is progressing
 		unsigned int _nProgress;
+		// The number of initial clusters to initialise into
+		unsigned int _nClusInit;
 		// The random number seed
 		long _seed;
 		// The model for the outcome
