@@ -1308,7 +1308,13 @@ class diPBaCParams{
 			_workEntropy[i]=entropyVal;
 		}
 
+		unsigned int workNClusInit() const{
+			return _workNClusInit;
+		}
 
+		void workNClusInit(const unsigned int& nClusInit){
+			_workNClusInit=nClusInit;
+		}
 
 		void switchLabels(const unsigned int& c1,const unsigned int& c2,
 							const string& covariateType,
@@ -1388,6 +1394,7 @@ class diPBaCParams{
 			_workMuStar = params.workMuStar();
 			_workPredictExpectedTheta = params.workPredictExpectedTheta();
 			_workEntropy = params.workEntropy();
+			_workNClusInit = params.workNClusInit();
 			return *this;
 		}
 
@@ -1499,6 +1506,10 @@ class diPBaCParams{
 
 		/// \brief A vector of entropy values for each of the subjects
 		vector<double> _workEntropy;
+
+		/// \brief The actual number of cluster the individuals are individually
+		/// allocated to. Note this is just needed for writing the log file.
+		unsigned int _workNClusInit;
 
 
 };

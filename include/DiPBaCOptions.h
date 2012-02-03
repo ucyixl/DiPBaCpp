@@ -204,8 +204,6 @@ class diPBaCOptions{
 			_fixedAlpha=alphaVal;
 		}
 
-
-
 		/// \brief Return whether we are including response
 		bool doPrediction() const{
 			return _doPrediction;
