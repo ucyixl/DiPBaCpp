@@ -202,6 +202,7 @@ int main(int argc, char*  argv[]){
 	/* ---------- Initialise the chain ---- */
 	diPBaCSampler.initialiseChain();
 	diPBaCHyperParams hyperParams = diPBaCSampler.chain().currentState().parameters().hyperParams();
+	unsigned int nClusInit = diPBaCSampler.chain().currentState().parameters().workNClusInit();
 	/* ---------- Run the sampler --------- */
 	// Note: in this function the output gets written
 	diPBaCSampler.run();
@@ -209,7 +210,7 @@ int main(int argc, char*  argv[]){
 	/* -- End the clock time and write the full run details to log file --*/
 	currTime = time(NULL);
     double timeInSecs=(double)currTime-(double)beginTime;
-	string tmpStr = storeLogFileData(options,dataset,hyperParams,timeInSecs);
+	string tmpStr = storeLogFileData(options,dataset,hyperParams,nClusInit,timeInSecs);
 	diPBaCSampler.appendToLogFile(tmpStr);
 
 

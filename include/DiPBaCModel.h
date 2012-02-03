@@ -420,13 +420,18 @@ class diPBaCParams{
 		void setSizes(const unsigned int& nSubjects,
 				const unsigned int& nCovariates,const unsigned int& nFixedEffects,
 				const unsigned int& nPredictSubjects,
-				const vector<unsigned int>& nCategories){
+				const vector<unsigned int>& nCategories,
+				const unsigned int& nClusInit){
 
-			// Initially make the maximum number of clusters 100
+			// Initially make the maximum number of clusters  the bigger or
+			// the initial number of clusters and 100.
 			// This is only used for initial memory allocation
 			// And will ensure that at this initial time sufficient
 			// space is allocated to prevent future allocations
 			unsigned int maxNClusters = 100;
+			if(nClusInit>100){
+				maxNClusters=nClusInit;
+			}
 			_maxNClusters = maxNClusters;
 
 			// Resize all the objects and set to 0
@@ -1318,7 +1323,13 @@ class diPBaCParams{
 			_workEntropy[i]=entropyVal;
 		}
 
+		unsigned int workNClusInit() const{
+			return _workNClusInit;
+		}
 
+		void workNClusInit(const unsigned int& nClusInit){
+			_workNClusInit=nClusInit;
+		}
 
 		void switchLabels(const unsigned int& c1,const unsigned int& c2,
 							const string& covariateType,
@@ -1399,6 +1410,7 @@ class diPBaCParams{
 			_workPredictExpectedTheta = params.workPredictExpectedTheta();
 			_workPredictExpectedPackYears = params.workPredictExpectedPackYears();
 			_workEntropy = params.workEntropy();
+			_workNClusInit = params.workNClusInit();
 			return *this;
 		}
 
@@ -1513,6 +1525,10 @@ class diPBaCParams{
 
 		/// \brief A vector of entropy values for each of the subjects
 		vector<double> _workEntropy;
+
+		/// \brief The actual number of cluster the individuals are individually
+		/// allocated to. Note this is just needed for writing the log file.
+		unsigned int _workNClusInit;
 
 
 };

@@ -1158,6 +1158,10 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 	diPBaCParams& currentParams = currentState.parameters();
 
 	unsigned int maxZ = currentParams.workMaxZi();
+	if(maxZ==0){
+		// If there is only one cluster with individuals in, don't do anything
+		return;
+	}
 	string varSelectType = model.options().varSelectType();
 	string covariateType = model.options().covariateType();
 
@@ -1286,7 +1290,7 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 }
 
 
-// Gibbs move for updating the auxilliart variables u
+// Gibbs move for updating the auxilliary variables u
 // This is the second part of block 1. The first part used the marginal
 // distribution with u integrated out, we now use the conditional distribution
 // for u, conditional on the v^A,Theta^A parameters generated above
@@ -1436,8 +1440,6 @@ void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 	double minU = currentParams.workMinUi();
 	bool continueLoop=true;
 	unsigned int c=maxNClusters-1;
-	unsigned int c1=c;
-	double prod1MinusV=1.0,ratio=0.0;
 	while(continueLoop){
 		// Criteria 1
 		if(cumPsi[c]>1-minU){
@@ -1445,46 +1447,18 @@ void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 			maxNClusters=c+1;
 			continueLoop=false;
 		}else{
-			// Criteria 2
-			if(exp(logPsiNew[c1])<minU){
-				if(prod1MinusV<ratio){
-					// We can stop
-					maxNClusters=c+1;
-					continueLoop=false;
-				}else{
-					if(c==c1){
-						ratio=vNew[c1]/(1.0-vNew[c1]);
-					}
-					// We need a new sampled value of v
-					double v=betaRand(rndGenerator,1.0,alpha);
-					double logPsi=log(v)+log(1-vNew[maxNClusters-1])-log(vNew[maxNClusters-1])+logPsiNew[maxNClusters-1];
-					if(c+1>=vNew.size()){
-						vNew.push_back(v);
-						logPsiNew.push_back(logPsi);
-					}else{
-						vNew[c+1]=v;
-						logPsiNew[c+1]=logPsi;
-					}
-					cumPsi.push_back(cumPsi[c]+exp(logPsi));
-					c++;
-					prod1MinusV*=(1-v);
-				}
+			// We need a new sampled value of v
+			double v=betaRand(rndGenerator,1.0,alpha);
+			double logPsi=log(v)+log(1-vNew[maxNClusters-1])-log(vNew[maxNClusters-1])+logPsiNew[maxNClusters-1];
+			if(c+1>=vNew.size()){
+				vNew.push_back(v);
+				logPsiNew.push_back(logPsi);
 			}else{
-				// We need a new sampled value of v
-				double v=betaRand(rndGenerator,1.0,alpha);
-				double logPsi=log(v)+log(1-vNew[maxNClusters-1])-log(vNew[maxNClusters-1])+logPsiNew[maxNClusters-1];
-				if(c+1>=vNew.size()){
-					vNew.push_back(v);
-					logPsiNew.push_back(logPsi);
-				}else{
-					vNew[c+1]=v;
-					logPsiNew[c+1]=logPsi;
-				}
-				cumPsi.push_back(cumPsi[c]+exp(logPsi));
-				c++;
-				c1++;
+				vNew[c+1]=v;
+				logPsiNew[c+1]=logPsi;
 			}
-
+			cumPsi.push_back(cumPsi[c]+exp(logPsi));
+			c++;
 		}
 	}
 

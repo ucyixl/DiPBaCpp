@@ -53,6 +53,7 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 			cout << "--nBurn=<unsigned int>" << endl << "\tThe number of sweeps in the burn in period (1000)" << endl;
 			cout << "--nProgress=<unsigned int>" << endl << "\tThe number of sweeps at which to print a" << endl << "progress update (500)" << endl;
 			cout << "--nFilter=<unsigned int>" << endl << "\tThe frequency (in sweeps) with which to write" << endl << "\tthe output to file (1)" << endl;
+			cout << "--nClusInit=<unsigned int>" << endl << "\tThe number of clusters individuals should be" << endl << "\tinitially randomly assigned to (Unif[5,15])" << endl;
 			cout << "--seed=<unsigned int>" << endl << "\tThe value for the seed for the random number" << endl << "\tgenerator (current time)" << endl;
 			cout << "--yModel=<string>" << endl << "\tThe model type for the outcome variable. Options are" << endl << "\tcurrently 'Bernoulli','Poisson','Binomial' and 'Normal' (Bernoulli)" << endl;
 			cout << "--xModel=<string>" << endl << "\tThe model type for the covariates. Options are" << endl << "\tcurrently 'Discrete' and 'Normal' (Discrete)" << endl;
@@ -101,6 +102,11 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 					string tmpStr = inString.substr(pos,inString.size()-pos);
 					unsigned int nFilter=(unsigned int)atoi(tmpStr.c_str());
 					options.nFilter(nFilter);
+				}else if(inString.find("--nClusInit")!=string::npos){
+					size_t pos = inString.find("=")+1;
+					string tmpStr = inString.substr(pos,inString.size()-pos);
+					unsigned int nClusInit = (unsigned int)atoi(tmpStr.c_str());
+					options.nClusInit(nClusInit);
 				}else if(inString.find("--seed")!=string::npos){
 					size_t pos = inString.find("=")+1;
 					string tmpStr = inString.substr(pos,inString.size()-pos);
@@ -163,6 +169,7 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 			}
 		}
 	}
+
 	// Return if there was an error
 	if(wasError){
 		cout << "Please use:" << endl;
@@ -545,6 +552,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	unsigned int nCovariates=dataset.nCovariates();
 	unsigned int nFixedEffects=dataset.nFixedEffects();
 	unsigned int nPredictSubjects=dataset.nPredictSubjects();
+	unsigned int nClusInit = options.nClusInit();
 	string covariateType = options.covariateType();
 	string outcomeType = options.outcomeType();
 	string hyperParamFileName = options.hyperParamFileName();
@@ -566,7 +574,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	// Allocate the right sizes for each of the parameter variables
 	// This also switches "on" all variable indicators (gamma)
 	// This gets changed below if variable selection is being done
-	params.setSizes(nSubjects,nCovariates,nFixedEffects,nPredictSubjects,nCategories);
+	params.setSizes(nSubjects,nCovariates,nFixedEffects,nPredictSubjects,nCategories,nClusInit);
 	unsigned int maxNClusters = params.maxNClusters();
 
 	// Copy the dataset X matrix to a working object in params
@@ -584,51 +592,43 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	}
 	params.alpha(alpha);
 
-	// Sample v (for logPsi) from the prior
-	double tmp=0.0;
-	for(unsigned int c=0;c<=maxNClusters;c++){
-		double vVal = betaRand(rndGenerator,1.0,alpha);
-		params.v(c,vVal);
-		// Set logPsi
-		params.logPsi(c,tmp+log(vVal));
-		tmp += log(1-vVal);
-	}
-
-
-
 	vector<unsigned int> nXInCluster(maxNClusters,0);
 	unsigned int maxZ=0;
+	if(nClusInit==0){
+		nClusInit=5+(unsigned int)11*unifRand();
+		params.workNClusInit(nClusInit);
+	}
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
-		double cumSum=0.0;
-		bool iAllocated=false;
-		double u=unifRand();
-		for(unsigned int c=0;c<maxNClusters-1;c++){
-			if(u<cumSum+exp(params.logPsi(c))){
-				params.z(i,c,covariateType);
-				if(c>(int)maxZ){
-					maxZ=c;
-				}
-				if(i<nSubjects){
-					nXInCluster[c]++;
-				}
-				iAllocated=true;
-				break;
-			}else{
-				cumSum+=exp(params.logPsi(c));
-			}
+		int c=(int) nClusInit*unifRand();
+		params.z(i,c,covariateType);
+		if(c>(int)maxZ){
+			maxZ=c;
 		}
-		// If not allocated put them in the final cluster
-		if(!iAllocated){
-			params.z(i,maxNClusters-1,covariateType);
-			if(i<nSubjects){
-				nXInCluster[maxNClusters-1]++;
-			}
-			maxZ=maxNClusters-1;
+		if(i<nSubjects){
+			nXInCluster[c]++;
 		}
 	}
 	params.workNXInCluster(nXInCluster);
 	params.workMaxZi(maxZ);
 	params.maxNClusters(maxZ+1);
+
+	// Sample v (for logPsi)
+	// This is sampled from the posterior given the z vector above
+	// Prior comes from the conjugacy of the dirichlet and multinomial
+	// See Ishwaran and James 2001
+	vector<unsigned int> sumCPlus1ToMaxMembers(maxZ+1,0);
+	for(int c=maxZ-1;c>=0;c--){
+		sumCPlus1ToMaxMembers[c]=sumCPlus1ToMaxMembers[c+1]+params.workNXInCluster(c+1);
+	}
+
+	double tmp=0.0;
+	for(unsigned int c=0;c<=maxZ;c++){
+		double vVal = betaRand(rndGenerator,1.0+params.workNXInCluster(c),alpha+sumCPlus1ToMaxMembers[c]);
+		params.v(c,vVal);
+		// Set logPsi
+		params.logPsi(c,tmp+log(vVal));
+		tmp += log(1-vVal);
+	}
 
 	// Sample u (auxilliary variables). This will determine the maximum number of clusters
 	maxNClusters = maxZ+1;
@@ -653,8 +653,6 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 
 	bool continueLoop=true;
 	unsigned int c=maxNClusters-1;
-	unsigned int c1=c;
-	double prod1MinusV=1.0,ratio=0.0;
 	while(continueLoop){
 		// Criteria 1
 		if(cumPsi[c]>1-minU){
@@ -662,45 +660,18 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 			maxNClusters=c+1;
 			continueLoop=false;
 		}else{
-			// Criteria 2
-			if(exp(logPsiNew[c1])<minU){
-				if(prod1MinusV<ratio){
-					// We can stop
-					maxNClusters=c+1;
-					continueLoop=false;
-				}else{
-					if(c==c1){
-						ratio=vNew[c1]/(1.0-vNew[c1]);
-					}
-					// We need a new sampled value of v
-					double v=betaRand(rndGenerator,1.0,alpha);
-					double logPsi=log(v)+log(1-vNew[maxNClusters-1])-log(vNew[maxNClusters-1])+logPsiNew[maxNClusters-1];
-					if(c+1>=vNew.size()){
-						vNew.push_back(v);
-						logPsiNew.push_back(logPsi);
-					}else{
-						vNew[c+1]=v;
-						logPsiNew[c+1]=logPsi;
-					}
-					cumPsi.push_back(cumPsi[c]+exp(logPsi));
-					c++;
-					prod1MinusV*=(1-v);
-				}
+			// We need a new sampled value of v
+			double v=betaRand(rndGenerator,1.0,alpha);
+			double logPsi=log(v)+log(1-vNew[maxNClusters-1])-log(vNew[maxNClusters-1])+logPsiNew[maxNClusters-1];
+			if(c+1>=vNew.size()){
+				vNew.push_back(v);
+				logPsiNew.push_back(logPsi);
 			}else{
-				// We need a new sampled value of v
-				double v=betaRand(rndGenerator,1.0,alpha);
-				double logPsi=log(v)+log(1-vNew[maxNClusters-1])-log(vNew[maxNClusters-1])+logPsiNew[maxNClusters-1];
-				if(c+1>=vNew.size()){
-					vNew.push_back(v);
-					logPsiNew.push_back(logPsi);
-				}else{
-					vNew[c+1]=v;
-					logPsiNew[c+1]=logPsi;
-				}
-				cumPsi.push_back(cumPsi[c]+exp(logPsi));
-				c++;
-				c1++;
+				vNew[c+1]=v;
+				logPsiNew[c+1]=logPsi;
 			}
+			cumPsi.push_back(cumPsi[c]+exp(logPsi));
+			c++;
 		}
 	}
 
@@ -1415,11 +1386,18 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 string storeLogFileData(const diPBaCOptions& options,
 								const diPBaCData& dataset,
 								const diPBaCHyperParams& hyperParams,
+								const unsigned int& nClusInit,
 								const double& timeInSecs){
 
 	ostringstream tmpStr;
 	tmpStr << "Number of subjects: " << dataset.nSubjects() << endl;
 	tmpStr << "Number of prediction subjects: " << dataset.nPredictSubjects() << endl;
+	tmpStr << "Number of initial clusters: " << nClusInit;
+	if(options.nClusInit()==0){
+		tmpStr << " (Random, Unif[5,15])" << endl;
+	}else{
+		tmpStr << endl;
+	}
 	tmpStr << "Covariates: " << endl;
 	for(unsigned int j=0;j<dataset.nCovariates();j++){
 		tmpStr << "\t" << dataset.covariateNames(j);
