@@ -23,8 +23,8 @@ if(CMAKE_BUILD_TYPE MATCHES "Develop")
 
     # Build a debugging version
     add_executable(DiPBaCpp_Debug DiPBaC.cpp)
-    set_target_properties(DiPBaCpp_Debug PROPERTIES COMPILE_FLAGS "-g -Wall" LINK_FLAGS "-g -Wall")	
-    
+    set_target_properties(DiPBaCpp_Debug PROPERTIES COMPILE_FLAGS "-g -Wall -fopenmp" LINK_FLAGS "-g -Wall -fopenmp")	
+    target_link_libraries(DiPBaCpp_Debug gomp)
     # Build a profiling version
     add_executable(DiPBaCpp_Profile DiPBaC.cpp)
     set_target_properties(DiPBaCpp_Profile PROPERTIES COMPILE_FLAGS "-pg -g -Wall"  LINK_FLAGS "-pg -g -Wall")	

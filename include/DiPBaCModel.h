@@ -63,7 +63,9 @@ class diPBaCHyperParams{
 			_aPhi.resize(nCovariates);
 			_mu0.setZero(nCovariates);
 			_Tau0.setZero(nCovariates,nCovariates);
+			_workSqrtTau0.setZero(nCovariates,nCovariates);
 			_R0.setZero(nCovariates,nCovariates);
+			_workInverseR0.setZero(nCovariates,nCovariates);
 		}
 
 		// Set defaults
@@ -120,6 +122,9 @@ class diPBaCHyperParams{
 				}
 				MatrixXd Tau0 = Sigma0.inverse();
 				_Tau0=Tau0;
+				LLT<MatrixXd> llt;
+				_workSqrtTau0=(llt.compute(Tau0)).matrixL();
+				_workLogDetTau0 = log(Tau0.determinant());
 				_mu0=mu0;
 
 				// Now we compute the hyper parameters for Tau_c
@@ -131,8 +136,10 @@ class diPBaCHyperParams{
 				}
 				R/=(double)nSubjects;
 				R*=(double)nCovariates;
+				_workInverseR0=R;
 				R=R.inverse();
 				_R0=R;
+				_workLogDetR0=R.determinant();
 				_kappa0 = nCovariates;
 			}
 			_muTheta = 0.0;
@@ -210,6 +217,9 @@ class diPBaCHyperParams{
 		/// \brief Set the hyper parameter Tau0
 		void Tau0(const MatrixXd& T0) {
 			_Tau0 = T0;
+			_workLogDetTau0 = log(T0.determinant());
+			LLT<MatrixXd> llt;
+			_workSqrtTau0=(llt.compute(T0)).matrixL();
 		}
 
 		/// \brief Return the hyper parameter R0
@@ -220,6 +230,8 @@ class diPBaCHyperParams{
 		/// \brief Set the hyper parameter R0
 		void R0(const MatrixXd& R) {
 			_R0 = R;
+			_workLogDetR0 = log(R.determinant());
+			_workInverseR0 = R.inverse();
 		}
 
 		/// \brief Return the hyper parameter kappa0
@@ -328,6 +340,22 @@ class diPBaCHyperParams{
 			_scaleSigmaSqY = r;
 		}
 
+		const MatrixXd& workSqrtTau0() const{
+			return _workSqrtTau0;
+		}
+
+		double workLogDetTau0() const{
+			return _workLogDetTau0;
+		}
+
+		const MatrixXd& workInverseR0() const{
+			return _workInverseR0;
+		}
+
+		double workLogDetR0() const{
+			return _workLogDetR0;
+		}
+
 		// Copy operator
 		diPBaCHyperParams& operator=(const diPBaCHyperParams& hyperParams){
 			_shapeAlpha = hyperParams.shapeAlpha();
@@ -350,6 +378,10 @@ class diPBaCHyperParams{
 			_bRho = hyperParams.bRho();
 			_shapeSigmaSqY = hyperParams.shapeSigmaSqY();
 			_scaleSigmaSqY = hyperParams.scaleSigmaSqY();
+			_workSqrtTau0 = hyperParams.workSqrtTau0();
+			_workLogDetTau0 = hyperParams.workLogDetTau0();
+			_workInverseR0 = hyperParams.workInverseR0();
+			_workLogDetR0 = hyperParams.workLogDetR0();
 			return *this;
 		}
 
@@ -405,6 +437,13 @@ class diPBaCHyperParams{
 		double _shapeSigmaSqY;
 		double _scaleSigmaSqY;
 
+		//Some working variables for speeding up linear algebra
+		double _workLogDetTau0;
+		MatrixXd _workSqrtTau0;
+		double _workLogDetR0;
+		MatrixXd _workInverseR0;
+
+
 };
 
 
@@ -448,6 +487,8 @@ class diPBaCParams{
 			_mu.resize(maxNClusters);
 			_workMuStar.resize(maxNClusters);
 			_Tau.resize(maxNClusters);
+			_workSqrtTau.resize(maxNClusters);
+			_workLogDetTau.resize(maxNClusters);
 			_Sigma.resize(maxNClusters);
 			_gamma.resize(maxNClusters);
 			for(unsigned int c=0;c<maxNClusters;c++){
@@ -775,7 +816,7 @@ class diPBaCParams{
 						for(unsigned int j=0;j<nCov;j++){
 							xi(j)=workContinuousX(i,j);
 						}
-						_workLogPXiGivenZi[i]=logPdfMultivarNormal(xi,muStar,Tau(c));
+						_workLogPXiGivenZi[i]=logPdfMultivarNormal(nCov,xi,muStar,workSqrtTau(c),workLogDetTau(c));
 					}
 				}
 			}
@@ -819,7 +860,7 @@ class diPBaCParams{
 						// Note in the continuous or global case, we just create
 						// repeats of gamma(0,j) for each cluster
 					}
-					_workLogPXiGivenZi[i]=logPdfMultivarNormal(xi,muStar[c],Tau(c));
+					_workLogPXiGivenZi[i]=logPdfMultivarNormal(nCov,xi,muStar[c],workSqrtTau(c),workLogDetTau(c));
 
 				}
 			}
@@ -841,6 +882,10 @@ class diPBaCParams{
 
 			_Tau[c]=TauMat;
 			Sigma(c,TauMat.inverse());
+			workLogDetTau(c,TauMat.determinant());
+			LLT<MatrixXd> llt;
+			MatrixXd sqrtTau = (llt.compute(TauMat)).matrixL();
+			workSqrtTau(c,sqrtTau);
 
 			unsigned int nSbj = nSubjects();
 			unsigned int nCov = nCovariates();
@@ -853,7 +898,7 @@ class diPBaCParams{
 					for(unsigned int j=0;j<nCov;j++){
 						xi(j)=workContinuousX(i,j);
 					}
-					_workLogPXiGivenZi[i]=logPdfMultivarNormal(xi,muStar,TauMat);
+					_workLogPXiGivenZi[i]=logPdfMultivarNormal(nCov,xi,muStar,workSqrtTau(c),workLogDetTau(c));
 				}
 			}
 		}
@@ -976,11 +1021,10 @@ class diPBaCParams{
 				}else if(covariateType.compare("Normal")==0){
 					if(Sigma(0).trace()>0){
 						VectorXd xi=VectorXd::Zero(nCov);
-						VectorXd muStar = workMuStar(c);
 						for(unsigned int j=0;j<nCov;j++){
 							xi(j)=workContinuousX(i,j);
 						}
-						_workLogPXiGivenZi[i]=logPdfMultivarNormal(xi,muStar,Tau(c));
+						_workLogPXiGivenZi[i]=logPdfMultivarNormal(nCov,xi,workMuStar(c),workSqrtTau(c),workLogDetTau(c));
 					}
 				}
 			}
@@ -1048,7 +1092,7 @@ class diPBaCParams{
 						for(unsigned int jj=0;jj<nCov;jj++){
 							xi(jj)=workContinuousX(i,jj);
 						}
-						_workLogPXiGivenZi[i]=logPdfMultivarNormal(xi,muStar[c],Tau(c));
+						_workLogPXiGivenZi[i]=logPdfMultivarNormal(nCov,xi,muStar[c],workSqrtTau(c),workLogDetTau(c));
 
 					}
 					for(unsigned c=0;c<nClusters;c++){
@@ -1099,7 +1143,7 @@ class diPBaCParams{
 							for(unsigned int jj=0;jj<nCov;jj++){
 								xi(jj)=workContinuousX(i,jj);
 							}
-							_workLogPXiGivenZi[i]=logPdfMultivarNormal(xi,muStar,Tau(c));
+							_workLogPXiGivenZi[i]=logPdfMultivarNormal(nCov,xi,muStar,workSqrtTau(c),workLogDetTau(c));
 
 						}
 					}
@@ -1319,6 +1363,32 @@ class diPBaCParams{
 			_workNClusInit=nClusInit;
 		}
 
+		const vector<MatrixXd>& workSqrtTau() const{
+			return _workSqrtTau;
+		}
+
+
+		const MatrixXd& workSqrtTau(const unsigned int& c) const{
+			return _workSqrtTau[c];
+		}
+
+		void workSqrtTau(const unsigned int& c, const MatrixXd& sqrtTau){
+			_workSqrtTau[c] = sqrtTau;
+		}
+
+		const vector<double>& workLogDetTau() const{
+			return _workLogDetTau;
+		}
+
+		double workLogDetTau(const unsigned int& c) const{
+			return _workLogDetTau[c];
+		}
+
+		void workLogDetTau(const unsigned int& c, const double& logDetTau){
+			_workLogDetTau[c] = logDetTau;
+		}
+
+
 		void switchLabels(const unsigned int& c1,const unsigned int& c2,
 							const string& covariateType,
 							const string& varSelectType){
@@ -1340,6 +1410,13 @@ class diPBaCParams{
 				MatrixXd TauTmp = _Tau[c1];
 				_Tau[c1]=_Tau[c2];
 				_Tau[c2]=TauTmp;
+				MatrixXd sqrtTauTmp = _workSqrtTau[c1];
+				_workSqrtTau[c1]=_workSqrtTau[c2];
+				_workSqrtTau[c2]=sqrtTauTmp;
+				double logDetTauTmp = _workLogDetTau[c1];
+				_workLogDetTau[c1]=_workLogDetTau[c2];
+				_workLogDetTau[c2]=logDetTauTmp;
+
 			}
 
 			//Variable selection parameters
@@ -1398,6 +1475,8 @@ class diPBaCParams{
 			_workPredictExpectedTheta = params.workPredictExpectedTheta();
 			_workEntropy = params.workEntropy();
 			_workNClusInit = params.workNClusInit();
+			_workLogDetTau = params.workLogDetTau();
+			_workSqrtTau = params.workSqrtTau();
 			return *this;
 		}
 
@@ -1514,7 +1593,11 @@ class diPBaCParams{
 		/// allocated to. Note this is just needed for writing the log file.
 		unsigned int _workNClusInit;
 
+		/// \brief Working vector of matrices containing matrix square root of Tau
+		vector<MatrixXd> _workSqrtTau;
 
+		/// \brief Working vector containing the log determinants of Tau
+		vector<double> _workLogDetTau;
 };
 
 
@@ -1741,8 +1824,8 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 		// Add in the prior for mu_c and Sigma_c for each c
 		for(unsigned int c=0;c<maxNClusters;c++){
 			if(params.workNXInCluster(c)>0){
-				logPrior+=logPdfMultivarNormal(params.mu(c),hyperParams.mu0(),hyperParams.Tau0());
-				logPrior+=logPdfWishart(params.Tau(c),hyperParams.R0(),(double)hyperParams.kappa0());
+				logPrior+=logPdfMultivarNormal(nCovariates,params.mu(c),hyperParams.mu0(),hyperParams.workSqrtTau0(),hyperParams.workLogDetTau0());
+				logPrior+=logPdfWishart(nCovariates,params.Tau(c),params.workLogDetTau(c),hyperParams.workInverseR0(),hyperParams.workLogDetR0(),(double)hyperParams.kappa0());
 
 			}
 		}

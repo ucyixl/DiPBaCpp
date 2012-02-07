@@ -906,7 +906,7 @@ void gibbsForMuActive(mcmcChain<diPBaCParams>& chain,
 	vector<MatrixXd> oneMinusGammaMat(maxZ+1);
 	for(unsigned int c=0;c<=maxZ;c++){
 		gammaMat[c].setZero(nCovariates,nCovariates);
-		oneMinusGammaMat[c].Zero(nCovariates,nCovariates);
+		oneMinusGammaMat[c].setZero(nCovariates,nCovariates);
 		for(unsigned int j=0;j<nCovariates;j++){
 			gammaMat[c](j,j)=currentParams.gamma(c,j);
 			oneMinusGammaMat[c](j,j)=1-gammaMat[c](j,j);
@@ -2182,12 +2182,13 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 						for(unsigned int j=0;j<nCovariates;j++){
 							xi(j)=currentParams.workContinuousX(i,j);
 						}
-						logPXiGivenZi[i][c]=logPdfMultivarNormal(xi,currentParams.workMuStar(c),currentParams.Tau(c));
+						logPXiGivenZi[i][c]=logPdfMultivarNormal(nCovariates,xi,currentParams.workMuStar(c),currentParams.workSqrtTau(c),currentParams.workLogDetTau(c));
 					}
 				}
 			}
 		}
 		// For the predictive subjects we do not count missing data
+		LLT<MatrixXd> llt;
 		for(unsigned int i=nSubjects;i<nSubjects+nPredictSubjects;i++){
 			logPXiGivenZi[i].resize(maxNClusters,0.0);
 
@@ -2199,16 +2200,19 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 
 					VectorXd xi=VectorXd::Zero(nNotMissing);
 					VectorXd muStar=VectorXd::Zero(nNotMissing);
-					MatrixXd Tau=MatrixXd::Zero(nNotMissing,nNotMissing);
+					MatrixXd sqrtTau=MatrixXd::Zero(nNotMissing,nNotMissing);
+					double logDetTau =0.0;
 					if(nNotMissing==nCovariates){
 						muStar=workMuStar;
-						Tau=currentParams.Tau(c);
+						sqrtTau=currentParams.workSqrtTau(c);
+						logDetTau=currentParams.workLogDetTau(c);
 						for(unsigned int j=0;j<nCovariates;j++){
 							xi(j)=currentParams.workContinuousX(i,j);
 						}
 					}else{
 						MatrixXd workSigma=currentParams.Sigma(c);
 						MatrixXd Sigma=MatrixXd::Zero(nNotMissing,nNotMissing);
+						MatrixXd Tau=MatrixXd::Zero(nNotMissing,nNotMissing);
 						unsigned int j=0;
 						for(unsigned int j0=0;j0<nCovariates;j0++){
 							if(!missingX[i][j0]){
@@ -2225,8 +2229,11 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 							}
 						}
 						Tau = Sigma.inverse();
+						sqrtTau = (llt.compute(Tau)).matrixL();
+						logDetTau = log(Tau.determinant());
+
 					}
-					logPXiGivenZi[i][c]=logPdfMultivarNormal(xi,muStar,Tau);
+					logPXiGivenZi[i][c]=logPdfMultivarNormal(nNotMissing,xi,muStar,sqrtTau,logDetTau);
 				}
 			}
 		}
@@ -2425,7 +2432,7 @@ void updateMissingDiPBaCData(baseGeneratorType& rndGenerator,
 						newXi(j)=dataset.continuousX(i,j);
 					}
 				}
-				double logVal = logPdfMultivarNormal(newXi,params.workMuStar(zi),params.Tau(zi));
+				double logVal = logPdfMultivarNormal(nCovariates,newXi,params.workMuStar(zi),params.workSqrtTau(zi),params.workLogDetTau(zi));
 				params.workLogPXiGivenZi(i,logVal);
 			}
 		}
