@@ -2229,7 +2229,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 							}
 						}
 						Tau = Sigma.inverse();
-						sqrtTau = (llt.compute(Tau)).matrixL();
+						sqrtTau = (llt.compute(Tau)).matrixU();
 						logDetTau = log(Tau.determinant());
 
 					}

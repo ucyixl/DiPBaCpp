@@ -123,7 +123,7 @@ class diPBaCHyperParams{
 				MatrixXd Tau0 = Sigma0.inverse();
 				_Tau0=Tau0;
 				LLT<MatrixXd> llt;
-				_workSqrtTau0=(llt.compute(Tau0)).matrixL();
+				_workSqrtTau0=(llt.compute(Tau0)).matrixU();
 				_workLogDetTau0 = log(Tau0.determinant());
 				_mu0=mu0;
 
@@ -219,7 +219,7 @@ class diPBaCHyperParams{
 			_Tau0 = T0;
 			_workLogDetTau0 = log(T0.determinant());
 			LLT<MatrixXd> llt;
-			_workSqrtTau0=(llt.compute(T0)).matrixL();
+			_workSqrtTau0=(llt.compute(T0)).matrixU();
 		}
 
 		/// \brief Return the hyper parameter R0
@@ -888,7 +888,7 @@ class diPBaCParams{
 			Sigma(c,TauMat.inverse());
 			workLogDetTau(c,log(TauMat.determinant()));
 			LLT<MatrixXd> llt;
-			MatrixXd sqrtTau = (llt.compute(TauMat)).matrixL();
+			MatrixXd sqrtTau = (llt.compute(TauMat)).matrixU();
 			workSqrtTau(c,sqrtTau);
 
 			unsigned int nSbj = nSubjects();
