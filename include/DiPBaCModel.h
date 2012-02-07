@@ -502,6 +502,7 @@ class diPBaCParams{
 				_workMuStar[c].setZero(nCovariates);
 				_Tau[c].setZero(nCovariates,nCovariates);
 				_Sigma[c].setZero(nCovariates,nCovariates);
+				_workSqrtTau[c].setZero(nCovariates,nCovariates);
 				_gamma[c].resize(nCovariates);
 				for(unsigned int j=0;j<nCovariates;j++){
 					if(c==0){
@@ -573,6 +574,8 @@ class diPBaCParams{
 				_mu.resize(nClus);
 				_workMuStar.resize(nClus);
 				_Tau.resize(nClus);
+				_workSqrtTau.resize(nClus);
+				_workLogDetTau.resize(nClus);
 				_Sigma.resize(nClus);
 				_gamma.resize(nClus);
 				for(unsigned int c=prevNClus;c<nClus;c++){
@@ -582,6 +585,7 @@ class diPBaCParams{
 					_mu[c].setZero(nCov);
 					_workMuStar[c].setZero(nCov);
 					_Tau[c].setZero(nCov,nCov);
+					_workSqrtTau[c].setZero(nCov,nCov);
 					_Sigma[c].setZero(nCov,nCov);
 					_gamma[c].resize(nCov);
 					for(unsigned int j=0;j<nCov;j++){
@@ -882,7 +886,7 @@ class diPBaCParams{
 
 			_Tau[c]=TauMat;
 			Sigma(c,TauMat.inverse());
-			workLogDetTau(c,TauMat.determinant());
+			workLogDetTau(c,log(TauMat.determinant()));
 			LLT<MatrixXd> llt;
 			MatrixXd sqrtTau = (llt.compute(TauMat)).matrixL();
 			workSqrtTau(c,sqrtTau);

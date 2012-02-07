@@ -1447,9 +1447,12 @@ string storeLogFileData(const diPBaCOptions& options,
 	}
 
 	if(options.covariateType().compare("Normal")==0){
-		tmpStr << "mu0: " << hyperParams.mu0() << endl;
-		tmpStr << "Tau0:" << hyperParams.Tau0() << endl;
-		tmpStr << "R0: "  << hyperParams.mu0() << endl;
+		tmpStr << "mu0: " << endl;
+		tmpStr << hyperParams.mu0() << endl;
+		tmpStr << "Tau0:" << endl;
+		tmpStr << hyperParams.Tau0() << endl;
+		tmpStr << "R0: "  << endl;
+		tmpStr << hyperParams.R0() << endl;
 		tmpStr << "kappa0: " << hyperParams.kappa0() << endl;
 	}
 
