@@ -139,7 +139,7 @@ class diPBaCHyperParams{
 				_workInverseR0=R;
 				R=R.inverse();
 				_R0=R;
-				_workLogDetR0=R.determinant();
+				_workLogDetR0=log(R.determinant());
 				_kappa0 = nCovariates;
 			}
 			_muTheta = 0.0;
