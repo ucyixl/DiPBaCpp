@@ -1890,6 +1890,12 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 			logPrior+=logPdfGamma(params.tauEpsilon(),hyperParams.shapeTauEpsilon(),
 									hyperParams.rateTauEpsilon());
 		}
+
+		if(outcomeType.compare("Normal")==0){
+			double tau = 1.0/params.sigmaSqY();
+			logPrior+=logPdfGamma(tau,hyperParams.shapeSigmaSqY(),hyperParams.scaleSigmaSqY());
+		}
+
 	}
 
 	vector<double> outVec(3);

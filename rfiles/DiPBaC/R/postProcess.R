@@ -525,10 +525,12 @@ plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=F,orderBy=NULL,wh
    attach(riskProfClusObj)
    attach(clusObjRunInfoObj)
    
-   if(yModel=="Normal"){
-	   showRelativeRisk<-F
+	if(includeResponse){
+   	if(yModel=="Normal"){
+	   	showRelativeRisk<-F
+   	}
    }
-   
+	
    if(useProfileStar){
       profile<-profileStar
    }
@@ -714,17 +716,18 @@ plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=F,orderBy=NULL,wh
    }
 
    # Create a bar chart of cluster empiricals
-   plotObj<-ggplot(empiricalDF)
-   plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=empiricals,colour=as.factor(fillColor)),size=3)
-   plotObj<-plotObj+geom_hline(aes(x=as.factor(cluster),y=empiricals,yintercept=meanEmpirical))
-   plotObj<-plotObj+scale_colour_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
-         opts(legend.position="none")
-   plotObj<-plotObj+opts(title='Empirical Data',plot.title=theme_text(size=10))
-   plotObj<-plotObj+opts(axis.title.x=theme_text(size=10),axis.title.y=theme_text(size=10,angle=90))
-   plotObj<-plotObj+labs(y=ifelse(yModel=="Bernoulli","Proportion of cases",ifelse(yModel=="Binomial","Avg Proportion of occurrence",ifelse(yModel=="Poisson","Avg Count","Avg Y"))),x="Cluster")
-   plotObj<-plotObj+opts(print.margin=unit(c(0,0,0,0),'lines'))+opts(plot.margin=unit(c(0.15,0.5,0.5,1),'lines'))
-   print(plotObj,vp=viewport(layout.pos.row=3:4,layout.pos.col=1))
-      
+   if(!is.null(yModel)){
+   	plotObj<-ggplot(empiricalDF)
+   	plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=empiricals,colour=as.factor(fillColor)),size=3)
+   	plotObj<-plotObj+geom_hline(aes(x=as.factor(cluster),y=empiricals,yintercept=meanEmpirical))
+   	plotObj<-plotObj+scale_colour_manual(values = c(high ="#CC0033",low ="#0066CC", avg ="#33CC66"))+
+         	opts(legend.position="none")
+   	plotObj<-plotObj+opts(title='Empirical Data',plot.title=theme_text(size=10))
+   	plotObj<-plotObj+opts(axis.title.x=theme_text(size=10),axis.title.y=theme_text(size=10,angle=90))
+   	plotObj<-plotObj+labs(y=ifelse(yModel=="Bernoulli","Proportion of cases",ifelse(yModel=="Binomial","Avg Proportion of occurrence",ifelse(yModel=="Poisson","Avg Count","Avg Y"))),x="Cluster")
+   	plotObj<-plotObj+opts(print.margin=unit(c(0,0,0,0),'lines'))+opts(plot.margin=unit(c(0.15,0.5,0.5,1),'lines'))
+   	print(plotObj,vp=viewport(layout.pos.row=3:4,layout.pos.col=1))
+   }   
    # Create a bar chart of cluster sizes
    plotObj<-ggplot(sizeDF)
    plotObj<-plotObj+geom_point(aes(x=as.factor(cluster),y=clusterSize,colour=as.factor(fillColor)),size=3)
