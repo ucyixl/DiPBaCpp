@@ -18,6 +18,8 @@
 #include<boost/math/distributions/students_t.hpp>
 #include<boost/math/special_functions/gamma.hpp>
 
+#include<Eigen/Dense>
+
 // Custom includes
 #include "MCMC/chain.h"
 #include "MCMC/model.h"
@@ -27,12 +29,15 @@
 #include "DiPBaCModel.h"
 #include "DiPBaCData.h"
 
+using namespace Eigen;
+
 using std::vector;
 using std::accumulate;
 using std::numeric_limits;
 using boost::math::normal_distribution;
 using boost::math::students_t_distribution;
 using boost::math::lgamma;
+
 
 class diPBaCPropParams{
 
@@ -879,29 +884,29 @@ void gibbsForMuActive(mcmcChain<diPBaCParams>& chain,
 	nAccept++;
 
 	// In the following it is useful to have the rows of X as
-	// armadillo vectors
-	vector<arma::vec> xi(nSubjects);
+	// Eigen dynamic vectors
+	vector<VectorXd> xi(nSubjects);
 	for(unsigned int i=0;i<nSubjects;i++){
-		xi[i].zeros(nCovariates);
+		xi[i].setZero(nCovariates);
 		for(unsigned int j=0;j<nCovariates;j++){
 			xi[i](j)=dataset.continuousX(i,j);
 		}
 	}
 
 	// We begin by computing the mean X for individuals in each cluster
-	vector<arma::vec> meanX(maxZ+1);
+	vector<VectorXd> meanX(maxZ+1);
 	for(unsigned int c=0;c<=maxZ;c++){
-		meanX[c].zeros(nCovariates);
+		meanX[c].setZero(nCovariates);
 	}
 	for(unsigned int i=0;i<nSubjects;i++){
 		meanX[currentParams.z(i)]=meanX[currentParams.z(i)]+xi[i];
 	}
 
-	vector<arma::mat> gammaMat(maxZ+1);
-	vector<arma::mat> oneMinusGammaMat(maxZ+1);
+	vector<MatrixXd> gammaMat(maxZ+1);
+	vector<MatrixXd> oneMinusGammaMat(maxZ+1);
 	for(unsigned int c=0;c<=maxZ;c++){
-		gammaMat[c].zeros(nCovariates,nCovariates);
-		oneMinusGammaMat[c].zeros(nCovariates,nCovariates);
+		gammaMat[c].setZero(nCovariates,nCovariates);
+		oneMinusGammaMat[c].setZero(nCovariates,nCovariates);
 		for(unsigned int j=0;j<nCovariates;j++){
 			gammaMat[c](j,j)=currentParams.gamma(c,j);
 			oneMinusGammaMat[c](j,j)=1-gammaMat[c](j,j);
@@ -915,16 +920,16 @@ void gibbsForMuActive(mcmcChain<diPBaCParams>& chain,
 		if(nXInC>0){
 			meanX[c]=meanX[c]/(double)nXInC;
 		}else{
-			meanX[c].zeros(nCovariates);
+			meanX[c].setZero(nCovariates);
 		}
-		arma::mat covMat(nCovariates,nCovariates);
-		covMat = arma::inv(hyperParams.Tau0()+nXInC*gammaMat[c]*currentParams.Tau(c)*gammaMat[c]);
-		arma::vec meanVec(nCovariates);
+		MatrixXd covMat(nCovariates,nCovariates);
+		covMat = (hyperParams.Tau0()+nXInC*gammaMat[c]*currentParams.Tau(c)*gammaMat[c]).inverse();
+		VectorXd meanVec(nCovariates);
         meanVec = hyperParams.Tau0()*hyperParams.mu0()+
 					nXInC*gammaMat[c]*currentParams.Tau(c)*(meanX[c]-oneMinusGammaMat[c]*currentParams.nullMu());
 		meanVec = covMat*meanVec;
 
-		arma::vec mu(nCovariates);
+		VectorXd mu(nCovariates);
 		// We sample from this posterior
 		mu = multivarNormalRand(rndGenerator,meanVec,covMat);
 		// We store our sample
@@ -958,28 +963,28 @@ void gibbsForTauActive(mcmcChain<diPBaCParams>& chain,
 	nAccept++;
 
 	// In the following it is useful to have the rows of X as
-	// armadillo vectors
-	vector<arma::vec> xi(nSubjects);
+	// Eigen dynamic vectors
+	vector<VectorXd> xi(nSubjects);
 	for(unsigned int i=0;i<nSubjects;i++){
-		xi[i].zeros(nCovariates);
+		xi[i].setZero(nCovariates);
 		for(unsigned int j=0;j<nCovariates;j++){
 			xi[i](j)=dataset.continuousX(i,j);
 		}
 	}
 
-	vector<arma::mat> Rc(maxZ+1);
+	vector<MatrixXd> Rc(maxZ+1);
 	for(unsigned int c=0;c<=maxZ;c++){
-		Rc[c].zeros(nCovariates,nCovariates);
+		Rc[c].setZero(nCovariates,nCovariates);
 	}
 
 	for(unsigned int i=0;i<nSubjects;i++){
 		unsigned int zi = currentParams.z(i);
-		Rc[zi]=Rc[zi]+(xi[i]-currentParams.workMuStar(zi))*trans(xi[i]-currentParams.workMuStar(zi));
+		Rc[zi]=Rc[zi]+(xi[i]-currentParams.workMuStar(zi))*((xi[i]-currentParams.workMuStar(zi)).transpose());
 	}
 
 	for(unsigned int c=0;c<=maxZ;c++){
-		Rc[c]=arma::inv(arma::inv(hyperParams.R0())+Rc[c]);
-		arma::mat Tau = wishartRand(rndGenerator,Rc[c],currentParams.workNXInCluster(c)+hyperParams.kappa0());
+		Rc[c]=(hyperParams.R0().inverse()+Rc[c]).inverse();
+		MatrixXd Tau = wishartRand(rndGenerator,Rc[c],currentParams.workNXInCluster(c)+hyperParams.kappa0());
 
 		currentParams.Tau(c,Tau);
 
@@ -1540,13 +1545,13 @@ void gibbsForMuInActive(mcmcChain<diPBaCParams>& chain,
 	nTry++;
 	nAccept++;
 
-	arma::mat covMat(nCovariates,nCovariates);
-	covMat = arma::inv(hyperParams.Tau0());
-	arma::vec meanVec(nCovariates);
+	MatrixXd covMat(nCovariates,nCovariates);
+	covMat = hyperParams.Tau0().inverse();
+	VectorXd meanVec(nCovariates);
 	meanVec = hyperParams.mu0();
 
 	for(unsigned int c=maxZ+1;c<maxNClusters;c++){
-		arma::vec mu(nCovariates);
+		VectorXd mu(nCovariates);
 		// We sample from this posterior
 		mu = multivarNormalRand(rndGenerator,meanVec,covMat);
 
@@ -1575,7 +1580,7 @@ void gibbsForTauInActive(mcmcChain<diPBaCParams>& chain,
 	nAccept++;
 
 	for(unsigned int c=maxZ+1;c<maxNClusters;c++){
-		arma::mat Tau = wishartRand(rndGenerator,hyperParams.R0(),hyperParams.kappa0());
+		MatrixXd Tau = wishartRand(rndGenerator,hyperParams.R0(),hyperParams.kappa0());
 		currentParams.Tau(c,Tau);
 	}
 
@@ -2168,7 +2173,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 	}else if(covariateType.compare("Normal")==0){
 		for(unsigned int i=0;i<nSubjects;i++){
 			logPXiGivenZi[i].resize(maxNClusters,0.0);
-			arma::vec xi=zeros(nCovariates);
+			VectorXd xi=VectorXd::Zero(nCovariates);
 			for(unsigned int c=0;c<maxNClusters;c++){
 				if(u[i]<psi[c]){
 					if(currentParams.z(i)==(int)c){
@@ -2177,12 +2182,13 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 						for(unsigned int j=0;j<nCovariates;j++){
 							xi(j)=currentParams.workContinuousX(i,j);
 						}
-						logPXiGivenZi[i][c]=logPdfMultivarNormal(xi,currentParams.workMuStar(c),currentParams.Tau(c));
+						logPXiGivenZi[i][c]=logPdfMultivarNormal(nCovariates,xi,currentParams.workMuStar(c),currentParams.workSqrtTau(c),currentParams.workLogDetTau(c));
 					}
 				}
 			}
 		}
 		// For the predictive subjects we do not count missing data
+		LLT<MatrixXd> llt;
 		for(unsigned int i=nSubjects;i<nSubjects+nPredictSubjects;i++){
 			logPXiGivenZi[i].resize(maxNClusters,0.0);
 
@@ -2190,20 +2196,23 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 
 			for(unsigned int c=0;c<maxNClusters;c++){
 				if(u[i]<psi[c]){
-					arma::vec workMuStar=currentParams.workMuStar(c);
+					VectorXd workMuStar=currentParams.workMuStar(c);
 
-					arma::vec xi=zeros(nNotMissing);
-					arma::vec muStar=zeros(nNotMissing);
-					arma::mat Tau=zeros(nNotMissing,nNotMissing);
+					VectorXd xi=VectorXd::Zero(nNotMissing);
+					VectorXd muStar=VectorXd::Zero(nNotMissing);
+					MatrixXd sqrtTau=MatrixXd::Zero(nNotMissing,nNotMissing);
+					double logDetTau =0.0;
 					if(nNotMissing==nCovariates){
 						muStar=workMuStar;
-						Tau=currentParams.Tau(c);
+						sqrtTau=currentParams.workSqrtTau(c);
+						logDetTau=currentParams.workLogDetTau(c);
 						for(unsigned int j=0;j<nCovariates;j++){
 							xi(j)=currentParams.workContinuousX(i,j);
 						}
 					}else{
-						arma::mat workSigma=currentParams.Sigma(c);
-						arma::mat Sigma=zeros(nNotMissing,nNotMissing);
+						MatrixXd workSigma=currentParams.Sigma(c);
+						MatrixXd Sigma=MatrixXd::Zero(nNotMissing,nNotMissing);
+						MatrixXd Tau=MatrixXd::Zero(nNotMissing,nNotMissing);
 						unsigned int j=0;
 						for(unsigned int j0=0;j0<nCovariates;j0++){
 							if(!missingX[i][j0]){
@@ -2219,9 +2228,12 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 								j++;
 							}
 						}
-						Tau = arma::inv(Sigma);
+						Tau = Sigma.inverse();
+						sqrtTau = (llt.compute(Tau)).matrixU();
+						logDetTau = log(Tau.determinant());
+
 					}
-					logPXiGivenZi[i][c]=logPdfMultivarNormal(xi,muStar,Tau);
+					logPXiGivenZi[i][c]=logPdfMultivarNormal(nNotMissing,xi,muStar,sqrtTau,logDetTau);
 				}
 			}
 		}
@@ -2423,7 +2435,7 @@ void updateMissingDiPBaCData(baseGeneratorType& rndGenerator,
 			// Check if there is anything to do
 			if(dataset.nCovariatesNotMissing(i)<nCovariates){
 				int zi = params.z(i);
-				arma::vec newXi=multivarNormalRand(rndGenerator,params.workMuStar(zi),params.Tau(zi));
+				VectorXd newXi=multivarNormalRand(rndGenerator,params.workMuStar(zi),params.Tau(zi));
 				for(unsigned int j=0;j<nCovariates;j++){
 					if(dataset.missingX(i,j)){
 						dataset.continuousX(i,j,newXi(j));
@@ -2432,7 +2444,7 @@ void updateMissingDiPBaCData(baseGeneratorType& rndGenerator,
 						newXi(j)=dataset.continuousX(i,j);
 					}
 				}
-				double logVal = logPdfMultivarNormal(newXi,params.workMuStar(zi),params.Tau(zi));
+				double logVal = logPdfMultivarNormal(nCovariates,newXi,params.workMuStar(zi),params.workSqrtTau(zi),params.workLogDetTau(zi));
 				params.workLogPXiGivenZi(i,logVal);
 			}
 		}
