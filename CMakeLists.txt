@@ -14,8 +14,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${DIPBAC_SOURCE_DIR}/bin")
 
 # Add extra directories for finding header files
 include_directories("${DIPBAC_SOURCE_DIR}/include")
-include_directories("${DIPBAC_SOURCE_DIR}/CPP_Base/include")
-include_directories("/usr/local/include/eigen3")
 
 # Turn on debugging warnings and profiling
 if(CMAKE_BUILD_TYPE MATCHES "Develop")
@@ -23,7 +21,7 @@ if(CMAKE_BUILD_TYPE MATCHES "Develop")
 
     # Build a debugging version
     add_executable(DiPBaCpp_Debug DiPBaC.cpp)
-    set_target_properties(DiPBaCpp_Debug PROPERTIES COMPILE_FLAGS "-g -Wall -fopenmp" LINK_FLAGS "-g -Wall -fopenmp")	
+    set_target_properties(DiPBaCpp_Debug PROPERTIES COMPILE_FLAGS "-g -Wall" LINK_FLAGS "-g -Wall")	
     target_link_libraries(DiPBaCpp_Debug gomp)
     # Build a profiling version
     add_executable(DiPBaCpp_Profile DiPBaC.cpp)
