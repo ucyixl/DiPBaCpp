@@ -13,7 +13,9 @@
 #include<string>
 #include<numeric>
 #include<limits>
-#include <cstdlib>
+#include<cstdlib>
+
+#include<Eigen/Dense>
 
 // Custom includes
 #include "MCMC/chain.h"
@@ -23,11 +25,14 @@
 #include "DiPBaCData.h"
 #include "DiPBaCModel.h"
 
+using namespace Eigen;
+
 using std::vector;
 using std::cout;
 using std::endl;
 using std::ostringstream;
 using std::string;
+
 
 // Process the command line run time options
 diPBaCOptions processCommandLine(int argc, char*  argv[]){
@@ -420,7 +425,7 @@ void readHyperParamsFromFile(const string& filename,diPBaCHyperParams& hyperPara
 				muVec.push_back((double)atof(elem.c_str()));
 				tmpStr = tmpStr.substr(pos+1,tmpStr.size()-pos-1);
 			}
-			arma::vec mu0=zeros(muVec.size());
+			VectorXd mu0=VectorXd::Zero(muVec.size());
 			for(unsigned int j=0;j<muVec.size();j++){
 				mu0(j)=muVec[j];
 			}
@@ -439,7 +444,7 @@ void readHyperParamsFromFile(const string& filename,diPBaCHyperParams& hyperPara
 				tmpStr = tmpStr.substr(pos+1,tmpStr.size()-pos-1);
 			}
 			unsigned int dim = (unsigned int)sqrt((double)TauVec.size());
-			arma::vec Tau0=zeros(dim,dim);
+			MatrixXd Tau0=MatrixXd::Zero(dim,dim);
 			for(unsigned int j1=0;j1<dim;j1++){
 				for(unsigned int j2=0;j2<dim;j2++){
 					Tau0(j1,j2)=TauVec[j1*dim+j2];
@@ -460,7 +465,7 @@ void readHyperParamsFromFile(const string& filename,diPBaCHyperParams& hyperPara
 				tmpStr = tmpStr.substr(pos+1,tmpStr.size()-pos-1);
 			}
 			unsigned int dim = (unsigned int)sqrt((double)RVec.size());
-			arma::vec R0=zeros(dim,dim);
+			MatrixXd R0=MatrixXd::Zero(dim,dim);
 			for(unsigned int j1=0;j1<dim;j1++){
 				for(unsigned int j2=0;j2<dim;j2++){
 					R0(j1,j2)=RVec[j1*dim+j2];
@@ -737,10 +742,10 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 
 	}else if(covariateType.compare("Normal")==0){
 		// In the following it is useful to have the rows of X as
-		// armadillo vectors
-		vector<arma::vec> xi(nSubjects);
+		// Eigen dynamic vectors
+		vector<VectorXd> xi(nSubjects);
 		for(unsigned int i=0;i<nSubjects;i++){
-			xi[i].zeros(nCovariates);
+			xi[i].setZero(nCovariates);
 			for(unsigned int j=0;j<nCovariates;j++){
 				xi[i](j)=dataset.continuousX(i,j);
 			}
@@ -752,9 +757,9 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 		// First we sample mu_c for each cluster
 
 		// We begin by computing the mean X for individuals in each cluster
-		vector<arma::vec> meanX(maxNClusters);
+		vector<VectorXd> meanX(maxNClusters);
 		for(unsigned int c=0;c<maxNClusters;c++){
-			meanX[c].zeros(nCovariates);
+			meanX[c].setZero(nCovariates);
 		}
 		for(unsigned int i=0;i<nSubjects;i++){
 			meanX[params.z(i)]=meanX[params.z(i)]+xi[i];
@@ -766,15 +771,15 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 			if(params.workNXInCluster(c)>0){
 				meanX[c]=meanX[c]/(double)params.workNXInCluster(c);
 			}else{
-				meanX[c].zeros(nCovariates);
+				meanX[c].setZero(nCovariates);
 			}
-			arma::mat covMat(nCovariates,nCovariates);
-			covMat = arma::inv(hyperParams.Tau0()+params.workNXInCluster(c)*hyperParams.Tau0());
-			arma::vec meanVec(nCovariates);
+			MatrixXd covMat(nCovariates,nCovariates);
+			covMat = (hyperParams.Tau0()+params.workNXInCluster(c)*hyperParams.Tau0()).inverse();
+			VectorXd meanVec(nCovariates);
 			meanVec = hyperParams.Tau0()*hyperParams.mu0()+params.workNXInCluster(c)*hyperParams.Tau0()*meanX[c];
 			meanVec = covMat*meanVec;
 
-			arma::vec mu(nCovariates);
+			VectorXd mu(nCovariates);
 			// We sample from this posterior
 			mu = multivarNormalRand(rndGenerator,meanVec,covMat);
 
@@ -784,19 +789,19 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 		}
 
 		// Now we can sample Tau_c for each cluster
-		vector<arma::mat> Rc(maxNClusters);
+		vector<MatrixXd> Rc(maxNClusters);
 		for(unsigned int c=0;c<maxNClusters;c++){
-			Rc[c].zeros(nCovariates,nCovariates);
+			Rc[c].setZero(nCovariates,nCovariates);
 		}
 
 		for(unsigned int i=0;i<nSubjects;i++){
 			unsigned int zi = params.z(i);
-			Rc[zi]=Rc[zi]+(xi[i]-params.mu(zi))*trans(xi[i]-params.mu(zi));
+			Rc[zi]=Rc[zi]+(xi[i]-params.mu(zi))*((xi[i]-params.mu(zi)).transpose());
 		}
 
 		for(unsigned int c=0;c<maxNClusters;c++){
-			Rc[c]=arma::inv(arma::inv(hyperParams.R0())+Rc[c]);
-			arma::mat Tau = wishartRand(rndGenerator,Rc[c],params.workNXInCluster(c)+hyperParams.kappa0());
+			Rc[c]=(hyperParams.R0().inverse()+Rc[c]).inverse();
+			MatrixXd Tau = wishartRand(rndGenerator,Rc[c],params.workNXInCluster(c)+hyperParams.kappa0());
 			params.Tau(c,Tau);
 		}
 
@@ -814,7 +819,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 					}
 				}
 			}
-			arma::vec nullMu=zeros(nCovariates);
+			VectorXd nullMu=VectorXd::Zero(nCovariates);
 			for(unsigned int j=0;j<nCovariates;j++){
 				nullMu(j)=meanXVec[j]/(double)countXVec[j];
 			}
@@ -1442,9 +1447,12 @@ string storeLogFileData(const diPBaCOptions& options,
 	}
 
 	if(options.covariateType().compare("Normal")==0){
-		tmpStr << "mu0: " << hyperParams.mu0() << endl;
-		tmpStr << "Tau0:" << hyperParams.Tau0() << endl;
-		tmpStr << "R0: "  << hyperParams.mu0() << endl;
+		tmpStr << "mu0: " << endl;
+		tmpStr << hyperParams.mu0() << endl;
+		tmpStr << "Tau0:" << endl;
+		tmpStr << hyperParams.Tau0() << endl;
+		tmpStr << "R0: "  << endl;
+		tmpStr << hyperParams.R0() << endl;
 		tmpStr << "kappa0: " << hyperParams.kappa0() << endl;
 	}
 
