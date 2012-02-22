@@ -13,6 +13,9 @@ set(LOGDIRECTORY "${DIPBAC_SOURCE_DIR}/log")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${DIPBAC_SOURCE_DIR}/bin")
 
 # Add extra directories for finding header files
+# The before key word means that the libraries include in this package are 
+# used instead of any already installed on the system 
+include_directories(BEFORE "${DIPBAC_SOURCE_DIR}/lib/include")
 include_directories("${DIPBAC_SOURCE_DIR}/include")
 
 # Turn on debugging warnings and profiling
