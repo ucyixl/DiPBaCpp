@@ -47,7 +47,7 @@ SEXP calcDisSimMat(SEXP fileName, SEXP nSweeps, SEXP nBurn, SEXP nFilter,SEXP nS
     		if((1+k-firstLine)==1||(1+k-firstLine)%100==0){
 				std::cout << 1+k-firstLine << " samples out of " << 1+nLines-firstLine << std::endl;
 			}
-    		disSimMatPerSweep[k-firstLine+1].resize((nSj*(nSj-1))/2,1.0);
+    		disSimMatPerSweep[k-firstLine].resize((nSj*(nSj-1))/2,1.0);
 			for(int i=0;i<nSj+nPSj;i++){
     			// Fill up the cluster data for this sweep
     			zFile >> clusterData[i];
@@ -60,7 +60,7 @@ SEXP calcDisSimMat(SEXP fileName, SEXP nSweeps, SEXP nBurn, SEXP nFilter,SEXP nS
     			for(int ii=i+1;ii<nSj;ii++){
     				if(clusterData[i]==clusterData[ii]){
         				disSimMat[r]-=1.0/denom;
-        				disSimMatPerSweep[k-firstLine+1][r]-=1.0;
+        				disSimMatPerSweep[k-firstLine][r]-=1.0;
         			}
     				r++;
     			}
@@ -83,7 +83,7 @@ SEXP calcDisSimMat(SEXP fileName, SEXP nSweeps, SEXP nBurn, SEXP nFilter,SEXP nS
     for(int k=firstLine;k<=nLines;k++){
     	double tmpSum=0.0;
     	for(unsigned int r=0;r<nSj*(nSj-1)/2;r++){
-    		tmpSum+=pow(disSimMat[r]-disSimMatPerSweep[k-firstLine+1][r],2.0);
+    		tmpSum+=pow(disSimMat[r]-disSimMatPerSweep[k-firstLine][r],2.0);
     	}
     	if(tmpSum<currMinSum){
     		minIndex=k;
