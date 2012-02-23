@@ -33,7 +33,7 @@ typedef boost::random::normal_distribution<> randomNormal;
 // Define the gamma random number generator
 typedef boost::random::gamma_distribution<> randomGamma;
 // Define the students t random number generator
-typedef boost::random::students_t_distribution<> randomStudentsT;
+typedef boost::random::student_t_distribution<> randomStudentsT;
 
 // Univariate distributions
 
@@ -129,18 +129,6 @@ VectorXd multivarNormalRand(baseGeneratorType& rndGenerator,const VectorXd& mean
 
 }
 
-MatrixXd invWishartRand(baseGeneratorType& rndGenerator,const MatrixXd& R,const int& m){
-
-	// We generate a Wishart(invR,m) matrix variate then invert
-	MatrixXd invR = R.inverse();
-
-	MatrixXd invSample = wishartRand(rndGenerator,invR,m);
-
-	return(invSample.inverse());
-
-}
-
-
 MatrixXd wishartRand(baseGeneratorType& rndGenerator,const MatrixXd& R,const int& m){
 
 	// Cholesky decomposition
@@ -171,6 +159,17 @@ MatrixXd wishartRand(baseGeneratorType& rndGenerator,const MatrixXd& R,const int
 
 	// Return matrix square
 	return DA*(DA.transpose());
+
+}
+
+MatrixXd invWishartRand(baseGeneratorType& rndGenerator,const MatrixXd& R,const int& m){
+
+	// We generate a Wishart(invR,m) matrix variate then invert
+	MatrixXd invR = R.inverse();
+
+	MatrixXd invSample = wishartRand(rndGenerator,invR,m);
+
+	return(invSample.inverse());
 
 }
 

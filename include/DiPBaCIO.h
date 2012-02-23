@@ -607,7 +607,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 		params.workNClusInit(nClusInit);
 	}
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
-		int c=(int) nClusInit*unifRand();
+		int c=(int) nClusInit*unifRand(rndGenerator);
 		params.z(i,c,covariateType);
 		if(c>(int)maxZ){
 			maxZ=c;
@@ -651,7 +651,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	double minU=1.0;
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 		int zi=params.z(i);
-		double ui = exp(params.logPsi(zi))*unifRand();
+		double ui = exp(params.logPsi(zi))*unifRand(rndGenerator);
 		if(ui<minU){
 			minU=ui;
 		}
@@ -852,10 +852,10 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 				}
 			}else{
 				omega[j]=1;
-				rho[j]=0.75+0.25*unifRand();
+				rho[j]=0.75+0.25*unifRand(rndGenerator);
 				if(varSelectType.compare("BinaryCluster")==0){
 					for(unsigned int c=0;c<maxNClusters;c++){
-						if(unifRand()<rho[j]){
+						if(unifRand(rndGenerator)<rho[j]){
 							gamma[c][j]=1;
 						}else{
 							gamma[c][j]=0;
@@ -891,7 +891,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 		}
 
 		if(outcomeType.compare("Normal")==0){
-			randomGamma gammaRand(hyperParams.shapeSigma(),1.0/hyperParams.scaleSigmaSqY());
+			randomGamma gammaRand(hyperParams.shapeSigmaSqY(),1.0/hyperParams.scaleSigmaSqY());
 			double sigmaSqY=1.0/(gammaRand(rndGenerator));
 			params.sigmaSqY(sigmaSqY);
 

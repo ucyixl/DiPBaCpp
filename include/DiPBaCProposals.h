@@ -13,10 +13,10 @@
 #include<numeric>
 #include<limits>
 
-#include<Boost/math/distributions/normal.hpp>
-#include<Boost/math/distributions/beta.hpp>
-#include<Boost/math/distributions/students_t.hpp>
-#include<Boost/math/special_functions/gamma.hpp>
+#include<boost/math/distributions/normal.hpp>
+#include<boost/math/distributions/beta.hpp>
+#include<boost/math/distributions/students_t.hpp>
+#include<boost/math/special_functions/gamma.hpp>
 
 #include<Eigen/Core>
 #include<Eigen/Cholesky>
