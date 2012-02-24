@@ -542,6 +542,7 @@ class diPBaCParams{
 			_workContinuousX.resize(nSubjects+nPredictSubjects);
 			_workLogPXiGivenZi.resize(nSubjects);
 			_workPredictExpectedTheta.resize(nPredictSubjects);
+			_workPredictExpectedPackYears.resize(nPredictSubjects);
 			_workEntropy.resize(nSubjects+nPredictSubjects,0);
 			for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 				_workDiscreteX[i].resize(nCovariates,0);
@@ -1349,6 +1350,20 @@ class diPBaCParams{
 			_workPredictExpectedTheta[i]=expectedVal;
 		}
 
+		double workPredictExpectedPackYears(const unsigned int& i) const{
+			return _workPredictExpectedPackYears[i];
+		}
+
+		const vector<double>& workPredictExpectedPackYears() const{
+			return _workPredictExpectedPackYears;
+		}
+
+		void workPredictExpectedPackYears(const unsigned int& i,const double& expectedVal){
+			_workPredictExpectedPackYears[i]=expectedVal;
+		}
+
+
+
 		double workEntropy(const unsigned int& i) const{
 			return _workEntropy[i];
 		}
@@ -1479,6 +1494,7 @@ class diPBaCParams{
 			_workLogPhiStar = params.workLogPhiStar();
 			_workMuStar = params.workMuStar();
 			_workPredictExpectedTheta = params.workPredictExpectedTheta();
+			_workPredictExpectedPackYears = params.workPredictExpectedPackYears();
 			_workEntropy = params.workEntropy();
 			_workNClusInit = params.workNClusInit();
 			_workLogDetTau = params.workLogDetTau();
@@ -1591,6 +1607,9 @@ class diPBaCParams{
 
 		/// \brief A vector of expected theta values for the prediction subjects
 		vector<double> _workPredictExpectedTheta;
+
+		/// \brief A vector of expected theta values for the prediction subjects
+		vector<double> _workPredictExpectedPackYears;
 
 		/// \brief A vector of entropy values for each of the subjects
 		vector<double> _workEntropy;

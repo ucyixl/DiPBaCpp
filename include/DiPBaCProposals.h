@@ -2304,6 +2304,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 
 		double expectedTheta=0.0;
 		double entropyVal=0.0;
+		double expectedPackYears=0.0;
 		vector<double> cumPzGivenXy(maxNClusters);
 		for(unsigned int c=0;c<maxNClusters;c++){
 			pzGivenXy[c]/=sumVal;
@@ -2318,6 +2319,16 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			}
 			if(includeResponse&&i>=nSubjects){
 				expectedTheta+=currentParams.theta(c)*pzGivenXy[c];
+			}
+			// This is only in the ICare branch
+			// A rough and ready fix for one of plots
+			// Assumes packyears is always the fourth covariate, which for
+			// ICare analysis this is always the case.
+			if(i>=nSubjects){
+				for(unsigned int k=1;k<5;k++){
+					expectedPackYears+=(double)k*exp(currentParams.logPhi(c,3,k))
+											*pzGivenXy[c];
+				}
 			}
 		}
 
@@ -2346,6 +2357,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			if(includeResponse){
 				currentParams.workPredictExpectedTheta(i-nSubjects,expectedTheta);
 			}
+			currentParams.workPredictExpectedPackYears(i-nSubjects,expectedPackYears);
 		}
 	}
 
