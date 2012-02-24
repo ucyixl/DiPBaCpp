@@ -12,6 +12,19 @@ include(CheckLibraryExists)
 set(LOGDIRECTORY "${DIPBAC_SOURCE_DIR}/log")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${DIPBAC_SOURCE_DIR}/bin")
 
+# Extract the boost files
+execute_process(
+COMMAND ${CMAKE_COMMAND} -E tar xzf "${DIPBAC_SOURCE_DIR}/lib/include/boost_1.48.0.tar.gz"
+WORKING_DIRECTORY "${DIPBAC_SOURCE_DIR}/lib/include"
+)
+
+# Extract the Eigen files
+execute_process(
+COMMAND ${CMAKE_COMMAND} -E tar xzf "${DIPBAC_SOURCE_DIR}/lib/include/Eigen_3.0.5.tar.gz"
+WORKING_DIRECTORY "${DIPBAC_SOURCE_DIR}/lib/include"
+)
+
+
 # Add extra directories for finding header files
 # The before key word means that the libraries include in this package are 
 # used instead of any already installed on the system 
