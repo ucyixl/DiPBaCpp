@@ -21,16 +21,18 @@
 #include<boost/math/distributions/students_t.hpp>
 #include<boost/math/special_functions/gamma.hpp>
 
-#include<Eigen/Dense>
+#include<Eigen/Core>
+#include<Eigen/Cholesky>
+#include<Eigen/LU>
 
 // Custom includes
-#include "MCMC/model.h"
-#include "MCMC/state.h"
-#include "Math/random.h"
-#include "Math/distribution.h"
-#include "Math/mathfunctions.h"
-#include "DiPBaCData.h"
-#include "DiPBaCOptions.h"
+#include<MCMC/model.h>
+#include<MCMC/state.h>
+#include<Math/random.h>
+#include<Math/distribution.h>
+#include<Math/mathfunctions.h>
+#include<DiPBaCData.h>
+#include<DiPBaCOptions.h>
 
 using std::vector;
 using std::ifstream;

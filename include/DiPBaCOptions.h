@@ -11,7 +11,7 @@
 #include<fstream>
 #include<string>
 #include<numeric>
-#include <ctime>
+#include<ctime>
 
 using std::vector;
 using std::ifstream;

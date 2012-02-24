@@ -1,5 +1,7 @@
 /*~
 /CMakeFiles/
+/lib/include/boost/
+/lib/include/Eigen/
 /Makefile
 /*.cmake
 CMakeCache.txt

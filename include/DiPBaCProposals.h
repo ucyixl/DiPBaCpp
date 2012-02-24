@@ -18,16 +18,18 @@
 #include<boost/math/distributions/students_t.hpp>
 #include<boost/math/special_functions/gamma.hpp>
 
-#include<Eigen/Dense>
+#include<Eigen/Core>
+#include<Eigen/Cholesky>
+#include<Eigen/LU>
 
 // Custom includes
-#include "MCMC/chain.h"
-#include "MCMC/model.h"
-#include "Math/random.h"
-#include "Math/distribution.h"
-#include "DiPBaCOptions.h"
-#include "DiPBaCModel.h"
-#include "DiPBaCData.h"
+#include<MCMC/chain.h>
+#include<MCMC/model.h>
+#include<Math/random.h>
+#include<Math/distribution.h>
+#include<DiPBaCOptions.h>
+#include<DiPBaCModel.h>
+#include<DiPBaCData.h>
 
 using namespace Eigen;
 
@@ -791,8 +793,7 @@ void updateForPhiActive(mcmcChain<diPBaCParams>& chain,
 	unsigned int nSubjects = dataset.nSubjects();
 
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 
 	double currentLogPost=0.0;
 
@@ -842,7 +843,7 @@ void updateForPhiActive(mcmcChain<diPBaCParams>& chain,
 				logAcceptRatio=proposedLogPost-currentLogPost;
 				logAcceptRatio+=logPdfDirichlet(currentLogPhi,dirichParams,true);
 				logAcceptRatio-=logPdfDirichlet(proposedLogPhi,dirichParams,true);
-				if(unifRand()<exp(logAcceptRatio)){
+				if(unifRand(rndGenerator)<exp(logAcceptRatio)){
 					// Move accepted
 					nAccept++;
 				}else{
@@ -1016,8 +1017,7 @@ void gibbsForGammaActive(mcmcChain<diPBaCParams>& chain,
 	string varSelectType = model.options().varSelectType();
 
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 
 	nTry++;
 	nAccept++;
@@ -1068,7 +1068,7 @@ void gibbsForGammaActive(mcmcChain<diPBaCParams>& chain,
 
 				probStick=exp(logProbStick-maxLogProb)/(exp(logProbStick-maxLogProb)+exp(logProbSwitch-maxLogProb));
 			}
-			if(unifRand()<probStick){
+			if(unifRand(rndGenerator)<probStick){
 				// Sticking (we actually need to revert back to what we were
 				// before doing the calculations)
 				currentGamma[j]=1-currentGamma[j];
@@ -1099,11 +1099,9 @@ void metropolisHastingsForThetaActive(mcmcChain<diPBaCParams>& chain,
 	unsigned int maxZ = currentParams.workMaxZi();
 
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 	// Define a normal random number generator
-	boost::normal_distribution<double> norm01(0,1);
-	randomNormal normRand(rndGenerator,norm01);
+	randomNormal normRand(0,1);
 
 	double thetaTargetRate = propParams.thetaAcceptTarget();
 	unsigned int thetaUpdateFreq = propParams.thetaUpdateFreq();
@@ -1114,11 +1112,11 @@ void metropolisHastingsForThetaActive(mcmcChain<diPBaCParams>& chain,
 		propParams.thetaAddTry();
 		double& stdDev = propParams.thetaStdDev();
 		double thetaOrig = currentParams.theta(c);
-		double thetaProp = thetaOrig +stdDev*normRand();
+		double thetaProp = thetaOrig +stdDev*normRand(rndGenerator);
 		currentParams.theta(c,thetaProp);
 		double propCondLogPost = logCondPostThetaBeta(currentParams,model);
 		double logAcceptRatio = propCondLogPost - currentCondLogPost;
-		if(unifRand()<exp(logAcceptRatio)){
+		if(unifRand(rndGenerator)<exp(logAcceptRatio)){
 			nAccept++;
 			propParams.thetaAddAccept();
 			currentCondLogPost = propCondLogPost;
@@ -1170,8 +1168,7 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 	string varSelectType = model.options().varSelectType();
 	string covariateType = model.options().covariateType();
 
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 
 	// Move 1 - swap labels of 2 randomly selected non-empty clusters,
 	//          leaving psi_c^prop = psi_c for all c
@@ -1188,17 +1185,17 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 
 	// Select two non-empty clusters at random
 	//nTry++;
-	unsigned int i1=(unsigned int)nNotEmpty*unifRand();
+	unsigned int i1=(unsigned int)nNotEmpty*unifRand(rndGenerator);
 	unsigned int c1=nonEmptyIndices[i1];
 	nonEmptyIndices.erase(nonEmptyIndices.begin()+i1);
-	unsigned int i2=(unsigned int)(nNotEmpty-1)*unifRand();
+	unsigned int i2=(unsigned int)(nNotEmpty-1)*unifRand(rndGenerator);
 	unsigned int c2=nonEmptyIndices[i2];
 
 	// Check whether we accept the move
 	double logAcceptRatio = ((double)currentParams.workNXInCluster(c2)-(double)currentParams.workNXInCluster(c1))
 								*(currentParams.logPsi(c1)-currentParams.logPsi(c2));
 
-	if(unifRand()<exp(logAcceptRatio)){
+	if(unifRand(rndGenerator)<exp(logAcceptRatio)){
 		//nAccept++;
 		// Switch the labels
 		currentParams.switchLabels(c1,c2,covariateType,varSelectType);
@@ -1207,12 +1204,12 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 	// Move 2 - swap labels of 2 randomly selected neighbouring clusters,
 	//			also swapping the v at the same time
 	//nTry++;
-	c1=(unsigned int)maxZ*unifRand();
+	c1=(unsigned int)maxZ*unifRand(rndGenerator);
 
 	logAcceptRatio=(double)currentParams.workNXInCluster(c1)*log(1-currentParams.v(c1+1))
 							- (double)currentParams.workNXInCluster(c1+1)*log(1-currentParams.v(c1));
 
-	if(unifRand()<exp(logAcceptRatio)){
+	if(unifRand(rndGenerator)<exp(logAcceptRatio)){
 		//nAccept++;
 		// Switch the labels
 		currentParams.switchLabels(c1,c1+1,covariateType,varSelectType);
@@ -1241,7 +1238,7 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 	// Move 3
 
 	nTry++;
-	c1=(unsigned int)maxZ*unifRand();
+	c1=(unsigned int)maxZ*unifRand(rndGenerator);
 	// Compute the acceptance ratio
 	unsigned int sumNAfterC1Plus1=0;
 	for(unsigned int c=c1+2;c<=maxZ;c++){
@@ -1260,7 +1257,7 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 	logAcceptRatio+=(double)(currentParams.workNXInCluster(c1+1))*log(const1);
 	logAcceptRatio+=(double)(currentParams.workNXInCluster(c1))*log(const2);
 
-	if(unifRand()<exp(logAcceptRatio)){
+	if(unifRand(rndGenerator)<exp(logAcceptRatio)){
 		nAccept++;
 		currentParams.switchLabels(c1,c1+1,covariateType,varSelectType);
 		double currPsiC1 = exp(currentParams.logPsi(c1));
@@ -1317,13 +1314,12 @@ void gibbsForU(mcmcChain<diPBaCParams>& chain,
 	unsigned int nPredictSubjects = currentParams.nPredictSubjects();
 
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 
 	double minUi = 1.0;
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 		int zi = currentParams.z(i);
-		double ui = exp(currentParams.logPsi(zi))*unifRand();
+		double ui = exp(currentParams.logPsi(zi))*unifRand(rndGenerator);
 		if(ui<minUi){
 			minUi=ui;
 		}
@@ -1355,8 +1351,7 @@ void metropolisHastingsForAlpha(mcmcChain<diPBaCParams>& chain,
 	unsigned int maxZ = currentParams.workMaxZi();
 
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 
 	double& stdDev = propParams.alphaStdDev();
 	double alphaCurrent = currentParams.alpha();
@@ -1381,7 +1376,7 @@ void metropolisHastingsForAlpha(mcmcChain<diPBaCParams>& chain,
 
 	propParams.alphaAddTry();
 	nTry++;
-	if(unifRand()<exp(logAcceptRatio)){
+	if(unifRand(rndGenerator)<exp(logAcceptRatio)){
 		nAccept++;
 		propParams.alphaAddAccept();
 		// If the move was accepted update the state
@@ -1499,10 +1494,6 @@ void gibbsForPhiInActive(mcmcChain<diPBaCParams>& chain,
 	// Find the number of covariates
 	unsigned int nCovariates = currentParams.nCovariates();
 
-	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
-
 	nTry++;
 	nAccept++;
 
@@ -1608,8 +1599,7 @@ void gibbsForGammaInActive(mcmcChain<diPBaCParams>& chain,
 	string varSelectType = model.options().varSelectType();
 
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 
 	nTry++;
 	nAccept++;
@@ -1648,7 +1638,7 @@ void gibbsForGammaInActive(mcmcChain<diPBaCParams>& chain,
 
 				probSwitch=exp(logProbSwitch-maxLogProb)/(exp(logProbStick-maxLogProb)+exp(logProbSwitch-maxLogProb));
 			}
-			if(unifRand()<probSwitch){
+			if(unifRand(rndGenerator)<probSwitch){
 				// Switching
 				currentParams.gamma(c,j,proposedGamma,covariateType);
 
@@ -1683,8 +1673,9 @@ void gibbsForThetaInActive(mcmcChain<diPBaCParams>& chain,
 	double location = hyperParams.muTheta();
 	double scale = hyperParams.sigmaTheta();
 	unsigned int dof = hyperParams.dofTheta();
+	randomStudentsT studentsTRand(dof);
 	for(unsigned int c=maxZ+1;c<maxNClusters;c++){
-		double theta=location+scale*studentsTRand(rndGenerator,dof);
+		double theta=location+scale*studentsTRand(rndGenerator);
 		currentParams.theta(c,theta);
 	}
 
@@ -1710,11 +1701,9 @@ void metropolisHastingsForBeta(mcmcChain<diPBaCParams>& chain,
 	unsigned int nFixedEffects = currentParams.nFixedEffects();
 
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 	// Define a normal random number generator
-	boost::normal_distribution<double> norm01(0,1);
-	randomNormal normRand(rndGenerator,norm01);
+	randomNormal normRand(0,1);
 
 	double betaTargetRate = propParams.betaAcceptTarget();
 	unsigned int betaUpdateFreq = propParams.betaUpdateFreq();
@@ -1726,11 +1715,11 @@ void metropolisHastingsForBeta(mcmcChain<diPBaCParams>& chain,
 		propParams.betaAddTry(j);
 		double& stdDev = propParams.betaStdDev(j);
 		double betaOrig = currentParams.beta(j);
-		double betaProp = betaOrig+stdDev*normRand();
+		double betaProp = betaOrig+stdDev*normRand(rndGenerator);
 		currentParams.beta(j,betaProp);
 		double propCondLogPost = logCondPostThetaBeta(currentParams,model);
 		double logAcceptRatio = propCondLogPost - currentCondLogPost;
-		if(unifRand()<exp(logAcceptRatio)){
+		if(unifRand(rndGenerator)<exp(logAcceptRatio)){
 			nAccept++;
 			propParams.betaAddAccept(j);
 			currentCondLogPost = propCondLogPost;
@@ -1780,11 +1769,9 @@ void metropolisHastingsForLambda(mcmcChain<diPBaCParams>& chain,
 	unsigned int nSubjects = currentParams.nSubjects();
 
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 	// Define a normal random number generator
-	boost::normal_distribution<double> norm01(0,1);
-	randomNormal normRand(rndGenerator,norm01);
+	randomNormal normRand(0,1);
 
 
 	double lambdaTargetRate = propParams.lambdaAcceptTarget();
@@ -1806,7 +1793,7 @@ void metropolisHastingsForLambda(mcmcChain<diPBaCParams>& chain,
 
 	for(unsigned int i=0;i<nSubjects;i++){
 		// Only update each lambda i with probability 0.1
-		if(unifRand()>0.1){
+		if(unifRand(rndGenerator)>0.1){
 			continue;
 		}
 
@@ -1816,11 +1803,11 @@ void metropolisHastingsForLambda(mcmcChain<diPBaCParams>& chain,
 		double currentCondLogPost = logCondPostLambdai(currentParams,model,i);
 		double& stdDev = propParams.lambdaStdDev();
 		double lambdaOrig = currentParams.lambda(i);
-		double lambdaProp = lambdaOrig+stdDev*normRand();
+		double lambdaProp = lambdaOrig+stdDev*normRand(rndGenerator);
 		currentParams.lambda(i,lambdaProp);
 		double propCondLogPost = logCondPostLambdai(currentParams,model,i);
 		double logAcceptRatio = propCondLogPost - currentCondLogPost;
-		if(unifRand()<exp(logAcceptRatio)){
+		if(unifRand(rndGenerator)<exp(logAcceptRatio)){
 			nAccept++;
 			propParams.lambdaAddAccept();
 			// Update the std dev of the proposal
@@ -1890,9 +1877,9 @@ void gibbsForTauEpsilon(mcmcChain<diPBaCParams>& chain,
 	a+=(double)nSubjects/2.0;
 	b+=sumEpsilon/2.0;
 
-	boost::gamma_distribution<double> gammaDist(a);
-	randomGamma gammaRand(rndGenerator,gammaDist);
-	double tau = gammaRand()/b;
+	// Boost uses shape and scale parameterisation
+	randomGamma gammaRand(a,1.0/b);
+	double tau = gammaRand(rndGenerator);
 	currentParams.tauEpsilon(tau);
 
 }
@@ -1916,11 +1903,9 @@ void metropolisHastingsForRhoOmega(mcmcChain<diPBaCParams>& chain,
 	string varSelectType = model.options().varSelectType();
 
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 	// Define a normal random number generator
-	boost::normal_distribution<double> norm01(0,1);
-	randomNormal normRand(rndGenerator,norm01);
+	randomNormal normRand(0,1);
 
 	double currentLogPost = 0;
 	if(varSelectType.compare("Continuous")==0){
@@ -1944,7 +1929,7 @@ void metropolisHastingsForRhoOmega(mcmcChain<diPBaCParams>& chain,
 
 		// Propose from the priors
 		double& stdDev = propParams.rhoStdDev(j);
-		if(unifRand()<0.5){
+		if(unifRand(rndGenerator)<0.5){
 			// Proposing an omega 0
 			if(currentOmega[j]==0){
 				// Nothing to do as move to the same place
@@ -1959,7 +1944,7 @@ void metropolisHastingsForRhoOmega(mcmcChain<diPBaCParams>& chain,
 			proposedLogPost = logCondPostRhoOmegaj(currentParams,model,j);
 			double logAcceptRatio = proposedLogPost - currentLogPost;
 			logAcceptRatio += logPdfBeta(currentRho[j],hyperParams.aRho(),hyperParams.bRho());
-			if(unifRand()<exp(logAcceptRatio)){
+			if(unifRand(rndGenerator)<exp(logAcceptRatio)){
 				// Move accepted
 				if(varSelectType.compare("Continuous")==0){
 					currentLogPost=proposedLogPost;
@@ -1980,7 +1965,7 @@ void metropolisHastingsForRhoOmega(mcmcChain<diPBaCParams>& chain,
 				logAcceptRatio += logPdfTruncatedNormal(currentRho[j],proposedRho,stdDev,"B",0,1);
 				logAcceptRatio -= logPdfTruncatedNormal(proposedRho,currentRho[j],stdDev,"B",0,1);
 				propParams.rhoAddTry(j);
-				if(unifRand()<exp(logAcceptRatio)){
+				if(unifRand(rndGenerator)<exp(logAcceptRatio)){
 					// Move accepted
 					if(varSelectType.compare("Continuous")==0){
 						currentLogPost=proposedLogPost;
@@ -2021,7 +2006,7 @@ void metropolisHastingsForRhoOmega(mcmcChain<diPBaCParams>& chain,
 				proposedLogPost = logCondPostRhoOmegaj(currentParams,model,j);
 				double logAcceptRatio = proposedLogPost - currentLogPost;
 				logAcceptRatio -= logPdfBeta(proposedRho,hyperParams.aRho(),hyperParams.bRho());
-				if(unifRand()<exp(logAcceptRatio)){
+				if(unifRand(rndGenerator)<exp(logAcceptRatio)){
 					// Move accepted
 					if(varSelectType.compare("Continuous")==0){
 						currentLogPost=proposedLogPost;
@@ -2076,9 +2061,8 @@ void gibbsForSigmaSqY(mcmcChain<diPBaCParams>& chain,
 	double posteriorShape = hyperParams.shapeSigmaSqY()+(double)nSubjects/2.0;
 	double posteriorScale = hyperParams.scaleSigmaSqY()+0.5*sumVal;
 
-	boost::gamma_distribution<double> gammaDist(posteriorShape);
-	randomGamma gammaRand(rndGenerator,gammaDist);
-	double sigmaSqY=posteriorScale/(gammaRand());
+	randomGamma gammaRand(posteriorShape,1.0/posteriorScale);
+	double sigmaSqY=1.0/gammaRand(rndGenerator);
 	currentParams.sigmaSqY(sigmaSqY);
 
 
@@ -2113,17 +2097,14 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 	nAccept++;
 
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
-
-	normal_distribution<double> norm01(0.0,1.0);
+	randomUniform unifRand(0,1);
 
 	vector<unsigned int> nMembers(maxNClusters,0);
 
 	vector<double> rnd(nSubjects+nPredictSubjects,0.0);
 	vector<double> u(nSubjects+nPredictSubjects,0.0);
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
-		rnd[i] = unifRand();
+		rnd[i] = unifRand(rndGenerator);
 		u[i] = currentParams.u(i);
 	}
 
@@ -2344,7 +2325,13 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		if(maxNClusters==1){
 			zi=0;
 		}else{
-			zi = sampleSingleCumulative(rnd[i],cumPzGivenXy);
+			zi = 0;
+			for(unsigned int c=0;c<maxNClusters;c++){
+				if(rnd[i]<cumPzGivenXy[c]){
+					zi=c;
+					break;
+				}
+			}
 		}
 		if(zi>maxZ){
 			maxZ=zi;
@@ -2379,8 +2366,7 @@ void updateMissingDiPBaCData(baseGeneratorType& rndGenerator,
 	string covariateType = options.covariateType();
 
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 
 	// For the missing variables we check which cluster the subject is allocated
 	// to and then sample for the appropriate
@@ -2393,7 +2379,7 @@ void updateMissingDiPBaCData(baseGeneratorType& rndGenerator,
 				if(dataset.missingX(i,j)){
 					vector<double> cumPhiStar(nCategories[j]);
 					// Sample uniform
-					double u=unifRand();
+					double u=unifRand(rndGenerator);
 					int k=0;
 					cumPhiStar[k]=exp(params.workLogPhiStar(zi,j,k));
 					while(u>cumPhiStar[k]){

@@ -15,15 +15,17 @@
 #include<limits>
 #include<cstdlib>
 
-#include<Eigen/Dense>
+#include<Eigen/Core>
+#include<Eigen/Cholesky>
+#include<Eigen/LU>
 
 // Custom includes
-#include "MCMC/chain.h"
-#include "MCMC/model.h"
-#include "MCMC/sampler.h"
-#include "DiPBaCOptions.h"
-#include "DiPBaCData.h"
-#include "DiPBaCModel.h"
+#include<MCMC/chain.h>
+#include<MCMC/model.h>
+#include<MCMC/sampler.h>
+#include<DiPBaCOptions.h>
+#include<DiPBaCData.h>
+#include<DiPBaCModel.h>
 
 using namespace Eigen;
 
@@ -588,13 +590,11 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 
 	// Now initialise the actual parameters
 	// Define a uniform random number generator
-	boost::uniform_real<double> unifDist(0,1);
-	randomUniform unifRand(rndGenerator,unifDist);
+	randomUniform unifRand(0,1);
 
-	boost::gamma_distribution<double> gammaDist(hyperParams.shapeAlpha());
-	randomGamma gammaRand(rndGenerator,gammaDist);
+	randomGamma gammaRand(hyperParams.shapeAlpha(),1.0/hyperParams.rateAlpha());
 
-	double alpha=gammaRand()/hyperParams.rateAlpha();
+	double alpha=gammaRand(rndGenerator);
 	if(options.fixedAlpha()>0){
 		alpha=options.fixedAlpha();
 	}
@@ -603,11 +603,11 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	vector<unsigned int> nXInCluster(maxNClusters,0);
 	unsigned int maxZ=0;
 	if(nClusInit==0){
-		nClusInit=5+(unsigned int)11*unifRand();
+		nClusInit=5+(unsigned int)11*unifRand(rndGenerator);
 		params.workNClusInit(nClusInit);
 	}
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
-		int c=(int) nClusInit*unifRand();
+		int c=(int) nClusInit*unifRand(rndGenerator);
 		params.z(i,c,covariateType);
 		if(c>(int)maxZ){
 			maxZ=c;
@@ -651,7 +651,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	double minU=1.0;
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 		int zi=params.z(i);
-		double ui = exp(params.logPsi(zi))*unifRand();
+		double ui = exp(params.logPsi(zi))*unifRand(rndGenerator);
 		if(ui<minU){
 			minU=ui;
 		}
@@ -839,7 +839,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 		vector<unsigned int> omega(nCovariates);
 		vector<double> rho(nCovariates);
 		for(unsigned int j=0;j<nCovariates;j++){
-			if(unifRand()<0.01){
+			if(unifRand(rndGenerator)<0.01){
 				// We are in the point mass at 0 case - variable is switched off
 				omega[j]=0;
 				rho[j]=0;
@@ -852,10 +852,10 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 				}
 			}else{
 				omega[j]=1;
-				rho[j]=0.75+0.25*unifRand();
+				rho[j]=0.75+0.25*unifRand(rndGenerator);
 				if(varSelectType.compare("BinaryCluster")==0){
 					for(unsigned int c=0;c<maxNClusters;c++){
-						if(unifRand()<rho[j]){
+						if(unifRand(rndGenerator)<rho[j]){
 							gamma[c][j]=1;
 						}else{
 							gamma[c][j]=0;
@@ -883,34 +883,33 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 		// Finally we sample the theta and beta values from uniform distributions
 		for(unsigned int c=0;c<maxNClusters;c++){
 			// Thetas are randomly between -2 and 2
-			params.theta(c,-2.0+4.0*unifRand());
+			params.theta(c,-2.0+4.0*unifRand(rndGenerator));
 		}
 		for(unsigned int j=0;j<nFixedEffects;j++){
 			// Betas are randomly between -2 and 2
-			params.beta(j,-2.0+4.0*unifRand());
+			params.beta(j,-2.0+4.0*unifRand(rndGenerator));
 		}
 
 		if(outcomeType.compare("Normal")==0){
-			boost::gamma_distribution<double> gammaDist(hyperParams.shapeSigmaSqY());
-			randomGamma gammaRand(rndGenerator,gammaDist);
-			double sigmaSqY=hyperParams.scaleSigmaSqY()/(gammaRand());
+			randomGamma gammaRand(hyperParams.shapeSigmaSqY(),1.0/hyperParams.scaleSigmaSqY());
+			double sigmaSqY=1.0/(gammaRand(rndGenerator));
 			params.sigmaSqY(sigmaSqY);
 
 		}
 
 		// And also the extra variation values if necessary
 		if(responseExtraVar){
+			// Shape and rate parameters
 			double a=5,b=2;
-			boost::gamma_distribution<double> gammaDist(a);
-			randomGamma gammaRand(rndGenerator,gammaDist);
+			// Boost parameterised in terms of shape and scale
+			randomGamma gammaRand(a,1.0/b);
 			// Tau is now a Gamma(a,b)
-			double tau = gammaRand()/b;
+			double tau = gammaRand(rndGenerator);
 			params.tauEpsilon(tau);
 
-			boost::normal_distribution<double> normalDist(0,1.0/sqrt(tau));
-			randomNormal normalRand(rndGenerator,normalDist);
+			randomNormal normalRand(0,1.0/sqrt(tau));
 			for(unsigned int i=0;i<nSubjects;i++){
-				double eps = normalRand();
+				double eps = normalRand(rndGenerator);
 				int zi = params.z(i);
 				double meanVal = params.theta(zi);
 				for(unsigned int j=0;j<nFixedEffects;j++){
