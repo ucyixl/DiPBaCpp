@@ -3,25 +3,25 @@
 /// \brief Main file for running DiPBaC
 
 // Standard includes
-#include <cmath>
-#include <cstdio>
-#include <iostream>
-#include <numeric>
-#include <vector>
-#include <string>
-#include <cstdlib>
-#include <ctime>
-#include <sstream>
+#include<cmath>
+#include<cstdio>
+#include<iostream>
+#include<numeric>
+#include<vector>
+#include<string>
+#include<cstdlib>
+#include<ctime>
+#include<sstream>
 
 // Custom includes
-#include "MCMC/sampler.h"
-#include "MCMC/model.h"
-#include "MCMC/proposal.h"
-#include "DiPBaCOptions.h"
-#include "DiPBaCModel.h"
-#include "DiPBaCData.h"
-#include "DiPBaCProposals.h"
-#include "DiPBaCIO.h"
+#include<MCMC/sampler.h>
+#include<MCMC/model.h>
+#include<MCMC/proposal.h>
+#include<DiPBaCOptions.h>
+#include<DiPBaCModel.h>
+#include<DiPBaCData.h>
+#include<DiPBaCProposals.h>
+#include<DiPBaCIO.h>
 
 using std::vector;
 using std::cout;
