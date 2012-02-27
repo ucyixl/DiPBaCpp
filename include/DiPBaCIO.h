@@ -1203,12 +1203,12 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		// Print the allocations
 		for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 			*(outFiles[zInd]) << params.z(i);
-			*(outFiles[entropyInd]) << params.workEntropy(i);
+			//*(outFiles[entropyInd]) << params.workEntropy(i);
 			if(i<nSubjects+nPredictSubjects-1){
-				*(outFiles[entropyInd]) << " ";
+				//*(outFiles[entropyInd]) << " ";
 				*(outFiles[zInd]) << " ";
 			}else{
-				*(outFiles[entropyInd]) << endl;
+				//*(outFiles[entropyInd]) << endl;
 				*(outFiles[zInd]) << endl;
 			}
 			// And print the expected theta for the prediction subjects
