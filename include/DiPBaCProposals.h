@@ -923,16 +923,17 @@ void gibbsForMuActive(mcmcChain<diPBaCParams>& chain,
 		}else{
 			meanX[c].setZero(nCovariates);
 		}
+
 		MatrixXd covMat(nCovariates,nCovariates);
 		covMat = (hyperParams.Tau0()+nXInC*gammaMat[c]*currentParams.Tau(c)*gammaMat[c]).inverse();
 		VectorXd meanVec(nCovariates);
         meanVec = hyperParams.Tau0()*hyperParams.mu0()+
 					nXInC*gammaMat[c]*currentParams.Tau(c)*(meanX[c]-oneMinusGammaMat[c]*currentParams.nullMu());
 		meanVec = covMat*meanVec;
-
 		VectorXd mu(nCovariates);
 		// We sample from this posterior
 		mu = multivarNormalRand(rndGenerator,meanVec,covMat);
+
 		// We store our sample
 		currentParams.mu(c,mu);
 
@@ -1545,7 +1546,6 @@ void gibbsForMuInActive(mcmcChain<diPBaCParams>& chain,
 		VectorXd mu(nCovariates);
 		// We sample from this posterior
 		mu = multivarNormalRand(rndGenerator,meanVec,covMat);
-
 		// We store our sample
 		currentParams.mu(c,mu);
 	}
@@ -2166,6 +2166,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 						logPXiGivenZi[i][c]=logPdfMultivarNormal(nCovariates,xi,currentParams.workMuStar(c),currentParams.workSqrtTau(c),currentParams.workLogDetTau(c));
 					}
 				}
+
 			}
 		}
 		// For the predictive subjects we do not count missing data
@@ -2289,7 +2290,6 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				maxLogPyXz=logPyXz[c];
 			}
 		}
-
 		vector<double> pzGivenXy(maxNClusters);
 		double sumVal=0;
 		for(unsigned int c=0;c<maxNClusters;c++){
@@ -2320,7 +2320,6 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				expectedTheta+=currentParams.theta(c)*pzGivenXy[c];
 			}
 		}
-
 		unsigned int zi;
 		if(maxNClusters==1){
 			zi=0;
@@ -2409,7 +2408,7 @@ void updateMissingDiPBaCData(baseGeneratorType& rndGenerator,
 			// Check if there is anything to do
 			if(dataset.nCovariatesNotMissing(i)<nCovariates){
 				int zi = params.z(i);
-				VectorXd newXi=multivarNormalRand(rndGenerator,params.workMuStar(zi),params.Tau(zi));
+				VectorXd newXi=multivarNormalRand(rndGenerator,params.workMuStar(zi),params.Sigma(zi));
 				for(unsigned int j=0;j<nCovariates;j++){
 					if(dataset.missingX(i,j)){
 						dataset.continuousX(i,j,newXi(j));
