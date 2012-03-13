@@ -1449,7 +1449,7 @@ void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 		}else{
 			// We need a new sampled value of v
 			double v=betaRand(rndGenerator,1.0,alpha);
-			double logPsi=log(v)+log(1-vNew[maxNClusters-1])-log(vNew[maxNClusters-1])+logPsiNew[maxNClusters-1];
+			double logPsi=log(v)+log(1-vNew[c])-log(vNew[c])+logPsiNew[c];
 			if(c+1>=vNew.size()){
 				vNew.push_back(v);
 				logPsiNew.push_back(logPsi);
