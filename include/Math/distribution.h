@@ -108,6 +108,10 @@ double logPdfTruncatedNormal(const double& x,const double& mean,const double& st
 
 }
 
+double logPdfMultinomialSizeOne(const unsigned int& x, const vector<double>& p){
+       return log(p[x]);
+}
+
 double logPdfMultivarNormal(const unsigned int& sizeX, const VectorXd& x,const VectorXd& meanVec,const MatrixXd& sqrtPrecMat,const double& logDetPrecMat){
 	// If S is the (upper triangular matrix) square root of the precision P, then S'S=P
 

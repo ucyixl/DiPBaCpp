@@ -1,7 +1,7 @@
 Package: DiPBaC
 Type: Package
 Title: Post processing for C++ DiPBaC
-Version: 1.1.0
+Version: 1.2.0
 Date: 2012-01-19
 Author: David Hastie and Silvia Liverani
 Maintainer: David Hastie <d.hastie@imperial.ac.uk>

@@ -44,7 +44,7 @@ SEXP calcDisSimMat(SEXP fileName, SEXP nSweeps, SEXP nBurn, SEXP nFilter,SEXP nS
     			zFile >> tmp;
     		}
      	}else{
-    		if((1+k-firstLine)==1||(1+k-firstLine)%100==0){
+    		if((1+k-firstLine)==1||(1+k-firstLine)%1000==0){
 				std::cout << "Stage 1:" << 1+k-firstLine << " samples out of " << 1+nLines-firstLine << std::endl;
 			}
 			for(int i=0;i<nSj+nPSj;i++){
@@ -88,7 +88,7 @@ SEXP calcDisSimMat(SEXP fileName, SEXP nSweeps, SEXP nBurn, SEXP nFilter,SEXP nS
     			zFile >> tmp;
         	}
         }else{
-        	if((1+k-firstLine)==1||(1+k-firstLine)%100==0){
+        	if((1+k-firstLine)==1||(1+k-firstLine)%1000==0){
         		std::cout << "Stage 2:" << 1+k-firstLine << " samples out of " << 1+nLines-firstLine << std::endl;
     		}
         	for(int i=0;i<nSj+nPSj;i++){
