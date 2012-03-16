@@ -419,6 +419,7 @@ class diPBaCParams{
 		/// \brief Function to set the sizes of the various class members
 		void setSizes(const unsigned int& nSubjects,
 				const unsigned int& nCovariates,const unsigned int& nFixedEffects,
+				const unsigned int& nCategoriesY,
 				const unsigned int& nPredictSubjects,
 				const vector<unsigned int>& nCategories){
 
@@ -479,7 +480,13 @@ class diPBaCParams{
 			}
 
 			_theta.resize(maxNClusters);
+			for (unsigned int c=0;c<maxNClusters;c++){
+				_theta[c].resize(nCategoriesY);
+			}
 			_beta.resize(nFixedEffects);
+			for (unsigned int j=0;j<nFixedEffects;j++){
+				_beta[j].resize(nCategoriesY);
+			}
 			_u.resize(nSubjects+nPredictSubjects);
 			_lambda.resize(nSubjects);
 			_z.resize(nSubjects+nPredictSubjects);
@@ -490,6 +497,9 @@ class diPBaCParams{
 			_workContinuousX.resize(nSubjects+nPredictSubjects);
 			_workLogPXiGivenZi.resize(nSubjects);
 			_workPredictExpectedTheta.resize(nPredictSubjects);
+			for (unsigned int i=0;i<nPredictSubjects;i++){
+				_workPredictExpectedTheta[i].resize(nCategoriesY);
+			}
 			_workEntropy.resize(nSubjects+nPredictSubjects,0);
 			for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 				_workDiscreteX[i].resize(nCovariates,0);
@@ -514,10 +524,14 @@ class diPBaCParams{
 			if(nClus>prevNClus){
 				unsigned int nCov=nCovariates();
 				vector<unsigned int> nCats=nCategories();
+				unsigned int nCategoriesY = _theta[0].size();
 
 				_logPsi.resize(nClus);
 				_v.resize(nClus);
 				_theta.resize(nClus);
+				for (unsigned int c=0;c<nClus;c++){
+					_theta[c].resize(nCategoriesY);
+				}
 				_workNXInCluster.resize(nClus);
 				_logPhi.resize(nClus);
 				_workLogPhiStar.resize(nClus);
@@ -564,9 +578,15 @@ class diPBaCParams{
 		unsigned int nCovariates() const{
 			return _logPhi[0].size();
 		}
+
 		/// \brief Return the number of fixed effects
-		unsigned int nFixedEffects() const{
+		unsigned int nFixedEffects(const string& outcomeType) const{
 			return _beta.size();
+		}
+
+		/// \brief Return the number of categories of outcome Y for Categorical outcome
+		unsigned int nCategoriesY() const{
+			return _theta[0].size();
 		}
 
 		/// \brief Return the number of clusters
@@ -876,34 +896,40 @@ class diPBaCParams{
 		}
 
 		/// \brief Return the outcome probabilities
-		vector<double> theta() const{
+		vector<vector <double> > theta() const{
 			return _theta;
 		}
 
 		/// \brief Return the outcome probability for cluster c
-		double theta(const unsigned int& c) const{
+		vector <double> theta(const unsigned int& c) const{
 			return _theta[c];
 		}
 
-		/// \brief Set the outcome probability for cluster c
-		void theta(const unsigned int& c,const double& thetaVal){
-			_theta[c]=thetaVal;
+		/// \brief Return the outcome probability for cluster c and category k
+		double theta(const unsigned int& c,const unsigned int& k) const{
+			return _theta[c][k];
+		}
+
+		/// \brief Set the outcome probability for cluster c and category k
+		void theta(const unsigned int& c,const unsigned int& k,const double& thetaVal){
+			_theta[c][k]=thetaVal;
 		}
 
 		/// \brief Return the confounder coefficients
-		vector<double> beta() const{
+		vector<vector <double> > beta() const{
 			return _beta;
 		}
 
-		/// \brief Return the coefficient for confounder j
-		double beta(const unsigned int& j) const{
-			return _beta[j];
+		/// \brief Return the coefficient for confounder j and category k
+		double beta(const unsigned int& k,const unsigned int& j) const{
+			return _beta[k][j];
 		}
 
-		/// \brief Set the coefficient for confounder j
-		void beta(const unsigned int& j,const double& betaVal){
-			_beta[j]=betaVal;
+		/// \brief Set the coefficient for confounder j and category k
+		void beta(const unsigned int& k,const unsigned int& j,const double& betaVal){
+			_beta[k][j]=betaVal;
 		}
+
 
 		/// \brief Return the hyper parameter alpha
 		double alpha() const{
@@ -1279,16 +1305,16 @@ class diPBaCParams{
 			_workMuStar[c]=muStar;
 		}
 
-		double workPredictExpectedTheta(const unsigned int& i) const{
-			return _workPredictExpectedTheta[i];
+		double workPredictExpectedTheta(const unsigned int& j,const unsigned int& k) const{
+			return _workPredictExpectedTheta[j][k];
 		}
 
-		const vector<double>& workPredictExpectedTheta() const{
+		const vector<vector<double> >& workPredictExpectedTheta() const{
 			return _workPredictExpectedTheta;
 		}
 
-		void workPredictExpectedTheta(const unsigned int& i,const double& expectedVal){
-			_workPredictExpectedTheta[i]=expectedVal;
+		void workPredictExpectedTheta(const unsigned int& j,const unsigned int& k,const double& expectedVal){
+			_workPredictExpectedTheta[j][k]=expectedVal;
 		}
 
 		double workEntropy(const unsigned int& i) const{
@@ -1333,7 +1359,7 @@ class diPBaCParams{
 				_gamma[c1].swap(_gamma[c2]);
 			}
 			//Response parameters
-			double thetaTmp = _theta[c1];
+			vector<double> thetaTmp = _theta[c1];
 			_theta[c1]=_theta[c2];
 			_theta[c2]=thetaTmp;
 
@@ -1425,10 +1451,10 @@ class diPBaCParams{
 		vector<arma::mat> _Tau;
 
 		/// \brief A vector of outcome probabilities for each cluster
-		vector<double> _theta;
+		vector< vector <double> > _theta;
 
 		/// \brief A vector of coefficients for confounding covariates
-		vector<double> _beta;
+		vector<vector <double> > _beta;
 
 		/// \brief The hyper parameter for dirichlet model
 		double _alpha;
@@ -1490,7 +1516,7 @@ class diPBaCParams{
 		vector<arma::vec> _workMuStar;
 
 		/// \brief A vector of expected theta values for the prediction subjects
-		vector<double> _workPredictExpectedTheta;
+		vector<vector<double> > _workPredictExpectedTheta;
 
 		/// \brief A vector of entropy values for each of the subjects
 		vector<double> _workEntropy;
@@ -1504,9 +1530,9 @@ double logPYiGivenZiWiBernoulli(const diPBaCParams& params, const diPBaCData& da
 						const unsigned int& i){
 
 	double lambda;
-	lambda=params.theta(zi);
+	lambda=params.theta(zi,0);
 	for(unsigned int j=0;j<nFixedEffects;j++){
-		lambda+=params.beta(j)*dataset.W(i,j);
+		lambda+=params.beta(j,0)*dataset.W(i,j);
 	}
 
 	double p=1.0/(1.0+exp(-lambda));
@@ -1529,9 +1555,9 @@ double logPYiGivenZiWiBinomial(const diPBaCParams& params, const diPBaCData& dat
 						const unsigned int& i){
 
 	double lambda;
-	lambda=params.theta(zi);
+	lambda=params.theta(zi,0);
 	for(unsigned int j=0;j<nFixedEffects;j++){
-		lambda+=params.beta(j)*dataset.W(i,j);
+		lambda+=params.beta(j,0)*dataset.W(i,j);
 	}
 
 	double p=1.0/(1.0+exp(-lambda));
@@ -1554,9 +1580,9 @@ double logPYiGivenZiWiPoisson(const diPBaCParams& params, const diPBaCData& data
 						const unsigned int& i){
 
 	double lambda;
-	lambda=params.theta(zi);
+	lambda=params.theta(zi,0);
 	for(unsigned int j=0;j<nFixedEffects;j++){
-		lambda+=params.beta(j)*dataset.W(i,j);
+		lambda+=params.beta(j,0)*dataset.W(i,j);
 	}
 	lambda+=dataset.logOffset(i);
 
@@ -1580,13 +1606,42 @@ double logPYiGivenZiWiNormal(const diPBaCParams& params, const diPBaCData& datas
 						const unsigned int& i){
 
 	double mu;
-	mu=params.theta(zi);
+	mu=params.theta(zi,0);
 	for(unsigned int j=0;j<nFixedEffects;j++){
-		mu+=params.beta(j)*dataset.W(i,j);
+		mu+=params.beta(j,0)*dataset.W(i,j);
 	}
 
 	return logPdfNormal(dataset.continuousY(i),mu,sqrt(params.sigmaSqY()));
 }
+
+double logPYiGivenZiWiCategorical(const diPBaCParams& params, const diPBaCData& dataset,
+						const unsigned int& nFixedEffects,
+						const int& zi,
+						const unsigned int& i){
+
+	vector<double> lambda;
+	lambda.resize(dataset.nCategoriesY());
+
+	double lambdaSum = 1.0;
+
+	double value = 0.0;
+	for (unsigned int k=0;k<dataset.nCategoriesY();k++){
+		for (unsigned int j=0;j<nFixedEffects;j++){
+			value+=params.beta(j,k)*dataset.W(i,j);
+		}
+		lambda[k] = exp(value + params.theta(zi,k));
+		lambdaSum += exp(value + params.theta(zi,k));
+		value = 0.0;
+	}
+	vector<double> p;
+	p.resize(dataset.nCategoriesY()+1);
+	p[0]=1.0/lambdaSum;
+	for (unsigned int k=0;k<dataset.nCategoriesY();k++){
+		p[k+1]=lambda[k]/lambdaSum;
+	}
+	return logPdfMultinomialSizeOne(dataset.discreteY(i),p);
+}
+
 
 vector<double> diPBaCLogPost(const diPBaCParams& params,
 								const mcmcModel<diPBaCParams,
@@ -1604,6 +1659,7 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 	unsigned int maxNClusters=params.maxNClusters();
 	unsigned int nCovariates=dataset.nCovariates();
 	unsigned int nFixedEffects=dataset.nFixedEffects();
+	unsigned int nCategoriesY=dataset.nCategoriesY();
 	vector<unsigned int> nCategories = dataset.nCategories();
 	const diPBaCHyperParams& hyperParams = params.hyperParams();
 
@@ -1634,9 +1690,9 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 				for(unsigned int i=0;i<nSubjects;i++){
 					extraVarPriorVal[i]=params.lambda(i);
 					int zi=params.z(i);
-					extraVarPriorMean[i]=params.theta(zi);
+					extraVarPriorMean[i]=params.theta(zi,0);
 					for(unsigned int j=0;j<nFixedEffects;j++){
-						extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
+						extraVarPriorMean[i]+=params.beta(j,0)*dataset.W(i,j);
 					}
 				}
 			}
@@ -1648,9 +1704,9 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 				for(unsigned int i=0;i<nSubjects;i++){
 					extraVarPriorVal[i]=params.lambda(i);
 					int zi=params.z(i);
-					extraVarPriorMean[i]=params.theta(zi);
+					extraVarPriorMean[i]=params.theta(zi,0);
 					for(unsigned int j=0;j<nFixedEffects;j++){
-						extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
+						extraVarPriorMean[i]+=params.beta(j,0)*dataset.W(i,j);
 					}
 				}
 			}
@@ -1662,13 +1718,15 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 				for(unsigned int i=0;i<nSubjects;i++){
 					extraVarPriorVal[i]=params.lambda(i);
 					int zi=params.z(i);
-					extraVarPriorMean[i]=params.theta(zi);
+					extraVarPriorMean[i]=params.theta(zi,0);
 					for(unsigned int j=0;j<nFixedEffects;j++){
-						extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
+						extraVarPriorMean[i]+=params.beta(j,0)*dataset.W(i,j);
 					}
 					extraVarPriorMean[i]+=dataset.logOffset(i);
 				}
 			}
+		}else if(outcomeType.compare("Categorical")==0){
+			logPYiGivenZiWi = &logPYiGivenZiWiCategorical;
 		}else if(outcomeType.compare("Normal")==0){
 			logPYiGivenZiWi = &logPYiGivenZiWiNormal;
 		}
@@ -1682,12 +1740,12 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 	// Now need to add in the prior (i.e. p(z,params) in above notation)
 	// Note we integrate out u and all parameters in Theta with no members
 	double logPrior=0.0;
-
 	// Prior for z
 	for(unsigned int i=0;i<nSubjects;i++){
 		int zi = params.z(i);
 		logPrior+=params.logPsi(zi);
 	}
+
 
 	// Prior for V (we only need to include these up to maxNCluster, but we do need
 	// to include all V, whether or not a cluster is empty, as the V themselves
@@ -1760,8 +1818,10 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 		// This is different from Papathomas who uses a normal
 		for(unsigned int c=0;c<maxNClusters;c++){
 			if(params.workNXInCluster(c)>0){
-				logPrior+=logPdfLocationScaleT(params.theta(c),hyperParams.muTheta(),
-											hyperParams.sigmaTheta(),hyperParams.dofTheta());
+				for (unsigned int k=0;k<nCategoriesY;k++){
+					logPrior+=logPdfLocationScaleT(params.theta(c,k),hyperParams.muTheta(),
+							hyperParams.sigmaTheta(),hyperParams.dofTheta());
+				}
 			}
 		}
 
@@ -1771,8 +1831,10 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 		// Note we should pre-process variables to standardise the fixed effects to
 		// have 0 mean and standard dev of 0.5
 		for(unsigned int j=0;j<nFixedEffects;j++){
-			logPrior+=logPdfLocationScaleT(params.beta(j),hyperParams.muBeta(),
-					hyperParams.sigmaBeta(),hyperParams.dofBeta());
+			for (unsigned int k=0;k<nCategoriesY;k++){
+				logPrior+=logPdfLocationScaleT(params.beta(j,k),hyperParams.muBeta(),
+						hyperParams.sigmaBeta(),hyperParams.dofBeta());
+			}
 		}
 
 		// Take account priors for epsilon and tauEpsilon if there is extra variation
@@ -1892,6 +1954,7 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int maxNClusters=params.maxNClusters();
 	unsigned int nFixedEffects=dataset.nFixedEffects();
+	unsigned int nCategoriesY=dataset.nCategoriesY();
 	const diPBaCHyperParams& hyperParams = params.hyperParams();
 
 	double out=0.0;
@@ -1911,9 +1974,9 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 			for(unsigned int i=0;i<nSubjects;i++){
 				extraVarPriorVal[i]=params.lambda(i);
 				int zi=params.z(i);
-				extraVarPriorMean[i]=params.theta(zi);
+				extraVarPriorMean[i]=params.theta(zi,0);
 				for(unsigned int j=0;j<nFixedEffects;j++){
-					extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
+					extraVarPriorMean[i]+=params.beta(j,0)*dataset.W(i,j);
 				}
 			}
 		}
@@ -1925,9 +1988,9 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 			for(unsigned int i=0;i<nSubjects;i++){
 				extraVarPriorVal[i]=params.lambda(i);
 				int zi=params.z(i);
-				extraVarPriorMean[i]=params.theta(zi);
+				extraVarPriorMean[i]=params.theta(zi,0);
 				for(unsigned int j=0;j<nFixedEffects;j++){
-					extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
+					extraVarPriorMean[i]+=params.beta(j,0)*dataset.W(i,j);
 				}
 			}
 
@@ -1940,13 +2003,15 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 			for(unsigned int i=0;i<nSubjects;i++){
 				extraVarPriorVal[i]=params.lambda(i);
 				int zi=params.z(i);
-				extraVarPriorMean[i]=params.theta(zi);
+				extraVarPriorMean[i]=params.theta(zi,0);
 				for(unsigned int j=0;j<nFixedEffects;j++){
-					extraVarPriorMean[i]+=params.beta(j)*dataset.W(i,j);
+					extraVarPriorMean[i]+=params.beta(j,0)*dataset.W(i,j);
 				}
 				extraVarPriorMean[i]+=dataset.logOffset(i);
 			}
 		}
+	}else if(outcomeType.compare("Categorical")==0){
+		logPYiGivenZiWi = &logPYiGivenZiWiCategorical;
 	}else if(outcomeType.compare("Normal")==0){
 		logPYiGivenZiWi = &logPYiGivenZiWiNormal;
 	}
@@ -1963,8 +2028,10 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 	// as per Molitor et al. 2008 (from Gelman et al. 2008)
 	// This is different from Papathomas who uses a normal
 	for(unsigned int c=0;c<maxNClusters;c++){
-		out+=logPdfLocationScaleT(params.theta(c),hyperParams.muTheta(),
-				                        hyperParams.sigmaTheta(),hyperParams.dofTheta());
+		for (unsigned int k=0;k<nCategoriesY;k++){
+			out+=logPdfLocationScaleT(params.theta(c,k),hyperParams.muTheta(),
+					hyperParams.sigmaTheta(),hyperParams.dofTheta());
+		}
 	}
 
 	// Prior for beta
@@ -1973,8 +2040,10 @@ double logCondPostThetaBeta(const diPBaCParams& params,
 	// Note we should pre-process variables to standardise the fixed effects to
 	// have 0 mean and standard dev of 0.5
 	for(unsigned int j=0;j<nFixedEffects;j++){
-		out+=logPdfLocationScaleT(params.beta(j),hyperParams.muBeta(),
-				hyperParams.sigmaBeta(),hyperParams.dofBeta());
+		for (unsigned int k=0;k<nCategoriesY;k++){
+			out+=logPdfLocationScaleT(params.beta(j,k),hyperParams.muBeta(),
+					hyperParams.sigmaBeta(),hyperParams.dofBeta());
+		}
 	}
 
 	if(responseExtraVar){
@@ -1996,9 +2065,9 @@ double logCondPostLambdaiBernoulli(const diPBaCParams& params,
 	unsigned int nFixedEffects=dataset.nFixedEffects();
 
 	int zi = params.z(i);
-	double meanVal = params.theta(zi);
+	double meanVal = params.theta(zi,0);
 	for(unsigned int j=0;j<nFixedEffects;j++){
-		meanVal+=params.beta(j)*dataset.W(i,j);
+		meanVal+=params.beta(j,0)*dataset.W(i,j);
 	}
 	return logPYiGivenZiWiBernoulliExtraVar(params,dataset,nFixedEffects,zi,i)
 			+ logPdfNormal(params.lambda(i),meanVal,1.0/sqrt(params.tauEpsilon()));
@@ -2015,9 +2084,9 @@ double logCondPostLambdaiBinomial(const diPBaCParams& params,
 	unsigned int nFixedEffects=dataset.nFixedEffects();
 
 	int zi = params.z(i);
-	double meanVal = params.theta(zi);
+	double meanVal = params.theta(zi,0);
 	for(unsigned int j=0;j<nFixedEffects;j++){
-		meanVal+=params.beta(j)*dataset.W(i,j);
+		meanVal+=params.beta(j,0)*dataset.W(i,j);
 	}
 	return logPYiGivenZiWiBinomialExtraVar(params,dataset,nFixedEffects,zi,i)
 			+ logPdfNormal(params.lambda(i),meanVal,1.0/sqrt(params.tauEpsilon()));
@@ -2034,9 +2103,9 @@ double logCondPostLambdaiPoisson(const diPBaCParams& params,
 	unsigned int nFixedEffects=dataset.nFixedEffects();
 
 	int zi = params.z(i);
-	double meanVal = params.theta(zi);
+	double meanVal = params.theta(zi,0);
 	for(unsigned int j=0;j<nFixedEffects;j++){
-		meanVal+=params.beta(j)*dataset.W(i,j);
+		meanVal+=params.beta(j,0)*dataset.W(i,j);
 	}
 	meanVal+=dataset.logOffset(i);
 
@@ -2044,7 +2113,6 @@ double logCondPostLambdaiPoisson(const diPBaCParams& params,
 			+ logPdfNormal(params.lambda(i),meanVal,1.0/sqrt(params.tauEpsilon()));
 
 }
-
 
 
 #endif /* DIPBACMODEL_H_ */

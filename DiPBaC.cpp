@@ -76,12 +76,11 @@ int main(int argc, char*  argv[]){
 
 	// Set the proposal parameters
 	diPBaCPropParams proposalParams(options.nSweeps(),dataset.nCovariates(),
-										dataset.nFixedEffects());
+										dataset.nFixedEffects(),dataset.nCategoriesY());
 	diPBaCSampler.proposalParams(proposalParams);
 
 	// The gibbs update for the active V
 	diPBaCSampler.addProposal("gibbsForVActive",1.0,1,1,&gibbsForVActive);
-
 
 	if(options.covariateType().compare("Discrete")==0){
 		// For discrete X data we do a mixture of Categorical and ordinal updates

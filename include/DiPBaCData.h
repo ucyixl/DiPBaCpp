@@ -23,7 +23,7 @@ class diPBaCData{
 
 	public:
 		/// \brief Default constructor
-		diPBaCData(): _nSubjects(0), _nCovariates(0), _nFixedEffects(0), _nPredictSubjects(0) {};
+		diPBaCData(): _nSubjects(0), _nCovariates(0), _nFixedEffects(0), _nCategoriesY(0), _nPredictSubjects(0) {};
 
 		/// \brief Default destructor
 		~diPBaCData(){};
@@ -76,6 +76,21 @@ class diPBaCData{
 		/// \brief Set the number of fixed effectss
 		void nFixedEffects(const unsigned int& nConf){
 			_nFixedEffects = nConf;
+		}
+
+		/// \brief Return the number of categories
+		unsigned int nCategoriesY() const{
+			return _nCategoriesY;
+		}
+
+		/// \brief Return the number of categories
+		unsigned int& nCategoriesY(){
+			return _nCategoriesY;
+		}
+
+		/// \brief Set the number of categories
+		void nCategoriesY(const unsigned int& nCat){
+			_nCategoriesY = nCat;
 		}
 
 		/// \brief Return the number of subjects
@@ -357,6 +372,9 @@ class diPBaCData{
 
 		/// \brief The number of fixed effects covariates
 		unsigned int _nFixedEffects;
+
+		/// \brief The number of categories for outcome discreteY when outcome is categorical
+		unsigned int _nCategoriesY;
 
 		/// \brief The number of subjects we are making predictions for
 		unsigned int _nPredictSubjects;

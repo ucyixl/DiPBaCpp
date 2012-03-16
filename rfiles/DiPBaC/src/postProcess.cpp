@@ -37,44 +37,86 @@ SEXP calcDisSimMat(SEXP fileName, SEXP nSweeps, SEXP nBurn, SEXP nFilter,SEXP nS
     // A temporary vector for storing the cluster from each sweep
     vector<int> clusterData(nSj+nPSj);
     for(int k=1;k<=nLines;k++){
-    	if(k<firstLine){
-        	// Ignore the burn in
-    		for(int i=0;i<nSj+nPSj;i++){
-    			int tmp=0;
-    			zFile >> tmp;
-    		}
-     	}else{
-    		if((1+k-firstLine)==1||(1+k-firstLine)%100==0){
-				std::cout << 1+k-firstLine << " samples out of " << 1+nLines-firstLine << std::endl;
-			}
-			for(int i=0;i<nSj+nPSj;i++){
-    			// Fill up the cluster data for this sweep
-    			zFile >> clusterData[i];
-    		}
+     if(k<firstLine){
+         // Ignore the burn in
+     for(int i=0;i<nSj+nPSj;i++){
+     int tmp=0;
+     zFile >> tmp;
+     }
+      }else{
+     if((1+k-firstLine)==1||(1+k-firstLine)%1000==0){
+std::cout << "Stage 1:" << 1+k-firstLine << " samples out of " << 1+nLines-firstLine << std::endl;
+}
+for(int i=0;i<nSj+nPSj;i++){
+     // Fill up the cluster data for this sweep
+     zFile >> clusterData[i];
+     }
 
 
-    		// Now we need to populate the dissimilarity matrix
-    		int r=0;
-			for(int i=0;i<nSj-1;i++){
-    			for(int ii=i+1;ii<nSj;ii++){
-    				if(clusterData[i]==clusterData[ii]){
-        				disSimMat[r]-=1.0/denom;
-        			}
-    				r++;
-    			}
-    		}
+     // Now we need to populate the dissimilarity matrix
+     int r=0;
+for(int i=0;i<nSj-1;i++){
+     for(int ii=i+1;ii<nSj;ii++){
+     if(clusterData[i]==clusterData[ii]){
+         disSimMat[r]-=1.0/denom;
+         }
+     r++;
+     }
+     }
 
-			for(int i=0;i<nPSj;i++){
-				for(int ii=0;ii<nSj;ii++){
-					if(clusterData[nSj+i]==clusterData[ii]){
-						disSimMat[r]-=1.0/denom;
-					}
-					r++;
-				}
-			}
-    	}
+for(int i=0;i<nPSj;i++){
+for(int ii=0;ii<nSj;ii++){
+if(clusterData[nSj+i]==clusterData[ii]){
+disSimMat[r]-=1.0/denom;
+}
+r++;
+}
+}
+     }
     }
+
+    // Cheaper (for large datasets) to re-read everything in again, instead
+    // of storing things
+    zFile.seekg(0,std::ios::beg);
+    int minIndex=0;
+    double currMinSum=nSj*(nSj-1)/2.0;
+    for(int k=1;k<=nLines;k++){
+     if(k<firstLine){
+     // Ignore the burn in
+     for(int i=0;i<nSj+nPSj;i++){
+     int tmp=0;
+     zFile >> tmp;
+         }
+        }else{
+         if((1+k-firstLine)==1||(1+k-firstLine)%1000==0){
+         std::cout << "Stage 2:" << 1+k-firstLine << " samples out of " << 1+nLines-firstLine << std::endl;
+     }
+         for(int i=0;i<nSj+nPSj;i++){
+         // Fill up the cluster data for this sweep
+         zFile >> clusterData[i];
+         }
+
+         double tmpSum=0.0;
+     int r=0;
+for(int i=0;i<nSj-1;i++){
+     for(int ii=i+1;ii<nSj;ii++){
+     if(clusterData[i]==clusterData[ii]){
+         tmpSum+=pow(disSimMat[r],2.0);
+         }else{
+         tmpSum+=pow(1.0-disSimMat[r],2.0);
+         }
+     r++;
+     }
+     }
+if(tmpSum<currMinSum){
+minIndex=k;
+currMinSum=tmpSum;
+}
+        }
+    }
+
     zFile.close();
 
-    return Rcpp::wrap<vector<double> >(disSimMat);
+    return Rcpp::List::create(Rcpp::Named("lsOptSweep")=minIndex,
+     Rcpp::Named("disSimMat")=Rcpp::wrap<vector<double> >(disSimMat));
 }
