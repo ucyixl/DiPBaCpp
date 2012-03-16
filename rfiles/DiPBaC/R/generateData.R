@@ -63,7 +63,7 @@ generateSampleDataFile<-function(clusterSummary,fileName){
    Y<-rep(0,nSubjects)
    outcomeType<-clusterSummary$outcomeType
    if(nFixedEffects>0){
-      beta<-clusterSummary$fixedEffectCoeffs   
+      beta<-clusterSummary$fixedEffectsCoeffs   
    }
    
 	if(outcomeType=='Poisson'){
@@ -192,15 +192,69 @@ clusSummaryBernoulliDiscrete<-list(
                         c(0.1,0.1,0.8),
                         c(0.1,0.1,0.8)))))
 
+clusSummaryBernoulliDiscreteIdentical<-list(
+      'outcomeType'='Bernoulli',
+      'covariateType'='Discrete',
+      'nCovariates'=5,
+      'nCategories'=c(3,3,3,3,3),
+      'nFixedEffects'=0,
+      'missingDataProb'=0,
+      'nClusters'=5,
+      'clusterSizes'=c(100,200,300,200,100),
+      'clusterData'=list(list('theta'=log(9),
+                   'covariateProbs'=list(c(0.8,0.1,0.1),
+                        c(0.8,0.1,0.1),
+                        c(0.8,0.1,0.1),
+                        c(0.8,0.1,0.1),
+                        c(0.8,0.1,0.1))),
+                    list('theta'=log(2),
+                    'covariateProbs'=list(c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1))),
+                    list('theta'=0,
+                    'covariateProbs'=list(c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1))),
+                    list('theta'=log(1/2),
+                    'covariateProbs'=list(c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1))),                        
+                    list('theta'=log(1/9),
+                    'covariateProbs'=list(c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1),
+                          c(0.8,0.1,0.1)))))
 
-
+clusSummaryBernoulliDiscreteIdentical2<-list(
+                    'outcomeType'='Bernoulli',
+                    'covariateType'='Discrete',
+                    'nCovariates'=2,
+                    'nCategories'=c(3,3),
+                    'nFixedEffects'=0,
+                    'missingDataProb'=0,
+                    'nClusters'=2,
+                    'clusterSizes'=c(400,400),
+                    'clusterData'=list(list('theta'=log(9),
+                                'covariateProbs'=list(c(0.8,0.1,0.1),
+                                      c(0.8,0.1,0.1))),
+                          list('theta'=log(1/9),
+                                'covariateProbs'=list(c(0.8,0.1,0.1),
+                                      c(0.8,0.1,0.1)))))        
+              
 clusSummaryPoissonDiscrete<-list(
       'outcomeType'='Poisson',
       'covariateType'='Discrete',
       'nCovariates'=5,
       'nCategories'=c(2,2,3,3,4),
       'nFixedEffects'=1,
-      'fixedEffectCoeffs'=c(0.01),
+      'fixedEffectsCoeffs'=c(0.01),
       'offsetLims'=c(0.9,1.1),
       'missingDataProb'=0.001,
       'nClusters'=5,
