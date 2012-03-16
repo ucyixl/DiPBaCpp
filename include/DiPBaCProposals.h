@@ -1307,6 +1307,7 @@ void gibbsForU(mcmcChain<diPBaCParams>& chain,
 	mcmcState<diPBaCParams>& currentState = chain.currentState();
 	diPBaCParams& currentParams = currentState.parameters();
 	diPBaCHyperParams hyperParams = currentParams.hyperParams();
+	string samplerType = model.options().samplerType();
 
 	nTry++;
 	nAccept++;
@@ -1320,7 +1321,12 @@ void gibbsForU(mcmcChain<diPBaCParams>& chain,
 	double minUi = 1.0;
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 		int zi = currentParams.z(i);
-		double ui = hyperParams.workXiSlice((unsigned int)zi)*unifRand(rndGenerator);
+		double ui=0.0;
+		if(samplerType.compare("SliceDependent")==0){
+			ui = hyperParams.workXiSlice((unsigned int)zi)*unifRand(rndGenerator);
+		}else if(samplerType.compare("SliceIndependent")==0){
+			ui = exp(currentParams.logPsi((unsigned int)zi))*unifRand(rndGenerator);
+		}
 		if(ui<minUi){
 			minUi=ui;
 		}
@@ -1420,29 +1426,74 @@ void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 	mcmcState<diPBaCParams>& currentState = chain.currentState();
 	diPBaCParams& currentParams = currentState.parameters();
 	diPBaCHyperParams hyperParams = currentParams.hyperParams();
+	string samplerType = model.options().samplerType();
 
 	nTry++;
 	nAccept++;
 
 	unsigned int maxZ = currentParams.workMaxZi();
+	double minUi = currentParams.workMinUi();
 
 	vector<double> vNew=currentParams.v();
 	vector<double> logPsiNew=currentParams.logPsi();
+
 	double alpha = currentParams.alpha();
-	unsigned int maxNClusters = 2+(int)((log(currentParams.workMinUi())-log(1.0-hyperParams.rSlice()))/log(hyperParams.rSlice()));
-	for(unsigned int c=maxZ+1;c<maxNClusters;c++){
-		double v=betaRand(rndGenerator,1.0,alpha);
-		double logPsi=log(v)+log(1-vNew[c-1])-log(vNew[c-1])+logPsiNew[c-1];
-		if(c>=vNew.size()){
-			vNew.push_back(v);
-			logPsiNew.push_back(logPsi);
-		}else{
-			vNew[c]=v;
-			logPsiNew[c]=logPsi;
+
+	if(samplerType.compare("Truncated")==0){
+		// Just sample from the prior
+
+		for(unsigned int c=maxZ+1;c<maxNClusters;c++){
+			double v=betaRand(rndGenerator,1.0,alpha);
+			double logPsi=log(v)+log(1-vNew[c-1])-log(vNew[c-1])+logPsiNew[c-1];
+			if(c>=vNew.size()){
+				vNew.push_back(v);
+				logPsiNew.push_back(logPsi);
+			}else{
+				vNew[c]=v;
+				logPsiNew[c]=logPsi;
+			}
 		}
+	}else{
+		unsigned int maxNClusters=0;
+		if(samplerType.compare("SliceIndependent")==0){
+			maxNClusters=2+(int)((log(minUi)-log(1.0-hyperParams.rSlice()))/log(hyperParams.rSlice()));
+		}
+
+		// Sample V
+		vector<double> cumPsi(maxZ+1,0.0);
+		cumPsi[0] = exp(currentParams.logPsi(0));
+		for(unsigned int c=1;c<=maxZ;c++){
+			cumPsi[c]=cumPsi[c-1]+exp(currentParams.logPsi(c));
+		}
+
+		bool continueLoop=true;
+		unsigned int c=maxZ;
+		while(continueLoop){
+			if(samplerType.compare("SliceDependent")==0&&cumPsi[c]>1-minUi){
+				// We can stop
+				maxNClusters=c+1;
+				continueLoop=false;
+			}else if(samplerType.compare("SliceIndependent")==0&&c>=maxNClusters){
+				continueLoop=false;
+			}else{
+				c++;
+				// We need a new sampled value of v
+				double v=betaRand(rndGenerator,1.0,alpha);
+				double logPsi=log(v)+log(1-vNew[c-1])-log(vNew[c-1])+logPsiNew[c-1];
+				if(c>=vNew.size()){
+					vNew.push_back(v);
+					logPsiNew.push_back(logPsi);
+				}else{
+					vNew[c]=v;
+					logPsiNew[c]=logPsi;
+				}
+				cumPsi.push_back(cumPsi[c-1]+exp(logPsi));
+			}
+		}
+		currentParams.maxNClusters(maxNClusters);
+
 	}
 
-	currentParams.maxNClusters(maxNClusters);
 	currentParams.v(vNew);
 	currentParams.logPsi(logPsiNew);
 
@@ -2075,6 +2126,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 	const diPBaCData& dataset = model.dataset();
 	const string& outcomeType = model.dataset().outcomeType();
 	const string& covariateType = model.dataset().covariateType();
+	const string& samplerType = model.options().samplerType();
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int nPredictSubjects=dataset.nPredictSubjects();
 	unsigned int maxNClusters=currentParams.maxNClusters();
@@ -2101,11 +2153,22 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		u[i] = currentParams.u(i);
 	}
 
-	vector<double> psi=currentParams.logPsi();
+	vector<double> testBound(maxNClusters,0.0);
+	vector<double> clusterWeight(maxNClusters,0.0);
 	for(unsigned int c=0;c<maxNClusters;c++){
 		psi[c]=exp(psi[c]);
+		if(samplerType.compare("SliceDependent")==0){
+			testBound[c] = exp(currentParams.logPsi(c));
+			clusterWeight[c] = 1.0;
+		}else if(samplerType.compare("SliceIndependent")==0){
+			testBound[c] = hyperParams.workXiSlice(c);
+			clusterWeight[c] = currentParams.logPsi(c)-(double)c*log(hyperParams.rSlice())-log(1-hyperParams.rSlice());
+		}else if(samplerType.compare("Truncated")==0){
+			testBound[c] = 1.0;
+			clusterWeight[c] = currentParams.logPsi(c);
+		}
 	}
-
+/////// UP TO HERE - NEED TO FEED THE ABOVE CONDITIONS DOWN TO MOVE BELOW
 	// Compute the allocation probabilities in terms of the unique vectors
 	vector<vector<double> > logPXiGivenZi;
 	logPXiGivenZi.resize(nSubjects+nPredictSubjects);

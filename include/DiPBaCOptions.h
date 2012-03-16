@@ -54,6 +54,7 @@ class diPBaCOptions{
 			_doPrediction = false;
 			_varSelectType ="None";
 			_fixedAlpha=-1;
+			_samplerType="SliceDependent";
 		};
 
 		/// \brief Default destructor
@@ -204,6 +205,16 @@ class diPBaCOptions{
 			_fixedAlpha=alphaVal;
 		}
 
+		/// \brief Return the sampler method
+		string samplerType() const{
+			return _samplerType;
+		}
+
+		/// \brief Set the outcome type
+		void samplerType(const string& sampType){
+			_samplerType=sampType;
+		}
+
 		/// \brief Return whether we are including response
 		bool doPrediction() const{
 			return _doPrediction;
@@ -229,16 +240,6 @@ class diPBaCOptions{
 			_varSelectType=varSelType;
 		}
 
-		/// \brief Return whether we are resuming the run
-		bool resumeRun() const{
-			return _resumeRun;
-		}
-
-		/// \brief Set whether we are resuming the run
-		void resumeRun(const bool& resume){
-			_resumeRun=resume;
-		}
-
 		// Copy operator
 		diPBaCOptions& operator=(const diPBaCOptions& options){
 
@@ -256,10 +257,10 @@ class diPBaCOptions{
 			_covariateType=options.covariateType();
 			_includeResponse=options.includeResponse();
 			_fixedAlpha=options.fixedAlpha();
+			_samplerType=options.samplerType();
 			_doPrediction=options.doPrediction();
 			_responseExtraVar=options.responseExtraVar();
 			_varSelectType=options.varSelectType();
-			_resumeRun=options.resumeRun();
 			return *this;
 		}
 
@@ -293,14 +294,14 @@ class diPBaCOptions{
 		bool _includeResponse;
 		// This has a fixed value of alpha (if negative we update alpha)
 		double _fixedAlpha;
+		// The method used by the sampler
+		string _samplerType;
 		// This notes whether we are also doing predictions
 		bool _doPrediction;
 		// This notes whether we have extra variation in the response
 		bool _responseExtraVar;
 		// The type of extra variation in the response
 		string _varSelectType;
-		// This notes whether we are resuming the run from a previous run
-		bool _resumeRun;
 
 };
 

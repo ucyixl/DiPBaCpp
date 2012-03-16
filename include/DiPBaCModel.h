@@ -553,7 +553,7 @@ class diPBaCParams{
 			for (unsigned int j=0;j<nFixedEffects;j++){
 				_beta[j].resize(nCategoriesY);
 			}
-			_u.resize(nSubjects+nPredictSubjects);
+			_u.resize(nSubjects+nPredictSubjects,0.0);
 			_lambda.resize(nSubjects);
 			_z.resize(nSubjects+nPredictSubjects);
 			_rho.resize(nCovariates);

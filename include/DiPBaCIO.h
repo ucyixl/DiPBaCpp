@@ -64,11 +64,11 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 			cout << "--seed=<unsigned int>" << endl << "\tThe value for the seed for the random number" << endl << "\tgenerator (current time)" << endl;
 			cout << "--yModel=<string>" << endl << "\tThe model type for the outcome variable. Options are" << endl << "\tcurrently 'Bernoulli','Poisson','Binomial', 'Categorical' and 'Normal' (Bernoulli)" << endl;
 			cout << "--xModel=<string>" << endl << "\tThe model type for the covariates. Options are" << endl << "\tcurrently 'Discrete' and 'Normal' (Discrete)" << endl;
+			cout << "--sampler=<string>" << endl << "\tThe sampler type to be used. Options are" << endl << "\tcurrently 'SliceDependent', 'SliceIndependent' and 'Truncated' (SliceDependent)" << endl;
 			cout << "--alpha=<double>" << endl << "\tThe value to be used if alpha is to remain fixed." << endl << "\tIf a negative value is used then alpha is updated (-1)" << endl;
 			cout << "--excludeY" << endl << "\tIf included only the covariate data X is modelled (not included)" << endl;
 			cout << "--extraYVar" << endl << "\tIf included extra Gaussian variance is included in the" << endl << "\tresponse model (not included)." << endl;
 			cout << "--varSelect=<string>" << endl << "\tThe type of variable selection to be used 'None'," << endl << "\t'BinaryCluster' or 'Continuous' (None)" << endl;
-			cout << "--resume" << endl << "\tIf included the run should begin from the latest" << endl << "\tin the output file (not included)" << endl;
 			exit(0);
 		}else{
 			while(currArg < argc){
@@ -143,6 +143,16 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 						break;
 					}
 					options.covariateType(covariateType);
+				}else if(inString.find("--sampler")!=string::npos){
+					size_t pos = inString.find("=")+1;
+					string samplerType = inString.substr(pos,inString.size()-pos);
+					if(samplerType.compare("SliceDependent")!=0&&samplerType.compare("SliceIndependent")!=0
+							&&samplerType.compare("Truncated")!=0){
+						// Illegal covariate type entered
+						wasError=true;
+						break;
+					}
+					options.samplerType(samplerType);
 				}else if(inString.find("--alpha")!=string::npos){
 					size_t pos = inString.find("=")+1;
 					string tmpStr = inString.substr(pos,inString.size()-pos);
@@ -166,8 +176,6 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 							break;
 						}
 						options.varSelectType(varSelectType);
-				}else if(inString.find("--resume")!=string::npos){
-					options.resumeRun(true);
 				}else{
 					cout << "Unknown command line option." << endl;
 					wasError=true;
@@ -547,8 +555,12 @@ void readHyperParamsFromFile(const string& filename,diPBaCHyperParams& hyperPara
 			string tmpStr = inString.substr(pos,inString.size()-pos);
 			double scaleSigmaSqY = (double)atof(tmpStr.c_str());
 			hyperParams.scaleSigmaSqY(scaleSigmaSqY);
+		}else if(inString.find("rSlice")==0){
+			size_t pos = inString.find("=")+1;
+			string tmpStr = inString.substr(pos,inString.size()-pos);
+			double rSlice = (double)atof(tmpStr.c_str());
+			hyperParams.rSlice(rSlice);
 		}
-
 	}
 
 }
@@ -573,6 +585,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	string outcomeType = options.outcomeType();
 	string hyperParamFileName = options.hyperParamFileName();
 	string varSelectType = options.varSelectType();
+	string samplerType = options.samplerType();
 	bool includeResponse = options.includeResponse();
 	bool responseExtraVar = options.responseExtraVar();
 
@@ -591,7 +604,27 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	// This also switches "on" all variable indicators (gamma)
 	// This gets changed below if variable selection is being done
 	params.setSizes(nSubjects,nCovariates,nFixedEffects,nCategoriesY,nPredictSubjects,nCategories,nClusInit);
-	unsigned int maxNClusters = params.maxNClusters();
+	unsigned int maxNClusters=params.maxNClusters();
+
+	// Fix the number of clusters if we are using the truncated sampler
+	if(samplerMethod.compare("Truncated")==0){
+		maxNClusters=20;
+		if(nClusInit>maxNClusters){
+			maxNClusters=nClusInit+10;
+		}
+		// Now compute the bound recommended in Ishwaran and James 2001
+		double multiplier=0.0;
+		if(options.fixedAlpha()>0){
+			multiplier=options.fixedAlpha();
+		}else{
+			// Use the expected value of alpha as the multiplier
+			multiplier=hyperParams.shapeAlpha()/hyperParams.rateAlpha();
+		}
+		double computedBound=1+multiplier*(log(4.0*nSubjects)-log(hyperParams.truncationEps()));
+		if(computedBound>maxNClusters){
+			maxNClusters=computedBound;
+		}
+	}
 
 	// Copy the dataset X matrix to a working object in params
 	params.workDiscreteX(dataset.discreteX());
@@ -627,12 +660,14 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	}
 	params.workNXInCluster(nXInCluster);
 	params.workMaxZi(maxZ);
-	params.maxNClusters(maxZ+1);
+
 
 	// Sample v (for logPsi)
 	// This is sampled from the posterior given the z vector above
 	// Prior comes from the conjugacy of the dirichlet and multinomial
 	// See Ishwaran and James 2001
+
+	// Sample active V
 	vector<unsigned int> sumCPlus1ToMaxMembers(maxZ+1,0);
 	for(int c=maxZ-1;c>=0;c--){
 		sumCPlus1ToMaxMembers[c]=sumCPlus1ToMaxMembers[c+1]+params.workNXInCluster(c+1);
@@ -647,54 +682,88 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 		tmp += log(1-vVal);
 	}
 
-	// Sample u (auxilliary variables). This will determine the maximum number of clusters
-	maxNClusters = maxZ+1;
-	vector<double> cumPsi(maxZ+1,0.0);
-	cumPsi[0] = exp(params.logPsi(0));
-	for(unsigned int c=1;c<=maxZ;c++){
-		cumPsi[c]=cumPsi[c-1]+exp(params.logPsi(c));
-	}
+	if(samplerType.compare("Truncated")==0){
+		// Just sample the remaining V from the prior
+		vector<double> vNew=params.v();
+		vector<double> logPsiNew=params.logPsi();
 
-	vector<double> vNew=params.v();
-	vector<double> logPsiNew=params.logPsi();
-	double minU=1.0;
-	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
-		int zi=params.z(i);
-		double ui = exp(params.logPsi(zi))*unifRand(rndGenerator);
-		if(ui<minU){
-			minU=ui;
-		}
-		params.u(i,ui);
-	}
-	params.workMinUi(minU);
-
-	bool continueLoop=true;
-	unsigned int c=maxNClusters-1;
-	while(continueLoop){
-		// Criteria 1
-		if(cumPsi[c]>1-minU){
-			// We can stop
-			maxNClusters=c+1;
-			continueLoop=false;
-		}else{
-			// We need a new sampled value of v
+		for(unsigned int c=maxZ+1;c<maxNClusters;c++){
 			double v=betaRand(rndGenerator,1.0,alpha);
-			double logPsi=log(v)+log(1-vNew[maxNClusters-1])-log(vNew[maxNClusters-1])+logPsiNew[maxNClusters-1];
-			if(c+1>=vNew.size()){
+			double logPsi=log(v)+log(1-vNew[c-1])-log(vNew[c-1])+logPsiNew[c-1];
+			if(c>=vNew.size()){
 				vNew.push_back(v);
 				logPsiNew.push_back(logPsi);
 			}else{
-				vNew[c+1]=v;
-				logPsiNew[c+1]=logPsi;
+				vNew[c]=v;
+				logPsiNew[c]=logPsi;
 			}
-			cumPsi.push_back(cumPsi[c]+exp(logPsi));
-			c++;
 		}
-	}
+		params.v(vNew);
+		params.logPsi(logPsiNew);
 
-	params.maxNClusters(maxNClusters);
-	params.v(vNew);
-	params.logPsi(logPsiNew);
+	}else{
+
+		// Sample u (auxilliary variables). This will determine the maximum number of clusters
+		double minU=1.0;
+		for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
+			int zi=params.z(i);
+			double ui=0.0;
+			if(samplerType.compare("SliceDependent")){
+				ui = exp(params.logPsi(zi))*unifRand(rndGenerator);
+			}else if(samplerType.compare("SliceIndependent")){
+				ui = hyperParams.workXiSlice(zi)*unifRand(rndGenerator);
+			}
+			if(ui<minU){
+				minU=ui;
+			}
+			params.u(i,ui);
+		}
+		params.workMinUi(minU);
+
+		// Sample V
+		vector<double> cumPsi(maxZ+1,0.0);
+		cumPsi[0] = exp(params.logPsi(0));
+		for(unsigned int c=1;c<=maxZ;c++){
+			cumPsi[c]=cumPsi[c-1]+exp(params.logPsi(c));
+		}
+
+		vector<double> vNew=params.v();
+		vector<double> logPsiNew=params.logPsi();
+
+		maxNClusters = maxZ+1;
+		if(samplerType.compare("SliceIndependent")==0){
+			maxNClusters=2+(int)((log(params.workMinUi())-log(1.0-hyperParams.rSlice()))/log(hyperParams.rSlice()));
+		}
+
+		bool continueLoop=true;
+		unsigned int c=maxZ;
+		while(continueLoop){
+			if(samplerType.compare("SliceDependent")==0&&cumPsi[c]>1-minU){
+				// We can stop
+				maxNClusters=c+1;
+				continueLoop=false;
+			}else if(samplerType.compare("SliceIndependent")==0&&c>=maxNClusters){
+				continueLoop=false;
+			}else{
+				c++;
+				// We need a new sampled value of v
+				double v=betaRand(rndGenerator,1.0,alpha);
+				double logPsi=log(v)+log(1-vNew[c-1])-log(vNew[c-1])+logPsiNew[c-1];
+				if(c>=vNew.size()){
+					vNew.push_back(v);
+					logPsiNew.push_back(logPsi);
+				}else{
+					vNew[c]=v;
+					logPsiNew[c]=logPsi;
+				}
+				cumPsi.push_back(cumPsi[c-1]+exp(logPsi));
+			}
+		}
+
+		params.maxNClusters(maxNClusters);
+		params.v(vNew);
+		params.logPsi(logPsiNew);
+	}
 
 	if(covariateType.compare("Discrete")==0){
 		// Sample logPhi
@@ -1417,11 +1486,18 @@ string storeLogFileData(const diPBaCOptions& options,
 								const diPBaCData& dataset,
 								const diPBaCHyperParams& hyperParams,
 								const unsigned int& nClusInit,
+								const unsigned int& maxNClusters,
 								const double& timeInSecs){
 
 	ostringstream tmpStr;
 	tmpStr << "Number of subjects: " << dataset.nSubjects() << endl;
 	tmpStr << "Number of prediction subjects: " << dataset.nPredictSubjects() << endl;
+	tmpStr << "Sampler type: " << options.samplerType();
+	if(options.samplerType().compare("Truncated")==0){
+		tmpStr << " " << maxNClusters << " clusters" << endl;
+	}else{
+		tmpStr << endl;
+	}
 	tmpStr << "Number of initial clusters: " << nClusInit;
 	if(options.nClusInit()==0){
 		tmpStr << " (Random, Unif[5,15])" << endl;

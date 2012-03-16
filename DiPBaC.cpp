@@ -117,7 +117,9 @@ int main(int argc, char*  argv[]){
 	diPBaCSampler.addProposal("metropolisHastingsForLabels",1.0,1,1,&metropolisHastingsForLabels);
 
 	// Gibbs for U
-	diPBaCSampler.addProposal("gibbsForU",1.0,1,1,&gibbsForU);
+	if(options.samplerType().compare("Truncated")!=0){
+		diPBaCSampler.addProposal("gibbsForU",1.0,1,1,&gibbsForU);
+	}
 
 	// The Metropolis Hastings update for alpha
 	if(options.fixedAlpha()<0){
@@ -202,6 +204,8 @@ int main(int argc, char*  argv[]){
 	diPBaCSampler.initialiseChain();
 	diPBaCHyperParams hyperParams = diPBaCSampler.chain().currentState().parameters().hyperParams();
 	unsigned int nClusInit = diPBaCSampler.chain().currentState().parameters().workNClusInit();
+	// The following is only used if the sampler type is truncated
+	unsigned int maxNClusters = diPBaCSampler.chain().currentState().parameters().maxNClusters();
 	/* ---------- Run the sampler --------- */
 	// Note: in this function the output gets written
 	diPBaCSampler.run();
@@ -209,7 +213,7 @@ int main(int argc, char*  argv[]){
 	/* -- End the clock time and write the full run details to log file --*/
 	currTime = time(NULL);
     double timeInSecs=(double)currTime-(double)beginTime;
-	string tmpStr = storeLogFileData(options,dataset,hyperParams,nClusInit,timeInSecs);
+	string tmpStr = storeLogFileData(options,dataset,hyperParams,nClusInit,maxNClusters,timeInSecs);
 	diPBaCSampler.appendToLogFile(tmpStr);
 
 
