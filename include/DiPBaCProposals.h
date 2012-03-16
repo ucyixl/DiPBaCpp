@@ -1306,6 +1306,7 @@ void gibbsForU(mcmcChain<diPBaCParams>& chain,
 
 	mcmcState<diPBaCParams>& currentState = chain.currentState();
 	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
 	nTry++;
 	nAccept++;
@@ -1319,7 +1320,7 @@ void gibbsForU(mcmcChain<diPBaCParams>& chain,
 	double minUi = 1.0;
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 		int zi = currentParams.z(i);
-		double ui = exp(currentParams.logPsi(zi))*unifRand(rndGenerator);
+		double ui = hyperParams.workXiSlice((unsigned int)zi)*unifRand(rndGenerator);
 		if(ui<minUi){
 			minUi=ui;
 		}
@@ -1418,47 +1419,26 @@ void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 
 	mcmcState<diPBaCParams>& currentState = chain.currentState();
 	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 
 	nTry++;
 	nAccept++;
 
-	// Find the active clusters
 	unsigned int maxZ = currentParams.workMaxZi();
-
-	unsigned int maxNClusters = maxZ+1;
-	vector<double> cumPsi(maxZ+1,0.0);
-	cumPsi[0] = exp(currentParams.logPsi(0));
-	for(unsigned int c=1;c<=maxZ;c++){
-		cumPsi[c]=cumPsi[c-1]+exp(currentParams.logPsi(c));
-	}
 
 	vector<double> vNew=currentParams.v();
 	vector<double> logPsiNew=currentParams.logPsi();
-
-
 	double alpha = currentParams.alpha();
-	double minU = currentParams.workMinUi();
-	bool continueLoop=true;
-	unsigned int c=maxNClusters-1;
-	while(continueLoop){
-		// Criteria 1
-		if(cumPsi[c]>1-minU){
-			// We can stop
-			maxNClusters=c+1;
-			continueLoop=false;
+	unsigned int maxNClusters = 2+(int)((log(currentParams.workMinUi())-log(1.0-hyperParams.rSlice()))/log(hyperParams.rSlice()));
+	for(unsigned int c=maxZ+1;c<maxNClusters;c++){
+		double v=betaRand(rndGenerator,1.0,alpha);
+		double logPsi=log(v)+log(1-vNew[c-1])-log(vNew[c-1])+logPsiNew[c-1];
+		if(c>=vNew.size()){
+			vNew.push_back(v);
+			logPsiNew.push_back(logPsi);
 		}else{
-			// We need a new sampled value of v
-			double v=betaRand(rndGenerator,1.0,alpha);
-			double logPsi=log(v)+log(1-vNew[c])-log(vNew[c])+logPsiNew[c];
-			if(c+1>=vNew.size()){
-				vNew.push_back(v);
-				logPsiNew.push_back(logPsi);
-			}else{
-				vNew[c+1]=v;
-				logPsiNew[c+1]=logPsi;
-			}
-			cumPsi.push_back(cumPsi[c]+exp(logPsi));
-			c++;
+			vNew[c]=v;
+			logPsiNew[c]=logPsi;
 		}
 	}
 
@@ -2091,6 +2071,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 
 	mcmcState<diPBaCParams>& currentState = chain.currentState();
 	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 	const diPBaCData& dataset = model.dataset();
 	const string& outcomeType = model.dataset().outcomeType();
 	const string& covariateType = model.dataset().covariateType();
@@ -2134,7 +2115,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		for(unsigned int i=0;i<nSubjects;i++){
 			logPXiGivenZi[i].resize(maxNClusters,0);
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<psi[c]){
+				if(u[i]<hyperParams.workXiSlice(c)){
 					if(currentParams.z(i)==(int)c){
 						logPXiGivenZi[i][c]=currentParams.workLogPXiGivenZi(i);
 					}else{
@@ -2152,7 +2133,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		for(unsigned int i=nSubjects;i<nSubjects+nPredictSubjects;i++){
 			logPXiGivenZi[i].resize(maxNClusters,0);
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<psi[c]){
+				if(u[i]<hyperParams.workXiSlice(c)){
 					for(unsigned int j=0;j<nCovariates;j++){
 						if(!missingX[i][j]){
 							int Xij = currentParams.workDiscreteX(i,j);
@@ -2168,7 +2149,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			logPXiGivenZi[i].resize(maxNClusters,0.0);
 			VectorXd xi=VectorXd::Zero(nCovariates);
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<psi[c]){
+				if(u[i]<hyperParams.workXiSlice(c)){
 					if(currentParams.z(i)==(int)c){
 						logPXiGivenZi[i][c]=currentParams.workLogPXiGivenZi(i);
 					}else{
@@ -2188,7 +2169,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			unsigned int nNotMissing=dataset.nCovariatesNotMissing(i);
 
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<psi[c]){
+				if(u[i]<hyperParams.workXiSlice(c)){
 					VectorXd workMuStar=currentParams.workMuStar(c);
 
 					VectorXd xi=VectorXd::Zero(nNotMissing);
@@ -2273,8 +2254,8 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				// In this case the Y only go into this conditional
 				// through lambda
 				for(unsigned int c=0;c<maxNClusters;c++){
-					if(u[i]<psi[c]){
-						double meanVal=meanVec[i]+currentParams.theta(c,0);
+					if(u[i]<hyperParams.workXiSlice(c)){
+						double meanVal=meanVec[i]+currentParams.theta(c);
 						for(unsigned int j=0;j<nFixedEffects;j++){
 							meanVal+=currentParams.beta(j,0)*dataset.W(i,j);
 						}
@@ -2286,7 +2267,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			}else{
 				// In this case the Y go in directly
 				for(unsigned int c=0;c<maxNClusters;c++){
-					if(u[i]<psi[c]){
+					if(u[i]<hyperParams.workXiSlice(c)){
 						logPyXz[c]+=logPYiGivenZiWi(currentParams,dataset,nFixedEffects,c,i);
 					}
 				}
@@ -2294,7 +2275,8 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		}
 
 		for(unsigned int c=0;c<maxNClusters;c++){
-			if(u[i]<psi[c]){
+			if(u[i]<hyperParams.workXiSlice(c)){
+				logPyXz[c]+=currentParams.logPsi(c)-log(1-hyperParams.rSlice())-((double)c)*log(hyperParams.rSlice());
 				logPyXz[c]+=logPXiGivenZi[i][c];
 			}else{
 				logPyXz[c]=-(numeric_limits<double>::max());

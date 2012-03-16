@@ -161,6 +161,8 @@ class diPBaCHyperParams{
 			_shapeSigmaSqY = 2.5;
 			_scaleSigmaSqY = 2.5;
 
+			_rSlice =0.75;
+
 		}
 
 		double shapeAlpha() const{
@@ -342,6 +344,10 @@ class diPBaCHyperParams{
 			_scaleSigmaSqY = r;
 		}
 
+		double rSlice() const{
+			return _rSlice;
+		}
+
 		const MatrixXd& workSqrtTau0() const{
 			return _workSqrtTau0;
 		}
@@ -356,6 +362,10 @@ class diPBaCHyperParams{
 
 		double workLogDetR0() const{
 			return _workLogDetR0;
+		}
+
+		double workXiSlice(unsigned int c) const{
+			return (1-_rSlice)*pow(_rSlice,(double)c);
 		}
 
 		// Copy operator
@@ -384,6 +394,7 @@ class diPBaCHyperParams{
 			_workLogDetTau0 = hyperParams.workLogDetTau0();
 			_workInverseR0 = hyperParams.workInverseR0();
 			_workLogDetR0 = hyperParams.workLogDetR0();
+			_rSlice = hyperParams.rSlice();
 			return *this;
 		}
 
@@ -444,6 +455,9 @@ class diPBaCHyperParams{
 		MatrixXd _workSqrtTau0;
 		double _workLogDetR0;
 		MatrixXd _workInverseR0;
+
+		//Slice sampler variables
+		double _rSlice;
 
 
 };
