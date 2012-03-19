@@ -61,6 +61,7 @@ readRunInfo<-function(directoryPath,fileStem='output'){
 		yModel<-substr(yModel,regexpr(':',yModel)+1,nchar(yModel))
 		yModel<-gsub(' ','',yModel)
 		yModel<-gsub('\t','',yModel)
+		readNCategoriesY<-yModel
 	}
 	
 	# Variable selection type
