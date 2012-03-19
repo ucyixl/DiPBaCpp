@@ -617,7 +617,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	// Fix the number of clusters if we are using the truncated sampler
 	if(samplerType.compare("Truncated")==0){
 		maxNClusters=20;
-		if(nClusInit>maxNClusters){
+		if((nClusInit+10)>maxNClusters){
 			maxNClusters=nClusInit+10;
 		}
 		// Now compute the bound recommended in Ishwaran and James 2001
@@ -632,6 +632,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 		if(computedBound>maxNClusters){
 			maxNClusters=computedBound;
 		}
+		params.maxNClusters(maxNClusters);
 	}
 
 	// Copy the dataset X matrix to a working object in params

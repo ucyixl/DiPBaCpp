@@ -79,7 +79,7 @@ class diPBaCHyperParams{
 
 			// For alpha
 			_shapeAlpha=2.0;
-			_rateAlpha=0.4;
+			_rateAlpha=1.0;
 
 			// For Phi
 			_useReciprocalNCatsPhi=false;
@@ -162,7 +162,7 @@ class diPBaCHyperParams{
 			_scaleSigmaSqY = 2.5;
 
 			_rSlice =0.75;
-			_truncationEps = 0.00000001;
+			_truncationEps = 0.000001;
 
 		}
 

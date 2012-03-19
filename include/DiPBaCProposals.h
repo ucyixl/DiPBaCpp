@@ -1323,9 +1323,9 @@ void gibbsForU(mcmcChain<diPBaCParams>& chain,
 		int zi = currentParams.z(i);
 		double ui=0.0;
 		if(samplerType.compare("SliceDependent")==0){
-			ui = hyperParams.workXiSlice((unsigned int)zi)*unifRand(rndGenerator);
-		}else if(samplerType.compare("SliceIndependent")==0){
 			ui = exp(currentParams.logPsi((unsigned int)zi))*unifRand(rndGenerator);
+		}else if(samplerType.compare("SliceIndependent")==0){
+			ui = hyperParams.workXiSlice((unsigned int)zi)*unifRand(rndGenerator);
 		}
 		if(ui<minUi){
 			minUi=ui;
@@ -2362,9 +2362,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		}
 
 		vector<double> expectedTheta(nCategoriesY);
-		if(computeEntropy){
-			double entropyVal=0.0;
-		}
+		double entropyVal=0.0;
 		vector<double> cumPzGivenXy(maxNClusters);
 		for(unsigned int c=0;c<maxNClusters;c++){
 			pzGivenXy[c]/=sumVal;
