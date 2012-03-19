@@ -1432,6 +1432,7 @@ void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 	nAccept++;
 
 	unsigned int maxZ = currentParams.workMaxZi();
+	unsigned int maxNClusters = currentParams.maxNClusters();
 	double minUi = currentParams.workMinUi();
 
 	vector<double> vNew=currentParams.v();
@@ -1454,7 +1455,6 @@ void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 			}
 		}
 	}else{
-		unsigned int maxNClusters=0;
 		if(samplerType.compare("SliceIndependent")==0){
 			maxNClusters=2+(int)((log(minUi)-log(1.0-hyperParams.rSlice()))/log(hyperParams.rSlice()));
 		}
@@ -2156,10 +2156,9 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 	vector<double> testBound(maxNClusters,0.0);
 	vector<double> clusterWeight(maxNClusters,0.0);
 	for(unsigned int c=0;c<maxNClusters;c++){
-		psi[c]=exp(psi[c]);
 		if(samplerType.compare("SliceDependent")==0){
 			testBound[c] = exp(currentParams.logPsi(c));
-			clusterWeight[c] = 1.0;
+			clusterWeight[c] = 0.0;
 		}else if(samplerType.compare("SliceIndependent")==0){
 			testBound[c] = hyperParams.workXiSlice(c);
 			clusterWeight[c] = currentParams.logPsi(c)-(double)c*log(hyperParams.rSlice())-log(1-hyperParams.rSlice());
@@ -2168,7 +2167,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			clusterWeight[c] = currentParams.logPsi(c);
 		}
 	}
-/////// UP TO HERE - NEED TO FEED THE ABOVE CONDITIONS DOWN TO MOVE BELOW
+
 	// Compute the allocation probabilities in terms of the unique vectors
 	vector<vector<double> > logPXiGivenZi;
 	logPXiGivenZi.resize(nSubjects+nPredictSubjects);
@@ -2178,7 +2177,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		for(unsigned int i=0;i<nSubjects;i++){
 			logPXiGivenZi[i].resize(maxNClusters,0);
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<hyperParams.workXiSlice(c)){
+				if(u[i]<testBound[c]){
 					if(currentParams.z(i)==(int)c){
 						logPXiGivenZi[i][c]=currentParams.workLogPXiGivenZi(i);
 					}else{
@@ -2196,7 +2195,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		for(unsigned int i=nSubjects;i<nSubjects+nPredictSubjects;i++){
 			logPXiGivenZi[i].resize(maxNClusters,0);
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<hyperParams.workXiSlice(c)){
+				if(u[i]<testBound[c]){
 					for(unsigned int j=0;j<nCovariates;j++){
 						if(!missingX[i][j]){
 							int Xij = currentParams.workDiscreteX(i,j);
@@ -2212,7 +2211,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			logPXiGivenZi[i].resize(maxNClusters,0.0);
 			VectorXd xi=VectorXd::Zero(nCovariates);
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<hyperParams.workXiSlice(c)){
+				if(u[i]<testBound[c]){
 					if(currentParams.z(i)==(int)c){
 						logPXiGivenZi[i][c]=currentParams.workLogPXiGivenZi(i);
 					}else{
@@ -2232,7 +2231,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			unsigned int nNotMissing=dataset.nCovariatesNotMissing(i);
 
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<hyperParams.workXiSlice(c)){
+				if(u[i]<testBound[c]){
 					VectorXd workMuStar=currentParams.workMuStar(c);
 
 					VectorXd xi=VectorXd::Zero(nNotMissing);
@@ -2317,8 +2316,8 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				// In this case the Y only go into this conditional
 				// through lambda
 				for(unsigned int c=0;c<maxNClusters;c++){
-					if(u[i]<hyperParams.workXiSlice(c)){
-						double meanVal=meanVec[i]+currentParams.theta(c);
+					if(u[i]<testBound[c]){
+						double meanVal=meanVec[i]+currentParams.theta(c,0);
 						for(unsigned int j=0;j<nFixedEffects;j++){
 							meanVal+=currentParams.beta(j,0)*dataset.W(i,j);
 						}
@@ -2330,7 +2329,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			}else{
 				// In this case the Y go in directly
 				for(unsigned int c=0;c<maxNClusters;c++){
-					if(u[i]<hyperParams.workXiSlice(c)){
+					if(u[i]<testBound[c]){
 						logPyXz[c]+=logPYiGivenZiWi(currentParams,dataset,nFixedEffects,c,i);
 					}
 				}
@@ -2338,8 +2337,8 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		}
 
 		for(unsigned int c=0;c<maxNClusters;c++){
-			if(u[i]<hyperParams.workXiSlice(c)){
-				logPyXz[c]+=currentParams.logPsi(c)-log(1-hyperParams.rSlice())-((double)c)*log(hyperParams.rSlice());
+			if(u[i]<testBound[c]){
+				logPyXz[c]+=clusterWeight[c];
 				logPyXz[c]+=logPXiGivenZi[i][c];
 			}else{
 				logPyXz[c]=-(numeric_limits<double>::max());

@@ -560,6 +560,11 @@ void readHyperParamsFromFile(const string& filename,diPBaCHyperParams& hyperPara
 			string tmpStr = inString.substr(pos,inString.size()-pos);
 			double rSlice = (double)atof(tmpStr.c_str());
 			hyperParams.rSlice(rSlice);
+		}else if(inString.find("truncationEps")==0){
+			size_t pos = inString.find("=")+1;
+			string tmpStr = inString.substr(pos,inString.size()-pos);
+			double truncationEps = (double)atof(tmpStr.c_str());
+			hyperParams.truncationEps(truncationEps);
 		}
 	}
 
@@ -607,7 +612,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	unsigned int maxNClusters=params.maxNClusters();
 
 	// Fix the number of clusters if we are using the truncated sampler
-	if(samplerMethod.compare("Truncated")==0){
+	if(samplerType.compare("Truncated")==0){
 		maxNClusters=20;
 		if(nClusInit>maxNClusters){
 			maxNClusters=nClusInit+10;

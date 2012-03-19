@@ -162,6 +162,7 @@ class diPBaCHyperParams{
 			_scaleSigmaSqY = 2.5;
 
 			_rSlice =0.75;
+			_truncationEps = 0.00000001;
 
 		}
 
@@ -348,6 +349,19 @@ class diPBaCHyperParams{
 			return _rSlice;
 		}
 
+		void rSlice(const double& rSl){
+			_rSlice=rSl;
+		}
+
+		double truncationEps() const{
+			return _truncationEps;
+		}
+
+		void truncationEps(const double& eps){
+			_truncationEps=eps;
+		}
+
+
 		const MatrixXd& workSqrtTau0() const{
 			return _workSqrtTau0;
 		}
@@ -395,6 +409,7 @@ class diPBaCHyperParams{
 			_workInverseR0 = hyperParams.workInverseR0();
 			_workLogDetR0 = hyperParams.workLogDetR0();
 			_rSlice = hyperParams.rSlice();
+			_truncationEps = hyperParams.truncationEps();
 			return *this;
 		}
 
@@ -456,8 +471,11 @@ class diPBaCHyperParams{
 		double _workLogDetR0;
 		MatrixXd _workInverseR0;
 
-		//Slice sampler variables
+		//Slice sampler variables for independent slice sampler
 		double _rSlice;
+
+		//Truncated sampler variables
+		double _truncationEps;
 
 
 };
