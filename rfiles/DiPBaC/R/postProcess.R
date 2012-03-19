@@ -49,10 +49,11 @@ readRunInfo<-function(directoryPath,fileStem='output'){
 	xModel<-substr(xModel,regexpr(':',xModel)+1,nchar(xModel))
 	xModel<-gsub(' ','',xModel)
 	xModel<-gsub('\t','',xModel)
-	
+
 	if(length(grep('Include response: False',runData))>0){
 		includeResponse<-F
 		yModel<-NULL
+		readNCategoriesY<-as.character(runData[grep('Model for Y',runData)])
 	}else{
 		includeResponse<-T
 		# Model for Y
@@ -91,7 +92,7 @@ readRunInfo<-function(directoryPath,fileStem='output'){
 	nFixedEffects<-as.integer(inputData[3+nCovariates])
 	nExtraRows<-0   
 	nCategoriesY<-1
-	if (yModel=='Categorical'){
+	if ((includeResponse && yModel=='Categorical')||readNCategoriesY=="Categorical"){
 		nCategoriesY<-as.integer(inputData[(4+nCovariates+nFixedEffects)])
 		nExtraRows<-nExtraRows+1
 	}
