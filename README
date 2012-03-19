@@ -1,8 +1,28 @@
-########## DiPBaC++: C++ and R code version 1.1.0 ##################
-########## TEST BRANCH TO TEST INITIALISATION
+########## DiPBaC++: C++ and R code version 1.3.0 ##################
 
-### Author ###
-David Hastie, Imperial College London
+## Licence ###
+(C) Copyright David Hastie and Silvia Liverani, 2012.
+
+DiPBaC++ is free software; you can redistribute it and/or modify it under the 
+terms of the GNU Lesser General Public License as published by the Free Software
+Foundation; either version 3 of the License, or (at your option) any later 
+version.
+
+DiPBaC++ is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
+PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with DiPBaC++ in the documentation directory. If not, see 
+<http://www.gnu.org/licenses/>.
+
+The external linear algebra library Eigen, parts of which are included  in the 
+lib directory is released under the LGPL3+ licence. See comments in file headers
+for details.
+
+The Boost C++ header library, parts of which are included in the  lib directory 
+is released under the Boost Software Licence, Version 1.0, a copy  of which is 
+included in the documentation directory.
 
 
 ### Description ###
@@ -10,6 +30,8 @@ Program to implement Dirichlet Process Bayesian Clustering as described in
 Hastie et al. 2011. Previously this project was called profile regression.
 
    - Implements an infinite Dirichlet process model
+   - Can do dependent or independent slice sampling (Kalli et al., 2011) 
+     or truncated Dirichlet process model (Ishwaran and James, 2001)
    - Handles categorical or Normal covariates
    - Handles Bernoulli, Binomial, Categorical, Poisson or Normal responses
    - Handles inclusion of fixed effects in the response model
@@ -17,21 +39,32 @@ Hastie et al. 2011. Previously this project was called profile regression.
    - Handles variable selection (tested in Discrete covariate case only)
    - Includes label switching moves for better mixing
    - Allows user to exclude the response from the model
+   - Allows user to compute the entropy of the allocation
+   - Allows user to run with a fixed alpha or update alpha (default)
    - Allows users to run predictive scenarios (at C++ run time)
    - Basic or Rao-Blackwellised predictions can be produced
    - Handling of missing data
    - C++ for model fitting
-   - Uses Armadillo compiled against Goto blas
+   - Uses Eigen Linear Algebra Library and Boost C++
+   - Completely self contained (all library code in included in distribution)
    - Adaptive MCMC where appropriate
    - R package for generating simulation data and post processing
    - R plotting functions allow user choice of what to order clusters by
 
 
 ### ChangeLog: ###
-Changes from from 1.0.1 to 1.1.0
-	- Added categorical response (extra response variation not permitted in this case). Categorical response must be coded as integers from 0.
+Changes from 1.2.0 to 1.3.0
+   - Added in different sampler types. Single piece of software can be run as
+     dependent or independent slice samplers (Kalli et al., 2011) or truncated
+     Dirichlet process (Ishwaran and James, 2001).
+   - Added in possibility to return the entropy of allocation.      
 
-Changes from from 1.0.1 to 1.1.0
+Changes from 1.1.0 to 1.2.0
+	- Added categorical response (extra response variation not permitted in this 
+	  case). Categorical response must be coded as integers from 0.
+   - Changed the Linear Algebra library from Armadillo to Eigen
+
+Changes from 1.0.1 to 1.1.0
    - Added normal response (extra response variation not permitted in this case)
    - Removed separate handling of ordinal models. NB: IMPORTANT- This means that
     input files generated for Discrete covariate models for previous versions
@@ -41,7 +74,7 @@ Changes from from 1.0.1 to 1.1.0
    - Restored random (but parsimonious) initial number of clusters
    - Changed prior of phi to be Dirichlet(0.5,...,0.5) by default instead of
      uniform.
-   - Changed prior for alpha to be Gamma(2,0.4)
+   - Changed prior for alpha to be Gamma(2,1)
    - Fixed bug with computation of full log posterior introduced in version
      1.0.1. This did not affect running of sampler as this is only used for
      reporting purposes.
@@ -53,7 +86,7 @@ Changes from from 1.0.1 to 1.1.0
    - Tidied R files for generating simulation data
    - Added in missing example files referred to in this README and added others
 
-Changes from from 1.0.1 to 1.1.0
+Changes from 1.0.1 to 1.1.0
    - Added normal response (extra response variation not permitted in this case)
    - Removed separate handling of ordinal models. NB: IMPORTANT- This means that
     input files generated for Discrete covariate models for previous versions
@@ -99,9 +132,6 @@ Changes since profileRegression version 2.0.1
 
 ### Dependencies: ###
 The following are packages and libraries are required
-   - Boost header libraries (http://www.boost.org)
-   - Goto blas
-   - Armadillo (http://arma.sourceforge.net/) compiled against Goto blas
    - cmake
 
 ### Installation: ###
@@ -151,6 +181,8 @@ both --yModel=... and --excludeY arguments as the --yModel helps determine how
 the data is read, but will be ignored in terms of fitting if the --excludeY
 argument is present.
 
+An example input file for categorical outcome and categorical data is given in
+data/input/example_Categorical_Discrete_input.txt
 An example input file for binary outcome and categorical data is given in
 data/input/example_Bernoulli_Discrete_input.txt
 An example input file for Poisson outcome and categorical data is given in
@@ -189,61 +221,79 @@ An example parameter file is provided in
 data/input/example_hyperparameter_file.txt
 
 The possible hyperparameters are (with definition):
-shapeAlpha - The shape parameter for Gamma prior on alpha
-(default=1.0)
-rateAlpha - The inverse-scale (rate) parameter for the Gamma prior
-on alpha (default=0.5)
-useReciprocalNCatsPhi - Boolean denoting whether the vector phi_j (for
-covariate j) have all elements equal (only used in the
-discrete covariate case, default=true)
-aPhi - The vector of parameters for the Dirichlet prior on
-phi_j. Element j corresponds to covariate j which then
-has a prior Dirichlet(aPhi[j],aPhi[j],....,aPhi[j]).
-(Only used in discrete case if useReciprocalNCatsPhi
-is false, default=(1 1 1 ... 1))
-mu0 - The mean vector for mu_c in the Normal covariate case
-(only used in Normal covariate case, default=empirical
-covariate means)
-Tau0 - The precision matrix for mu_c in the Normal covariate
-case (only used in Normal covariate case,
-              default=inverse of diagonal matrix with elements equal to square
-              of empirical range for each covariate)
-R0 - The matrix parameter for the Wishart distribution for
-Tau_c (only used in Normal covariate case,
-              default=1/nCovariates * inverse of empirical covariance matrix)
-kapp0 - The degrees of freedom parameter for the Wishart distribution for
-              Tau_c (only used in Normal covariate case, default=nCovariates).
-muTheta - The location parameter for the t-Distribution for theta_c (only
-used if response included in model, default=0)
-sigmaTheta - The scale parameter for the t-Distribution for theta_c (only used
-              if response included in model, default=2.5)
-dofTheta - The degrees of freedom parameter for the t-Distribution for
-theta_c (only used if response included in model, default=7)
-muBeta - The location parameter for the t-Distribution for beta (only used
-              when fixed effects present, default=0)
-sigmaBeta - The scale parameter for the t-Distribution for beta (only used
-              when fixed effects present, default=2.5)
-dofBeta - The dof parameter for the t-Distribution for beta (only used when
-              fixed effects present, default=7)
-shapeTauEpsilon - Shape parameter for gamma distribution for prior for
-precision tau of extra variation errors epsilon (only used if
-extra variation is used i.e. --extraYVar flag is included,
-default=5.0)
-rateTauEpsilon - Inverse-scale (rate) parameter for gamma distribution for
-prior for precision tau of extra variation errors epsilon (only
-used if extra variation is used i.e. --extraYVar flag is used,
-default=0.5)
-aRho - Parameter for beta distribution for prior on rho in variable
-selection (default=0.5)
-bRho - Parameter for beta distribution for prior on rho in variable
-selection (default=0.5)
-shapeSigmaSqY - Shape parameter of inverse-gamma prior for sigma_Y^2 (only used
-in the Normal response model, default =2.5)
-scaleSigmaSqY - Scale parameter of inverse-gamma prior for sigma_Y^2 (only used
-in the Normal response model, default =2.5)
-
-
+shapeAlpha
+- The shape parameter for Gamma prior on alpha (default=1.0)
+rateAlpha
+- The inverse-scale (rate) parameter for the Gamma prior on alpha (default=0.5)
+useReciprocalNCatsPhi 
+- Boolean denoting whether the vector phi_j (for covariate j) have all elements 
+  equal (only used in the discrete covariate case, default=true)
+aPhi 
+- The vector of parameters for the Dirichlet prior on phi_j. Element j 
+  corresponds to covariate j which then has a prior 
+  Dirichlet(aPhi[j],aPhi[j],....,aPhi[j]). (Only used in discrete case if 
+  useReciprocalNCatsPhi is false, default=(1 1 1 ... 1))
+mu0
+- The mean vector for mu_c in the Normal covariate case (only used in Normal 
+covariate case, default=empirical covariate means)
+Tau0
+- The precision matrix for mu_c in the Normal covariate case (only used in 
+  Normal covariate case, default=inverse of diagonal matrix with elements equal 
+  to squareof empirical range for each covariate)
+R0
+- The matrix parameter for the Wishart distribution for Tau_c (only used in 
+  Normal covariate case, default=1/nCovariates * inverse of empirical covariance 
+  matrix)
+kapp0 
+- The degrees of freedom parameter for the Wishart distribution for Tau_c (only 
+  used in Normal covariate case, default=nCovariates).
+muTheta 
+- The location parameter for the t-Distribution for theta_c (only used if 
+  response included in model, default=0)
+sigmaTheta
+- The scale parameter for the t-Distribution for theta_c (only used if response 
+  included in model, default=2.5)
+dofTheta 
+- The degrees of freedom parameter for the t-Distribution for theta_c (only used 
+  if response included in model, default=7) 
+muBeta 
+- The location parameter for the t-Distribution for beta (only used when fixed 
+  effects present, default=0)
+sigmaBeta 
+- The scale parameter for the t-Distribution for beta (only used when fixed 
+effects present, default=2.5)
+dofBeta 
+- The dof parameter for the t-Distribution for beta (only used when fixed 
+  effects present, default=7)
+shapeTauEpsilon 
+- Shape parameter for gamma distribution for prior for precision tau of extra 
+  variation errors epsilon (only used if extra variation is used i.e. 
+  --extraYVar flag is included, default=5.0)
+rateTauEpsilon 
+- Inverse-scale (rate) parameter for gamma distribution for prior for precision 
+  tau of extra variation errors epsilon (only used if extra variation is used 
+  i.e. --extraYVar flag is used, default=0.5)
+aRho 
+- Parameter for beta distribution for prior on rho in variable selection 
+  (default=0.5)
+bRho 
+- Parameter for beta distribution for prior on rho in variable selection 
+  (default=0.5)
+shapeSigmaSqY 
+- Shape parameter of inverse-gamma prior for sigma_Y^2 (only used in the Normal 
+  response model, default =2.5)
+scaleSigmaSqY 
+- Scale parameter of inverse-gamma prior for sigma_Y^2 (only used in the Normal 
+  response model, default =2.5)
+rSlice 
+- Slice parameter for independent slice sampler such that 
+  xi_c = (1-rSlice)*rSlice^c for c=0,1,2,... (only used for slice independent
+  sampler i.e. --sampler=SliceIndependent, default 0.75). 
+truncationEps
+- Parameter for determining the truncation level of the finite Dirichlet process
+  (only used for truncated sampler i.e. --sampler=Truncated
  
+
 ### Predictions (at C++ run time) ###
 
 The algorithm can now take an input file of predictive scenarios. The first line
@@ -293,7 +343,7 @@ The package depends on the Rcpp, clue, cluster and ggplot2 packages (available
 from CRAN)
 
 To install the package from the rfiles subdirectory use
->R CMD INSTALL DiPBaC_1.0.0.tar.gz
+>R CMD INSTALL DiPBaC_1.3.0.tar.gz
 
 Then in R the commands are:
 >require(DiPBaC)
@@ -321,7 +371,17 @@ of sqrt(Sigma[j,j]) (i.e. the standard deviation for that covariate).
 Additionally there is a function for visually plotting the cluster
 >plotClustering(clusObj,'../data/output/cluster.png')
 This function produces a visual representation of how the subjects cluster when
-plotted against the two principal components.
+plotted against the two principal components. This function also requires a raw 
+X data file, which contains (if available) the uncategorised covariate data, in 
+the format 
+  -No of subjects
+  -No of covariates
+  -Covariate names (1 per line)
+  -Data
+
+Each line of the data corresponds to a separate subject and for each subject
+should be in the order
+x1 x2 ... xJ
 
 There is also now an additional function calcPredictions for computing predicted
 responses, for various prediction scenarios. It is assumed that the predictive

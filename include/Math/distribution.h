@@ -1,7 +1,31 @@
-/// \file random.h
-/// \author David Hastie
-/// \date 18 Oct 2010
+/// \file distribution.h
+/// \author David Hastie and Silvia Liverani
+/// \date 19 Mar 2012
 /// \brief Header file to define distributions
+
+/// \note (C) Copyright David Hastie and Silvia Liverani, 2012.
+
+/// DiPBaC++ is free software; you can redistribute it and/or modify it under the
+/// terms of the GNU Lesser General Public License as published by the Free Software
+/// Foundation; either version 3 of the License, or (at your option) any later
+/// version.
+
+/// DiPBaC++ is distributed in the hope that it will be useful, but WITHOUT ANY
+/// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+/// PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+/// You should have received a copy of the GNU Lesser General Public License
+/// along with DiPBaC++ in the documentation directory. If not, see
+/// <http://www.gnu.org/licenses/>.
+
+/// The external linear algebra library Eigen, parts of which are included  in the
+/// lib directory is released under the LGPL3+ licence. See comments in file headers
+/// for details.
+
+/// The Boost C++ header library, parts of which are included in the  lib directory
+/// is released under the Boost Software Licence, Version 1.0, a copy  of which is
+/// included in the documentation directory.
+
 
 #ifndef DISTRIBUTION_H_
 #define DISTRIBUTION_H_

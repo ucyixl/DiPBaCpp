@@ -1,3 +1,25 @@
+# (C) Copyright David Hastie and Silvia Liverani, 2012.
+
+# DiPBaC++ is free software; you can redistribute it and/or modify it under the
+# terms of the GNU Lesser General Public License as published by the Free Software
+# Foundation; either version 3 of the License, or (at your option) any later
+# version.
+
+# DiPBaC++ is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public License
+# along with DiPBaC++ in the documentation directory. If not, see
+# <http://www.gnu.org/licenses/>.
+
+# The external linear algebra library Eigen, parts of which are included  in the
+# lib directory is released under the LGPL3+ licence. See comments in file headers
+# for details.
+
+# The Boost C++ header library, parts of which are included in the  lib directory
+# is released under the Boost Software Licence, Version 1.0, a copy  of which is
+# included in the documentation directory.
 
 # Generate simulated data for testing C++ DiPBaC
 generateSampleDataFile<-function(clusterSummary,fileName){
@@ -135,7 +157,7 @@ generateSampleDataFile<-function(clusterSummary,fileName){
 			p[1]<-1/sumMu
 			for (kk in 2:nCategoriesY) p[kk]<-exp(mu[kk])/sumMu
 			Y[i]<-which(rmultinom(1,1,p)==1)-1
-      		}
+      }
 	}
 
 	# Write the output
@@ -204,55 +226,12 @@ clusSummaryCategoricalDiscrete<-list(
 			c(0.1,0.1,0.8),
 			c(0.1,0.1,0.8)))))
 
-
-clusSummaryCategoricalDiscrete2<-list(
-	'outcomeType'='Categorical',
-	'covariateType'='Discrete',
-	'nCovariates'=5,
-	'nCategories'=c(3,3,3,3,3),
-	'nFixedEffects'=0,
-	'nCategoriesY'=2,
-	'missingDataProb'=0.001,
-	'nClusters'=5,
-	'clusterSizes'=c(100,200,300,200,100),
-	'clusterData'=list(list('theta'=log(9),
-		'covariateProbs'=list(c(0.8,0.1,0.1),
-			c(0.8,0.1,0.1),
-			c(0.8,0.1,0.1),
-			c(0.8,0.1,0.1),
-			c(0.8,0.1,0.1))),
-		list('theta'=log(2),
-		'covariateProbs'=list(c(0.8,0.1,0.1),
-			c(0.8,0.1,0.1),
-			c(0.1,0.8,0.1),
-			c(0.1,0.8,0.1),
-			c(0.1,0.1,0.8))),
-		list('theta'=0,
-		'covariateProbs'=list(c(0.1,0.8,0.1),
-			c(0.1,0.8,0.1),
-			c(0.1,0.8,0.1),
-			c(0.1,0.8,0.1),
-			c(0.1,0.8,0.1))),
-		list('theta'=log(1/2),
-		'covariateProbs'=list(c(0.1,0.1,0.8),
-			c(0.1,0.8,0.1),
-			c(0.8,0.1,0.1),
-			c(0.1,0.1,0.8),
-			c(0.8,0.1,0.1))),
-		list('theta'=log(1/9),
-		'covariateProbs'=list(c(0.1,0.1,0.8),
-			c(0.1,0.1,0.8),
-			c(0.1,0.1,0.8),
-			c(0.1,0.1,0.8),
-			c(0.1,0.1,0.8)))))
-
 clusSummaryBernoulliDiscrete<-list(
 	'outcomeType'='Bernoulli',
 	'covariateType'='Discrete',
 	'nCovariates'=5,
 	'nCategories'=c(3,3,3,3,3),
-	'nFixedEffects'=0,#2,
-#	'fixedEffectsCoeffs'=c(-0.05,0.1),
+	'nFixedEffects'=0,
 	'missingDataProb'=0,
 	'nClusters'=5,
 	'clusterSizes'=c(100,200,300,200,100),
