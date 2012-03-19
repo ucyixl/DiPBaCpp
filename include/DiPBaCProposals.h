@@ -2127,6 +2127,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 	const string& outcomeType = model.dataset().outcomeType();
 	const string& covariateType = model.dataset().covariateType();
 	const string& samplerType = model.options().samplerType();
+	bool computeEntropy = model.options().computeEntropy();
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int nPredictSubjects=dataset.nPredictSubjects();
 	unsigned int maxNClusters=currentParams.maxNClusters();
@@ -2361,12 +2362,16 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		}
 
 		vector<double> expectedTheta(nCategoriesY);
-		double entropyVal=0.0;
+		if(computeEntropy){
+			double entropyVal=0.0;
+		}
 		vector<double> cumPzGivenXy(maxNClusters);
 		for(unsigned int c=0;c<maxNClusters;c++){
 			pzGivenXy[c]/=sumVal;
-			if(pzGivenXy[c]>0){
-				entropyVal-=pzGivenXy[c]*log(pzGivenXy[c]);
+			if(computeEntropy){
+				if(pzGivenXy[c]>0){
+					entropyVal-=pzGivenXy[c]*log(pzGivenXy[c]);
+				}
 			}
 
 			if(c==0){
@@ -2403,7 +2408,9 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 
 
 		currentParams.z(i,zi,covariateType);
-		currentParams.workEntropy(i,entropyVal);
+		if(computeEntropy){
+			currentParams.workEntropy(i,entropyVal);
+		}
 		if(i<nSubjects){
 			nMembers[zi]++;
 		}else{

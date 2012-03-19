@@ -55,6 +55,7 @@ class diPBaCOptions{
 			_varSelectType ="None";
 			_fixedAlpha=-1;
 			_samplerType="SliceDependent";
+			_computeEntropy=false;
 		};
 
 		/// \brief Default destructor
@@ -155,7 +156,7 @@ class diPBaCOptions{
 		}
 
 		/// \brief Return the prediction file name
-		string predictFileName() const{
+		string predictFileName() const{http://www.transfermarkt.co.uk
 			return _predictFileName;
 		}
 
@@ -240,6 +241,17 @@ class diPBaCOptions{
 			_varSelectType=varSelType;
 		}
 
+		/// \brief Return whether we are computing the entropy
+		bool computeEntropy() const{
+			return _computeEntropy;
+		}
+
+		/// \brief Set whether we are computing the entropy
+		void computeEntropy(const bool& compEntr){
+			_computeEntropy=compEntr;
+		}
+
+
 		// Copy operator
 		diPBaCOptions& operator=(const diPBaCOptions& options){
 
@@ -261,6 +273,7 @@ class diPBaCOptions{
 			_doPrediction=options.doPrediction();
 			_responseExtraVar=options.responseExtraVar();
 			_varSelectType=options.varSelectType();
+			_computeEntropy=options.computeEntropy();
 			return *this;
 		}
 
@@ -302,6 +315,8 @@ class diPBaCOptions{
 		bool _responseExtraVar;
 		// The type of extra variation in the response
 		string _varSelectType;
+		// This notes whether we are computing entropy
+		bool _computeEntropy;
 
 };
 

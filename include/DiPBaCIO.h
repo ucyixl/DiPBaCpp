@@ -69,6 +69,7 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 			cout << "--excludeY" << endl << "\tIf included only the covariate data X is modelled (not included)" << endl;
 			cout << "--extraYVar" << endl << "\tIf included extra Gaussian variance is included in the" << endl << "\tresponse model (not included)." << endl;
 			cout << "--varSelect=<string>" << endl << "\tThe type of variable selection to be used 'None'," << endl << "\t'BinaryCluster' or 'Continuous' (None)" << endl;
+			cout << "--entropy" << endl << "\tIf included then we compute allocation entropy (not included)" << endl;
 			exit(0);
 		}else{
 			while(currArg < argc){
@@ -167,15 +168,17 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 						cout << "Response extra variation not permitted with Normal response" << endl;
 					}
 				}else if(inString.find("--varSelect")!=string::npos){
-						size_t pos = inString.find("=")+1;
-						string varSelectType = inString.substr(pos,inString.size()-pos);
-						if(varSelectType.compare("None")!=0&&
-								varSelectType.compare("BinaryCluster")!=0&&varSelectType.compare("Continuous")!=0){
-							// Illegal type for variable selection entered
-							wasError=true;
-							break;
-						}
-						options.varSelectType(varSelectType);
+					size_t pos = inString.find("=")+1;
+					string varSelectType = inString.substr(pos,inString.size()-pos);
+					if(varSelectType.compare("None")!=0&&
+						varSelectType.compare("BinaryCluster")!=0&&varSelectType.compare("Continuous")!=0){
+						// Illegal type for variable selection entered
+						wasError=true;
+						break;
+					}
+					options.varSelectType(varSelectType);
+				}else if(inString.find("--entropy")!=string::npos){
+					options.computeEntropy(true);
 				}else{
 					cout << "Unknown command line option." << endl;
 					wasError=true;
@@ -1043,6 +1046,7 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		bool responseExtraVar = sampler.model().options().responseExtraVar();
 		double fixedAlpha = sampler.model().options().fixedAlpha();
 		string outcomeType = sampler.model().options().outcomeType();
+		bool computeEntropy = sampler.model().options().computeEntropy();
 		unsigned int nFixedEffects = params.nFixedEffects(outcomeType);
 		string varSelectType = sampler.model().options().varSelectType();
 
@@ -1318,12 +1322,18 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		// Print the allocations
 		for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 			*(outFiles[zInd]) << params.z(i);
-			//*(outFiles[entropyInd]) << params.workEntropy(i);
+			if(computeEntropy){
+				*(outFiles[entropyInd]) << params.workEntropy(i);
+			}
 			if(i<nSubjects+nPredictSubjects-1){
-				//*(outFiles[entropyInd]) << " ";
+				if(computeEntropy){
+					*(outFiles[entropyInd]) << " ";
+				}
 				*(outFiles[zInd]) << " ";
 			}else{
-				//*(outFiles[entropyInd]) << endl;
+				if(computeEntropy){
+					*(outFiles[entropyInd]) << endl;
+				}
 				*(outFiles[zInd]) << endl;
 			}
 			// And print the expected theta for the prediction subjects
@@ -1544,6 +1554,11 @@ string storeLogFileData(const diPBaCOptions& options,
 	}else{
 		tmpStr << "Update alpha: False" << endl;
 		tmpStr << "Fixed alpha: " << options.fixedAlpha() << endl;
+	}
+	if(options.computeEntropy()){
+		tmpStr << "Compute allocation entropy: True" << endl;
+	}else{
+		tmpStr << "Compute allocation entropy: False" << endl;
 	}
 
 	tmpStr << "Model for X: " << options.covariateType() << endl;
