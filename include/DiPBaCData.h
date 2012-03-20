@@ -153,7 +153,7 @@ class diPBaCData{
 
 		/// \brief Return the number of categories for covariate j
 		unsigned int nCategories(const unsigned int& j) const{
-			if(j<0||j>_nCovariates){
+			if(j>_nCovariates){
 				throw std::range_error("nCategories subscript j out of range");
 			}
 			return _nCategories[j];
@@ -244,7 +244,7 @@ class diPBaCData{
 
 		/// \brief Return the output value for the ith subject
 		unsigned int discreteY(const unsigned int& i) const{
-			if(i<0||i>_nSubjects){
+			if(i>_nSubjects){
 				throw std::range_error("y subscript i out of range");
 			}
 			return _discreteY[i];
@@ -269,7 +269,7 @@ class diPBaCData{
 
 		/// \brief Return the output value for the ith subject
 		double continuousY(const unsigned int& i) const{
-			if(i<0||i>_nSubjects){
+			if(i>_nSubjects){
 				throw std::range_error("y subscript i out of range");
 			}
 			return _continuousY[i];
