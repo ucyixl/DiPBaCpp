@@ -1344,11 +1344,15 @@ void gibbsForU(mcmcChain<diPBaCParams>& chain,
 	double minUi = 1.0;
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 		int zi = currentParams.z(i);
-		double ui=0.0;
+		double ui=unifRand(rndGenerator);
+		// This is to avoid numerical errors
+		if(ui<0.0000000001){
+			ui=0.0000000001;
+		}
 		if(samplerType.compare("SliceDependent")==0){
-			ui = exp(currentParams.logPsi((unsigned int)zi))*unifRand(rndGenerator);
+			ui*=exp(currentParams.logPsi((unsigned int)zi));
 		}else if(samplerType.compare("SliceIndependent")==0){
-			ui = hyperParams.workXiSlice((unsigned int)zi)*unifRand(rndGenerator);
+			ui*=hyperParams.workXiSlice((unsigned int)zi);
 		}
 		if(ui<minUi){
 			minUi=ui;
