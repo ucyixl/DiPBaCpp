@@ -1345,16 +1345,22 @@ void gibbsForU(mcmcChain<diPBaCParams>& chain,
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 		int zi = currentParams.z(i);
 		double ui=unifRand(rndGenerator);
-		// This is to avoid numerical errors
-		if(ui<0.0000000001){
-			ui=0.0000000001;
-		}
 		if(samplerType.compare("SliceDependent")==0){
 			ui*=exp(currentParams.logPsi((unsigned int)zi));
 		}else if(samplerType.compare("SliceIndependent")==0){
 			ui*=hyperParams.workXiSlice((unsigned int)zi);
 		}
-		if(ui<minUi){
+
+		// This is to avoid numerical errors be
+		if(ui<0.0000000001){
+			ui=0.0000000001;
+		}
+
+		// We only take the minimum over the fitting subjects, because
+		// we don't allow predictiction subjects to be allocated to clusters
+		// where there are no fitting members, so no need to calc probabilities
+		// for cluster which are potential only for predictions subjects
+		if(ui<minUi&&i<nSubjects){
 			minUi=ui;
 		}
 		currentParams.u(i,ui);
@@ -2333,6 +2339,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 
 	unsigned int maxZ=0;
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
+
 		vector<double> logPyXz(maxNClusters,0.0);
 		// We calculate p(Z=c|y,X) \propto p(y,X,Z=c)
 		// p(y,X,z=c) = p(y|Z=c)p(X|z=c)p(z=c)
@@ -2366,8 +2373,14 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 
 		for(unsigned int c=0;c<maxNClusters;c++){
 			if(u[i]<testBound[c]){
-				logPyXz[c]+=clusterWeight[c];
-				logPyXz[c]+=logPXiGivenZi[i][c];
+				// Make sure prediction subjects can only be allocated to one
+				// of the non-empty clusters
+				if(i<nSubjects||nMembers[c]>0){
+					logPyXz[c]+=clusterWeight[c];
+					logPyXz[c]+=logPXiGivenZi[i][c];
+				}else{
+					logPyXz[c]=-(numeric_limits<double>::max());
+				}
 			}else{
 				logPyXz[c]=-(numeric_limits<double>::max());
 			}
@@ -2393,6 +2406,9 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		vector<double> cumPzGivenXy(maxNClusters);
 		for(unsigned int c=0;c<maxNClusters;c++){
 			pzGivenXy[c]/=sumVal;
+			if(nTry==64629&&i==1105){
+				cout << c << " " << pzGivenXy[c] << endl;
+			}
 			if(computeEntropy){
 				if(pzGivenXy[c]>0){
 					entropyVal-=pzGivenXy[c]*log(pzGivenXy[c]);
