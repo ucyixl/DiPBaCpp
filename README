@@ -1,4 +1,4 @@
-########## DiPBaC++: C++ and R code version 1.3.0 ##################
+########## DiPBaC++: C++ and R code version 1.3.1 ##################
 
 ## Licence ###
 (C) Copyright David Hastie and Silvia Liverani, 2012.
@@ -53,6 +53,11 @@ Hastie et al. 2011. Previously this project was called profile regression.
 
 
 ### ChangeLog: ###
+Changes from 1.3.0 to 1.3.1
+   - Fixed a numerical bug causing an infinite loop and also changed 
+     predictive subjects so they could only be allocated to cluster containing
+     at least one fitting subject
+
 Changes from 1.2.0 to 1.3.0
    - Added in different sampler types. Single piece of software can be run as
      dependent or independent slice samplers (Kalli et al., 2011) or truncated
