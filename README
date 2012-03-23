@@ -348,7 +348,7 @@ The package depends on the Rcpp, clue, cluster and ggplot2 packages (available
 from CRAN)
 
 To install the package from the rfiles subdirectory use
->R CMD INSTALL DiPBaC_1.3.0.tar.gz
+>R CMD INSTALL DiPBaC_1.3.1.tar.gz
 
 Then in R the commands are:
 >require(DiPBaC)
