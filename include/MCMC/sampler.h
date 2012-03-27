@@ -236,7 +236,7 @@ template<class modelParamType,class optionType,class propParamType,class dataTyp
 			}else{
 				_seed = seedValue;
 			}
-			cout << _seed << endl;
+			//cout << _seed << endl;
 			_rndGenerator.seed(_seed);
 		}
 

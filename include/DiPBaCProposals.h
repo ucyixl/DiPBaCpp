@@ -2406,9 +2406,6 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		vector<double> cumPzGivenXy(maxNClusters);
 		for(unsigned int c=0;c<maxNClusters;c++){
 			pzGivenXy[c]/=sumVal;
-			if(nTry==64629&&i==1105){
-				cout << c << " " << pzGivenXy[c] << endl;
-			}
 			if(computeEntropy){
 				if(pzGivenXy[c]>0){
 					entropyVal-=pzGivenXy[c]*log(pzGivenXy[c]);
