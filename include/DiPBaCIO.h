@@ -2,6 +2,30 @@
 /// \author David Hastie
 /// \brief Header file for handling input and output for DiPBaC
 
+/// \note (C) Copyright David Hastie and Silvia Liverani, 2012.
+
+/// DiPBaC++ is free software; you can redistribute it and/or modify it under the
+/// terms of the GNU Lesser General Public License as published by the Free Software
+/// Foundation; either version 3 of the License, or (at your option) any later
+/// version.
+
+/// DiPBaC++ is distributed in the hope that it will be useful, but WITHOUT ANY
+/// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+/// PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+/// You should have received a copy of the GNU Lesser General Public License
+/// along with DiPBaC++ in the documentation directory. If not, see
+/// <http://www.gnu.org/licenses/>.
+
+/// The external linear algebra library Eigen, parts of which are included  in the
+/// lib directory is released under the LGPL3+ licence. See comments in file headers
+/// for details.
+
+/// The Boost C++ header library, parts of which are included in the  lib directory
+/// is released under the Boost Software Licence, Version 1.0, a copy  of which is
+/// included in the documentation directory.
+
+
 #ifndef DIPBACIO_H_
 #define DIPBACIO_H_
 
@@ -62,13 +86,14 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 			cout << "--nFilter=<unsigned int>" << endl << "\tThe frequency (in sweeps) with which to write" << endl << "\tthe output to file (1)" << endl;
 			cout << "--nClusInit=<unsigned int>" << endl << "\tThe number of clusters individuals should be" << endl << "\tinitially randomly assigned to (Unif[5,15])" << endl;
 			cout << "--seed=<unsigned int>" << endl << "\tThe value for the seed for the random number" << endl << "\tgenerator (current time)" << endl;
-			cout << "--yModel=<string>" << endl << "\tThe model type for the outcome variable. Options are" << endl << "\tcurrently 'Bernoulli','Poisson','Binomial' and 'Normal' (Bernoulli)" << endl;
+			cout << "--yModel=<string>" << endl << "\tThe model type for the outcome variable. Options are" << endl << "\tcurrently 'Bernoulli','Poisson','Binomial', 'Categorical' and 'Normal' (Bernoulli)" << endl;
 			cout << "--xModel=<string>" << endl << "\tThe model type for the covariates. Options are" << endl << "\tcurrently 'Discrete' and 'Normal' (Discrete)" << endl;
+			cout << "--sampler=<string>" << endl << "\tThe sampler type to be used. Options are" << endl << "\tcurrently 'SliceDependent', 'SliceIndependent' and 'Truncated' (SliceDependent)" << endl;
 			cout << "--alpha=<double>" << endl << "\tThe value to be used if alpha is to remain fixed." << endl << "\tIf a negative value is used then alpha is updated (-1)" << endl;
 			cout << "--excludeY" << endl << "\tIf included only the covariate data X is modelled (not included)" << endl;
 			cout << "--extraYVar" << endl << "\tIf included extra Gaussian variance is included in the" << endl << "\tresponse model (not included)." << endl;
 			cout << "--varSelect=<string>" << endl << "\tThe type of variable selection to be used 'None'," << endl << "\t'BinaryCluster' or 'Continuous' (None)" << endl;
-			cout << "--resume" << endl << "\tIf included the run should begin from the latest" << endl << "\tin the output file (not included)" << endl;
+			cout << "--entropy" << endl << "\tIf included then we compute allocation entropy (not included)" << endl;
 			exit(0);
 		}else{
 			while(currArg < argc){
@@ -123,6 +148,7 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 					size_t pos = inString.find("=")+1;
 					string outcomeType = inString.substr(pos,inString.size()-pos);
 					if(outcomeType.compare("Poisson")!=0&&outcomeType.compare("Bernoulli")!=0&&
+							outcomeType.compare("Categorical")!=0&&
 							outcomeType.compare("Binomial")!=0&&outcomeType.compare("Normal")!=0){
 						// Illegal outcome model entered
 						wasError=true;
@@ -142,6 +168,16 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 						break;
 					}
 					options.covariateType(covariateType);
+				}else if(inString.find("--sampler")!=string::npos){
+					size_t pos = inString.find("=")+1;
+					string samplerType = inString.substr(pos,inString.size()-pos);
+					if(samplerType.compare("SliceDependent")!=0&&samplerType.compare("SliceIndependent")!=0
+							&&samplerType.compare("Truncated")!=0){
+						// Illegal covariate type entered
+						wasError=true;
+						break;
+					}
+					options.samplerType(samplerType);
 				}else if(inString.find("--alpha")!=string::npos){
 					size_t pos = inString.find("=")+1;
 					string tmpStr = inString.substr(pos,inString.size()-pos);
@@ -156,17 +192,17 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 						cout << "Response extra variation not permitted with Normal response" << endl;
 					}
 				}else if(inString.find("--varSelect")!=string::npos){
-						size_t pos = inString.find("=")+1;
-						string varSelectType = inString.substr(pos,inString.size()-pos);
-						if(varSelectType.compare("None")!=0&&
-								varSelectType.compare("BinaryCluster")!=0&&varSelectType.compare("Continuous")!=0){
-							// Illegal type for variable selection entered
-							wasError=true;
-							break;
-						}
-						options.varSelectType(varSelectType);
-				}else if(inString.find("--resume")!=string::npos){
-					options.resumeRun(true);
+					size_t pos = inString.find("=")+1;
+					string varSelectType = inString.substr(pos,inString.size()-pos);
+					if(varSelectType.compare("None")!=0&&
+						varSelectType.compare("BinaryCluster")!=0&&varSelectType.compare("Continuous")!=0){
+						// Illegal type for variable selection entered
+						wasError=true;
+						break;
+					}
+					options.varSelectType(varSelectType);
+				}else if(inString.find("--entropy")!=string::npos){
+					options.computeEntropy(true);
 				}else{
 					cout << "Unknown command line option." << endl;
 					wasError=true;
@@ -208,6 +244,7 @@ void importDiPBaCData(const string& fitFilename,const string& predictFilename,di
 	unsigned int& nSubjects=dataset.nSubjects();
 	unsigned int& nCovariates=dataset.nCovariates();
 	unsigned int& nFixedEffects=dataset.nFixedEffects();
+	unsigned int& nCategoriesY=dataset.nCategoriesY();
 	unsigned int& nPredictSubjects=dataset.nPredictSubjects();
 	vector<unsigned int>& nCategories=dataset.nCategories();
 	vector<unsigned int>& discreteY=dataset.discreteY();
@@ -237,6 +274,13 @@ void importDiPBaCData(const string& fitFilename,const string& predictFilename,di
 	confNames.resize(nFixedEffects);
 	for(unsigned int i=0;i<nFixedEffects;i++){
 		inputFile >> confNames[i];
+	}
+	// Get the number of categories of outcome Y
+	if(outcomeType.compare("Categorical")==0){
+		inputFile >> nCategoriesY;
+		nCategoriesY--;
+	} else {
+		nCategoriesY=1;
 	}
 
 	nCategories.resize(nCovariates);
@@ -365,7 +409,6 @@ void importDiPBaCData(const string& fitFilename,const string& predictFilename,di
 	if(predictFile.is_open()){
 		predictFile.close();
 	}
-
 }
 
 // Function to read the hyper parameters from file
@@ -539,8 +582,17 @@ void readHyperParamsFromFile(const string& filename,diPBaCHyperParams& hyperPara
 			string tmpStr = inString.substr(pos,inString.size()-pos);
 			double scaleSigmaSqY = (double)atof(tmpStr.c_str());
 			hyperParams.scaleSigmaSqY(scaleSigmaSqY);
+		}else if(inString.find("rSlice")==0){
+			size_t pos = inString.find("=")+1;
+			string tmpStr = inString.substr(pos,inString.size()-pos);
+			double rSlice = (double)atof(tmpStr.c_str());
+			hyperParams.rSlice(rSlice);
+		}else if(inString.find("truncationEps")==0){
+			size_t pos = inString.find("=")+1;
+			string tmpStr = inString.substr(pos,inString.size()-pos);
+			double truncationEps = (double)atof(tmpStr.c_str());
+			hyperParams.truncationEps(truncationEps);
 		}
-
 	}
 
 }
@@ -558,12 +610,14 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int nCovariates=dataset.nCovariates();
 	unsigned int nFixedEffects=dataset.nFixedEffects();
+	unsigned int nCategoriesY=dataset.nCategoriesY();
 	unsigned int nPredictSubjects=dataset.nPredictSubjects();
 	unsigned int nClusInit = options.nClusInit();
 	string covariateType = options.covariateType();
 	string outcomeType = options.outcomeType();
 	string hyperParamFileName = options.hyperParamFileName();
 	string varSelectType = options.varSelectType();
+	string samplerType = options.samplerType();
 	bool includeResponse = options.includeResponse();
 	bool responseExtraVar = options.responseExtraVar();
 
@@ -581,8 +635,29 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	// Allocate the right sizes for each of the parameter variables
 	// This also switches "on" all variable indicators (gamma)
 	// This gets changed below if variable selection is being done
-	params.setSizes(nSubjects,nCovariates,nFixedEffects,nPredictSubjects,nCategories,nClusInit);
-	unsigned int maxNClusters = params.maxNClusters();
+	params.setSizes(nSubjects,nCovariates,nFixedEffects,nCategoriesY,nPredictSubjects,nCategories,nClusInit);
+	unsigned int maxNClusters=params.maxNClusters();
+
+	// Fix the number of clusters if we are using the truncated sampler
+	if(samplerType.compare("Truncated")==0){
+		maxNClusters=20;
+		if((nClusInit+10)>maxNClusters){
+			maxNClusters=nClusInit+10;
+		}
+		// Now compute the bound recommended in Ishwaran and James 2001
+		double multiplier=0.0;
+		if(options.fixedAlpha()>0){
+			multiplier=options.fixedAlpha();
+		}else{
+			// Use the expected value of alpha as the multiplier
+			multiplier=hyperParams.shapeAlpha()/hyperParams.rateAlpha();
+		}
+		double computedBound=1+multiplier*(log(4.0*nSubjects)-log(hyperParams.truncationEps()));
+		if(computedBound>maxNClusters){
+			maxNClusters=computedBound;
+		}
+		params.maxNClusters(maxNClusters);
+	}
 
 	// Copy the dataset X matrix to a working object in params
 	params.workDiscreteX(dataset.discreteX());
@@ -618,12 +693,14 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	}
 	params.workNXInCluster(nXInCluster);
 	params.workMaxZi(maxZ);
-	params.maxNClusters(maxZ+1);
+
 
 	// Sample v (for logPsi)
 	// This is sampled from the posterior given the z vector above
 	// Prior comes from the conjugacy of the dirichlet and multinomial
 	// See Ishwaran and James 2001
+
+	// Sample active V
 	vector<unsigned int> sumCPlus1ToMaxMembers(maxZ+1,0);
 	for(int c=maxZ-1;c>=0;c--){
 		sumCPlus1ToMaxMembers[c]=sumCPlus1ToMaxMembers[c+1]+params.workNXInCluster(c+1);
@@ -638,54 +715,88 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 		tmp += log(1-vVal);
 	}
 
-	// Sample u (auxilliary variables). This will determine the maximum number of clusters
-	maxNClusters = maxZ+1;
-	vector<double> cumPsi(maxZ+1,0.0);
-	cumPsi[0] = exp(params.logPsi(0));
-	for(unsigned int c=1;c<=maxZ;c++){
-		cumPsi[c]=cumPsi[c-1]+exp(params.logPsi(c));
-	}
+	if(samplerType.compare("Truncated")==0){
+		// Just sample the remaining V from the prior
+		vector<double> vNew=params.v();
+		vector<double> logPsiNew=params.logPsi();
 
-	vector<double> vNew=params.v();
-	vector<double> logPsiNew=params.logPsi();
-	double minU=1.0;
-	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
-		int zi=params.z(i);
-		double ui = exp(params.logPsi(zi))*unifRand(rndGenerator);
-		if(ui<minU){
-			minU=ui;
-		}
-		params.u(i,ui);
-	}
-	params.workMinUi(minU);
-
-	bool continueLoop=true;
-	unsigned int c=maxNClusters-1;
-	while(continueLoop){
-		// Criteria 1
-		if(cumPsi[c]>1-minU){
-			// We can stop
-			maxNClusters=c+1;
-			continueLoop=false;
-		}else{
-			// We need a new sampled value of v
+		for(unsigned int c=maxZ+1;c<maxNClusters;c++){
 			double v=betaRand(rndGenerator,1.0,alpha);
-			double logPsi=log(v)+log(1-vNew[maxNClusters-1])-log(vNew[maxNClusters-1])+logPsiNew[maxNClusters-1];
-			if(c+1>=vNew.size()){
+			double logPsi=log(v)+log(1-vNew[c-1])-log(vNew[c-1])+logPsiNew[c-1];
+			if(c>=vNew.size()){
 				vNew.push_back(v);
 				logPsiNew.push_back(logPsi);
 			}else{
-				vNew[c+1]=v;
-				logPsiNew[c+1]=logPsi;
+				vNew[c]=v;
+				logPsiNew[c]=logPsi;
 			}
-			cumPsi.push_back(cumPsi[c]+exp(logPsi));
-			c++;
 		}
-	}
+		params.v(vNew);
+		params.logPsi(logPsiNew);
 
-	params.maxNClusters(maxNClusters);
-	params.v(vNew);
-	params.logPsi(logPsiNew);
+	}else{
+
+		// Sample u (auxilliary variables). This will determine the maximum number of clusters
+		double minU=1.0;
+		for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
+			int zi=params.z(i);
+			double ui=0.0;
+			if(samplerType.compare("SliceDependent")){
+				ui = exp(params.logPsi(zi))*unifRand(rndGenerator);
+			}else if(samplerType.compare("SliceIndependent")){
+				ui = hyperParams.workXiSlice(zi)*unifRand(rndGenerator);
+			}
+			if(ui<minU){
+				minU=ui;
+			}
+			params.u(i,ui);
+		}
+		params.workMinUi(minU);
+
+		// Sample V
+		vector<double> cumPsi(maxZ+1,0.0);
+		cumPsi[0] = exp(params.logPsi(0));
+		for(unsigned int c=1;c<=maxZ;c++){
+			cumPsi[c]=cumPsi[c-1]+exp(params.logPsi(c));
+		}
+
+		vector<double> vNew=params.v();
+		vector<double> logPsiNew=params.logPsi();
+
+		maxNClusters = maxZ+1;
+		if(samplerType.compare("SliceIndependent")==0){
+			maxNClusters=2+(int)((log(params.workMinUi())-log(1.0-hyperParams.rSlice()))/log(hyperParams.rSlice()));
+		}
+
+		bool continueLoop=true;
+		unsigned int c=maxZ;
+		while(continueLoop){
+			if(samplerType.compare("SliceDependent")==0&&cumPsi[c]>1-minU){
+				// We can stop
+				maxNClusters=c+1;
+				continueLoop=false;
+			}else if(samplerType.compare("SliceIndependent")==0&&c>=maxNClusters){
+				continueLoop=false;
+			}else{
+				c++;
+				// We need a new sampled value of v
+				double v=betaRand(rndGenerator,1.0,alpha);
+				double logPsi=log(v)+log(1-vNew[c-1])-log(vNew[c-1])+logPsiNew[c-1];
+				if(c>=vNew.size()){
+					vNew.push_back(v);
+					logPsiNew.push_back(logPsi);
+				}else{
+					vNew[c]=v;
+					logPsiNew[c]=logPsi;
+				}
+				cumPsi.push_back(cumPsi[c-1]+exp(logPsi));
+			}
+		}
+
+		params.maxNClusters(maxNClusters);
+		params.v(vNew);
+		params.logPsi(logPsiNew);
+	}
 
 	if(covariateType.compare("Discrete")==0){
 		// Sample logPhi
@@ -878,16 +989,20 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 
 	}
 
-
 	if(includeResponse){
 		// Finally we sample the theta and beta values from uniform distributions
 		for(unsigned int c=0;c<maxNClusters;c++){
-			// Thetas are randomly between -2 and 2
-			params.theta(c,-2.0+4.0*unifRand(rndGenerator));
+			for (unsigned int k=0;k<nCategoriesY;k++){
+				// Thetas are randomly between -2 and 2
+				params.theta(c,k,-2.0+4.0*unifRand(rndGenerator));
+			}
 		}
+
 		for(unsigned int j=0;j<nFixedEffects;j++){
-			// Betas are randomly between -2 and 2
-			params.beta(j,-2.0+4.0*unifRand(rndGenerator));
+			for (unsigned int k=0;k<nCategoriesY;k++){
+				// Betas are randomly between -2 and 2
+				params.beta(j,k,-2.0+4.0*unifRand(rndGenerator));
+			}
 		}
 
 		if(outcomeType.compare("Normal")==0){
@@ -911,9 +1026,15 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 			for(unsigned int i=0;i<nSubjects;i++){
 				double eps = normalRand(rndGenerator);
 				int zi = params.z(i);
-				double meanVal = params.theta(zi);
-				for(unsigned int j=0;j<nFixedEffects;j++){
-					meanVal+=params.beta(j)*dataset.W(i,j);
+				double meanVal = params.theta(zi,0);
+				if(outcomeType.compare("Categorical")==0){
+					for(unsigned int j=0;j<nFixedEffects;j++){
+						meanVal+=params.beta(j,dataset.discreteY(i))*dataset.W(i,j);
+					}
+				} else {
+					for(unsigned int j=0;j<nFixedEffects;j++){
+						meanVal+=params.beta(j,0)*dataset.W(i,j);
+					}
 				}
 				if(outcomeType.compare("Poisson")==0){
 					meanVal+=dataset.logOffset(i);
@@ -944,12 +1065,14 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		unsigned int nPredictSubjects = params.nPredictSubjects();
 		unsigned int maxNClusters = params.maxNClusters();
 		unsigned int nCovariates = params.nCovariates();
-		unsigned int nFixedEffects = params.nFixedEffects();
+		unsigned int nCategoriesY = params.nCategoriesY();
 		string covariateType = sampler.model().dataset().covariateType();
 		bool includeResponse = sampler.model().options().includeResponse();
 		bool responseExtraVar = sampler.model().options().responseExtraVar();
 		double fixedAlpha = sampler.model().options().fixedAlpha();
 		string outcomeType = sampler.model().options().outcomeType();
+		bool computeEntropy = sampler.model().options().computeEntropy();
+		unsigned int nFixedEffects = params.nFixedEffects(outcomeType);
 		string varSelectType = sampler.model().options().varSelectType();
 
 		const diPBaCData& dataset = sampler.model().dataset();
@@ -1105,7 +1228,16 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 			*(outFiles[psiInd]) << exp(params.logPsi(c));
 			if(includeResponse){
 				// Print theta
-				*(outFiles[thetaInd]) << params.theta(c);
+				if(outcomeType.compare("Categorical")==0){
+					for (unsigned int k=0;k<nCategoriesY;k++){
+						*(outFiles[thetaInd]) << params.theta(c,k);
+						if (k<(nCategoriesY-1)) {
+							*(outFiles[thetaInd]) <<" ";
+						}
+					}
+				} else {
+					*(outFiles[thetaInd]) << params.theta(c,0);
+				}
 			}
 			// Print number of members of each cluster
 			unsigned int nXinC = params.workNXInCluster(c);
@@ -1186,16 +1318,28 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 
 
 		if(includeResponse){
-			if(outcomeType.compare("Normal")==0){
-				*(outFiles[sigmaSqYInd]) << params.sigmaSqY() << endl;
-			}
-			// Print beta
-			for(unsigned int j=0;j<nFixedEffects;j++){
-				*(outFiles[betaInd]) << params.beta(j);
-				if(j<nFixedEffects-1){
-					*(outFiles[betaInd]) << " ";
-				}else{
-					*(outFiles[betaInd]) << endl;
+			if(outcomeType.compare("Categorical")==0){
+				// Print beta
+				for(unsigned int j=0;j<nFixedEffects;j++){
+					for (unsigned int k=0;k<nCategoriesY;k++){
+						*(outFiles[betaInd]) << params.beta(j,k) <<" ";
+					}
+					if(j==(nFixedEffects-1)){
+						*(outFiles[betaInd]) << endl;
+					}
+				}
+			} else {
+				if(outcomeType.compare("Normal")==0){
+					*(outFiles[sigmaSqYInd]) << params.sigmaSqY() << endl;
+				}
+				// Print beta
+				for(unsigned int j=0;j<nFixedEffects;j++){
+					*(outFiles[betaInd]) << params.beta(j,0);
+					if(j<nFixedEffects-1){
+						*(outFiles[betaInd]) << " ";
+					}else{
+						*(outFiles[betaInd]) << endl;
+					}
 				}
 			}
 		}
@@ -1203,18 +1347,26 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 		// Print the allocations
 		for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 			*(outFiles[zInd]) << params.z(i);
-			*(outFiles[entropyInd]) << params.workEntropy(i);
+			if(computeEntropy){
+				*(outFiles[entropyInd]) << params.workEntropy(i);
+			}
 			if(i<nSubjects+nPredictSubjects-1){
-				*(outFiles[entropyInd]) << " ";
+				if(computeEntropy){
+					*(outFiles[entropyInd]) << " ";
+				}
 				*(outFiles[zInd]) << " ";
 			}else{
-				*(outFiles[entropyInd]) << endl;
+				if(computeEntropy){
+					*(outFiles[entropyInd]) << endl;
+				}
 				*(outFiles[zInd]) << endl;
 			}
 			// And print the expected theta for the prediction subjects
 			if(i>=nSubjects){
 				if(includeResponse){
-					*(outFiles[predictThetaRaoBlackwellInd]) << params.workPredictExpectedTheta(i-nSubjects);
+					for (unsigned int k=0;k<nCategoriesY;k++){
+						*(outFiles[predictThetaRaoBlackwellInd]) << params.workPredictExpectedTheta(i-nSubjects,k)<<" ";
+					}
 					if(i<nSubjects+nPredictSubjects-1){
 						*(outFiles[predictThetaRaoBlackwellInd]) << " ";
 					}else{
@@ -1250,46 +1402,41 @@ void writeDiPBaCOutput(mcmcSampler<diPBaCParams,diPBaCOptions,diPBaCPropParams,d
 			if(anyUpdates){
 				for(unsigned int j=0;j<nFixedEffects;j++){
 					*(outFiles[betaPropInd]) << sampler.proposalParams().betaAcceptRate(j) <<
-						" " << sampler.proposalParams().betaStdDev(j);
+							" " << sampler.proposalParams().betaStdDev(j);
 					if(j<(nFixedEffects-1)){
-						*(outFiles[betaPropInd]) << " ";
+						*(outFiles[betaPropInd]) << endl;
 					}
+					*(outFiles[betaPropInd]) << endl;
+					proposalParams.betaAnyUpdates(false);
 				}
-				*(outFiles[betaPropInd]) << endl;
-				proposalParams.betaAnyUpdates(false);
+				if(responseExtraVar){
+					vector<double> meanVec(nSubjects,0.0);
+					if(outcomeType.compare("Poisson")==0){
+						meanVec=dataset.logOffset();
+					}
+					for(unsigned int i=0;i<nSubjects;i++){
+						int zi = params.z(i);
+						double meanVal = meanVec[i]+params.theta(zi,0);
+						for(unsigned int j=0;j<nFixedEffects;j++){
+							meanVal+=params.beta(j,0)*dataset.W(i,j);
+						}
+						double eps=params.lambda(i)-meanVal;
+						*(outFiles[epsilonInd]) << eps;
+						if(i<nSubjects-1){
+							*(outFiles[epsilonInd]) << " ";
+						}else{
+							*(outFiles[epsilonInd]) << endl;
+						}
+					}
+					anyUpdates = proposalParams.lambdaAnyUpdates();
+					if(anyUpdates){
+						*(outFiles[epsilonPropInd]) << sampler.proposalParams().lambdaAcceptRate() <<
+								" " << sampler.proposalParams().lambdaStdDev() << endl;
+						proposalParams.lambdaAnyUpdates(false);
+					}
+					*(outFiles[sigmaEpsilonInd]) << 1.0/sqrt(params.tauEpsilon()) << endl;
+				}
 			}
-
-			if(responseExtraVar){
-				vector<double> meanVec(nSubjects,0.0);
-				if(outcomeType.compare("Poisson")==0){
-					meanVec=dataset.logOffset();
-				}
-				for(unsigned int i=0;i<nSubjects;i++){
-					int zi = params.z(i);
-					double meanVal = meanVec[i]+params.theta(zi);
-					for(unsigned int j=0;j<nFixedEffects;j++){
-						meanVal+=params.beta(j)*dataset.W(i,j);
-					}
-					double eps=params.lambda(i)-meanVal;
-					*(outFiles[epsilonInd]) << eps;
-					if(i<nSubjects-1){
-						*(outFiles[epsilonInd]) << " ";
-					}else{
-						*(outFiles[epsilonInd]) << endl;
-					}
-				}
-				anyUpdates = proposalParams.lambdaAnyUpdates();
-				if(anyUpdates){
-					*(outFiles[epsilonPropInd]) << sampler.proposalParams().lambdaAcceptRate() <<
-							" " << sampler.proposalParams().lambdaStdDev() << endl;
-							proposalParams.lambdaAnyUpdates(false);
-				}
-
-				*(outFiles[sigmaEpsilonInd]) << 1.0/sqrt(params.tauEpsilon()) << endl;
-
-			}
-
-
 		}
 
 		// Print the acceptance rates for alpha
@@ -1379,11 +1526,18 @@ string storeLogFileData(const diPBaCOptions& options,
 								const diPBaCData& dataset,
 								const diPBaCHyperParams& hyperParams,
 								const unsigned int& nClusInit,
+								const unsigned int& maxNClusters,
 								const double& timeInSecs){
 
 	ostringstream tmpStr;
 	tmpStr << "Number of subjects: " << dataset.nSubjects() << endl;
 	tmpStr << "Number of prediction subjects: " << dataset.nPredictSubjects() << endl;
+	tmpStr << "Sampler type: " << options.samplerType();
+	if(options.samplerType().compare("Truncated")==0){
+		tmpStr << " " << maxNClusters << " clusters" << endl;
+	}else{
+		tmpStr << endl;
+	}
 	tmpStr << "Number of initial clusters: " << nClusInit;
 	if(options.nClusInit()==0){
 		tmpStr << " (Random, Unif[5,15])" << endl;
@@ -1406,6 +1560,9 @@ string storeLogFileData(const diPBaCOptions& options,
 	}else{
 		tmpStr<< "No fixed effects" << endl;
 	}
+	if(dataset.nCategoriesY()>1){
+		tmpStr << "NumberOfCategoriesY: " <<  dataset.nCategoriesY() << endl;
+	}
 	tmpStr << "Model for Y: " << options.outcomeType() << endl;
 	if(options.responseExtraVar()){
 		tmpStr << "Extra Y variance: True" << endl;
@@ -1422,6 +1579,11 @@ string storeLogFileData(const diPBaCOptions& options,
 	}else{
 		tmpStr << "Update alpha: False" << endl;
 		tmpStr << "Fixed alpha: " << options.fixedAlpha() << endl;
+	}
+	if(options.computeEntropy()){
+		tmpStr << "Compute allocation entropy: True" << endl;
+	}else{
+		tmpStr << "Compute allocation entropy: False" << endl;
 	}
 
 	tmpStr << "Model for X: " << options.covariateType() << endl;

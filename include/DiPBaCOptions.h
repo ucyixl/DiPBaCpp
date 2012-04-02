@@ -2,6 +2,30 @@
 /// \author David Hastie
 /// \brief Header file for options class for DiPBaCpp
 
+/// \note (C) Copyright David Hastie and Silvia Liverani, 2012.
+
+/// DiPBaC++ is free software; you can redistribute it and/or modify it under the
+/// terms of the GNU Lesser General Public License as published by the Free Software
+/// Foundation; either version 3 of the License, or (at your option) any later
+/// version.
+
+/// DiPBaC++ is distributed in the hope that it will be useful, but WITHOUT ANY
+/// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+/// PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+/// You should have received a copy of the GNU Lesser General Public License
+/// along with DiPBaC++ in the documentation directory. If not, see
+/// <http://www.gnu.org/licenses/>.
+
+/// The external linear algebra library Eigen, parts of which are included  in the
+/// lib directory is released under the LGPL3+ licence. See comments in file headers
+/// for details.
+
+/// The Boost C++ header library, parts of which are included in the  lib directory
+/// is released under the Boost Software Licence, Version 1.0, a copy  of which is
+/// included in the documentation directory.
+
+
 #ifndef DIPBACOPTIONS_H_
 #define DIPBACOPTIONS_H_
 
@@ -54,6 +78,8 @@ class diPBaCOptions{
 			_doPrediction = false;
 			_varSelectType ="None";
 			_fixedAlpha=-1;
+			_samplerType="SliceDependent";
+			_computeEntropy=false;
 		};
 
 		/// \brief Default destructor
@@ -204,6 +230,16 @@ class diPBaCOptions{
 			_fixedAlpha=alphaVal;
 		}
 
+		/// \brief Return the sampler method
+		string samplerType() const{
+			return _samplerType;
+		}
+
+		/// \brief Set the outcome type
+		void samplerType(const string& sampType){
+			_samplerType=sampType;
+		}
+
 		/// \brief Return whether we are including response
 		bool doPrediction() const{
 			return _doPrediction;
@@ -229,15 +265,16 @@ class diPBaCOptions{
 			_varSelectType=varSelType;
 		}
 
-		/// \brief Return whether we are resuming the run
-		bool resumeRun() const{
-			return _resumeRun;
+		/// \brief Return whether we are computing the entropy
+		bool computeEntropy() const{
+			return _computeEntropy;
 		}
 
-		/// \brief Set whether we are resuming the run
-		void resumeRun(const bool& resume){
-			_resumeRun=resume;
+		/// \brief Set whether we are computing the entropy
+		void computeEntropy(const bool& compEntr){
+			_computeEntropy=compEntr;
 		}
+
 
 		// Copy operator
 		diPBaCOptions& operator=(const diPBaCOptions& options){
@@ -256,10 +293,11 @@ class diPBaCOptions{
 			_covariateType=options.covariateType();
 			_includeResponse=options.includeResponse();
 			_fixedAlpha=options.fixedAlpha();
+			_samplerType=options.samplerType();
 			_doPrediction=options.doPrediction();
 			_responseExtraVar=options.responseExtraVar();
 			_varSelectType=options.varSelectType();
-			_resumeRun=options.resumeRun();
+			_computeEntropy=options.computeEntropy();
 			return *this;
 		}
 
@@ -293,14 +331,16 @@ class diPBaCOptions{
 		bool _includeResponse;
 		// This has a fixed value of alpha (if negative we update alpha)
 		double _fixedAlpha;
+		// The method used by the sampler
+		string _samplerType;
 		// This notes whether we are also doing predictions
 		bool _doPrediction;
 		// This notes whether we have extra variation in the response
 		bool _responseExtraVar;
 		// The type of extra variation in the response
 		string _varSelectType;
-		// This notes whether we are resuming the run from a previous run
-		bool _resumeRun;
+		// This notes whether we are computing entropy
+		bool _computeEntropy;
 
 };
 
