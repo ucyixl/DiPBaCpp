@@ -108,7 +108,7 @@ readRunInfo<-function(directoryPath,fileStem='output'){
 	inputFileName<-substr(inputFileName,regexpr(':',inputFileName)+1,nchar(inputFileName))
 	inputFileName<-gsub(' ','',inputFileName)
 	inputFileName<-gsub('\t','',inputFileName)
-	
+
 	# Get covariate and fixed effect information
 	inputData<-readLines(inputFileName)
 	inputData<-gsub("\t"," ",inputData)
@@ -126,10 +126,9 @@ readRunInfo<-function(directoryPath,fileStem='output'){
 		nCategories<-as.integer(unlist(strsplit(nCategories," ")))
 		nExtraRows<-nExtraRows+1
 	}
-	
 	# Covariate names
 	covNames<-inputData[3:(2+nCovariates)]
-	
+
 	xMat<-inputData[(4+nCovariates+nFixedEffects+nExtraRows):length(inputData)]
 	xMat<-matrix(as.numeric(unlist(strsplit(xMat," "))),nrow=nSubjects,byrow=T)
 	yMat<-NULL
@@ -684,7 +683,7 @@ plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=F,orderBy=NULL,wh
 			orderBy<-NULL
 		}
 	}
-	
+
 	if(!orderProvided){
 		if(!is.null(risk)){
 			if(is.null(orderBy)){
@@ -745,11 +744,10 @@ plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=F,orderBy=NULL,wh
 		# Sort into ascending mean size
 		meanSortIndex<-order(orderStat,decreasing=F)
 	}
-
 	if(includeResponse){
 		# Reorder the risk matrix
 		riskDim<-dim(risk)
-		risk2<-array(risk[,meanSortIndex,],dim=riskDim)
+		risk<-array(risk[,meanSortIndex,],dim=riskDim)
 		if(showRelativeRisk){
 			for(c in nClusters:1){
 				risk[,c,]<-risk[,c,]/risk[,1,]
