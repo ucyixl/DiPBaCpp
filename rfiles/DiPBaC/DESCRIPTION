@@ -1,8 +1,8 @@
 Package: DiPBaC
 Type: Package
 Title: Post processing for C++ DiPBaC
-Version: 1.3.1
-Date: 2012-03-19
+Version: 1.3.2
+Date: 2012-04-02
 Author: David Hastie and Silvia Liverani
 Maintainer: David Hastie <d.hastie@imperial.ac.uk>
 Description: Post processing for C++ Dirichlet Process Bayesian Clustering
