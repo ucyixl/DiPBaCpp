@@ -557,7 +557,7 @@ calcAvgRiskAndProfile<-function(clusObj,includeFixedEffects=F){
 			for(c in 1:nClusters){
 				muArray[sweep-firstLine+1,c,]<-apply(matrix(currMu[currZ[optAlloc[[c]]],],ncol=nCovariates),2,mean)
 				if(varSelect){
-					muStarArray[sweep-firstLine,+1,c]<-apply(matrix(currGamma[currZ[optAlloc[[c]]],],
+					muStarArray[sweep-firstLine+1,c,]<-apply(matrix(currGamma[currZ[optAlloc[[c]]],],
 						ncol=nCovariates)*matrix(currMu[currZ[optAlloc[[c]]],],ncol=nCovariates)+
 						matrix(1-currGamma[currZ[optAlloc[[c]]],],ncol=nCovariates)*
 						matrix(currNullMu[rep(1,length(optAlloc[[c]])),],ncol=nCovariates),2,mean)
