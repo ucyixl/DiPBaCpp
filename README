@@ -358,7 +358,7 @@ Then in R the commands are:
 >runInfoObj<-readRunInfo('../data/output','output_example')
 >dissimObj<-calcDissimilarityMatrix(runInfoObj)
 >clusObj<-calcOptimalClustering(dissimObj)
->riskProfileObj<-calcAvgRiskAndProfile(clusObj))
+>riskProfileObj<-calcAvgRiskAndProfile(clusObj)
 >clusterOrderObj<-plotRiskProfile(riskProfileObj,'../data/output/summary.png')
 
 The last two R functions take a little time.
