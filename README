@@ -94,28 +94,6 @@ Changes from 1.0.1 to 1.1.0
    - Tidied R files for generating simulation data
    - Added in missing example files referred to in this README and added others
 
-Changes from 1.0.1 to 1.1.0
-   - Added normal response (extra response variation not permitted in this case)
-   - Removed separate handling of ordinal models. NB: IMPORTANT- This means that
-    input files generated for Discrete covariate models for previous versions
-    are no longer compatible with this version, as the line indicating whether
-    each covariate or ordinal or not must no longer be included. This has no
-    impact for normal covariates
-   - Restored random (but parsimonious) initial number of clusters
-   - Changed prior of phi to be Dirichlet(0.5,...,0.5) by default instead of
-     uniform.
-   - Changed prior for alpha to be Gamma(2,0.4)
-   - Fixed bug with computation of full log posterior introduced in version
-     1.0.1. This did not affect running of sampler as this is only used for
-     reporting purposes.
-   - Renamed confounders to fixed effects throughout code
-   - Removed the function that plotted riskProfileRank because scaling was
-     misleading.
-   - Removed some of the cluster comparison functions from the end of the post
-     processing R files as these were little used and not really maintained.
-   - Tidied R files for generating simulation data
-   - Added in missing example files referred to in this README and added others
-
 Changes from 1.0.0 to 1.0.1
    - Added calculation of log odds ratio into R computation of predictions
    - Hot fixed a bug with the R package where the C++ being called for
