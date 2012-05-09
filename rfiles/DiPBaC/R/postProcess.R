@@ -795,8 +795,8 @@ plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=F,orderBy=NULL,wh
 	
 	# Restructure the data for plotting
 	for(c in whichClusters){
-		if (yModel=="Categorical"){
-			if(includeResponse){
+		if(includeResponse){
+			if (yModel=="Categorical"){
 				plotRisk<-risk[,c,]
 				nPoints<-dim(plotRisk)[1]
 				for (k in 1:nCategoriesY){				
@@ -808,9 +808,7 @@ plotRiskProfile<-function(riskProfObj,outFile,showRelativeRisk=F,orderBy=NULL,wh
 						"upperRisk"=rep(riskUpper[c],nPoints),
 						"fillColor"=rep(riskColor[c],nPoints)))
 				}
-			}
-		} else {
-			if(includeResponse){
+			} else {
 				plotRisk<-risk[,c,]
 				plotRisk<-plotRisk[plotRisk<plotMax]
 				nPoints<-length(plotRisk)
