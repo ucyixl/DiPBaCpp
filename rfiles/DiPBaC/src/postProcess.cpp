@@ -17,7 +17,7 @@ SEXP calcDisSimMat(SEXP fileName, SEXP nSweeps, SEXP nBurn, SEXP nFilter,SEXP nS
     int nS = Rcpp::as<int>(nSweeps);
     int nB = Rcpp::as<int>(nBurn);
     int nF = Rcpp::as<int>(nFilter);
-    int nSj = Rcpp::as<int>(nSubjects);
+    unsigned long int nSj = Rcpp::as<int>(nSubjects);
     int nPSj = Rcpp::as<int>(nPredictSubjects);
 
     // Calculate how many samples we will have
