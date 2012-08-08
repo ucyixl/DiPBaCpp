@@ -625,7 +625,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	nCategories = dataset.nCategories();
 
 	// Set the hyper parameters to their default values
-	hyperParams.setSizes(nCovariates);
+	hyperParams.setSizes(nCovariates,covariateType);
 	hyperParams.setDefaults(dataset,options);
 	// Read the parameters from file if file provided
 	if(hyperParamFileName.compare("")!=0){
@@ -635,7 +635,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	// Allocate the right sizes for each of the parameter variables
 	// This also switches "on" all variable indicators (gamma)
 	// This gets changed below if variable selection is being done
-	params.setSizes(nSubjects,nCovariates,nFixedEffects,nCategoriesY,nPredictSubjects,nCategories,nClusInit);
+	params.setSizes(nSubjects,nCovariates,nFixedEffects,nCategoriesY,nPredictSubjects,nCategories,nClusInit,covariateType);
 	unsigned int maxNClusters=params.maxNClusters();
 
 	// Fix the number of clusters if we are using the truncated sampler
