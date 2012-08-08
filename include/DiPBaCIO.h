@@ -656,7 +656,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 		if(computedBound>maxNClusters){
 			maxNClusters=computedBound;
 		}
-		params.maxNClusters(maxNClusters);
+		params.maxNClusters(maxNClusters,covariateType);
 	}
 
 	// Copy the dataset X matrix to a working object in params
@@ -793,7 +793,7 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 			}
 		}
 
-		params.maxNClusters(maxNClusters);
+		params.maxNClusters(maxNClusters,covariateType);
 		params.v(vNew);
 		params.logPsi(logPsiNew);
 	}

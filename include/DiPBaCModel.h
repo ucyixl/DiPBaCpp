@@ -575,8 +575,8 @@ class diPBaCParams{
 					_workSqrtTau[c].setZero(nCovariates,nCovariates);
 				}
 				_gamma[c].resize(nCovariates);
-				if (covariateType.compare("Discrete")==0){
-					for(unsigned int j=0;j<nCovariates;j++){
+				for(unsigned int j=0;j<nCovariates;j++){
+					if (covariateType.compare("Discrete")==0){
 						if(c==0){
 							_logNullPhi[j].resize(nCategories[j]);
 						}
@@ -591,13 +591,12 @@ class diPBaCParams{
 							_workLogPhiStar[c][j][p]=0.0;
 							if(c==0){
 								_logNullPhi[j][p]=0.0;
-
 							}
 						}
-						// Everything in by default
-						// This allows us to write general case with switches.
-						_gamma[c][j]=1;
 					}
+					// Everything in by default
+					// This allows us to write general case with switches.
+					_gamma[c][j]=1;
 				}
 			}
 
@@ -638,7 +637,8 @@ class diPBaCParams{
 		}
 
 		/// \brief Set the number of clusters
-		void maxNClusters(const unsigned int& nClus){
+		void maxNClusters(const unsigned int& nClus,
+				const string covariateType){
 			_maxNClusters=nClus;
 			// Check if we need to do a resize of the
 			// number of various vectors
@@ -655,35 +655,47 @@ class diPBaCParams{
 					_theta[c].resize(nCategoriesY);
 				}
 				_workNXInCluster.resize(nClus);
-				_logPhi.resize(nClus);
-				_workLogPhiStar.resize(nClus);
-				_mu.resize(nClus);
-				_workMuStar.resize(nClus);
-				_Tau.resize(nClus);
-				_workSqrtTau.resize(nClus);
-				_workLogDetTau.resize(nClus);
-				_Sigma.resize(nClus);
+				if (covariateType.compare("Discrete")==0){
+					_logPhi.resize(nClus);
+					_workLogPhiStar.resize(nClus);
+				} else {
+					if (covariateType.compare("Normal")==0){
+						_mu.resize(nClus);
+						_workMuStar.resize(nClus);
+						_Tau.resize(nClus);
+						_workSqrtTau.resize(nClus);
+						_workLogDetTau.resize(nClus);
+						_Sigma.resize(nClus);
+					}
+				}
 				_gamma.resize(nClus);
 				for(unsigned int c=prevNClus;c<nClus;c++){
 					_workNXInCluster[c]=0;
-					_logPhi[c].resize(nCov);
-					_workLogPhiStar[c].resize(nCov);
-					_mu[c].setZero(nCov);
-					_workMuStar[c].setZero(nCov);
-					_Tau[c].setZero(nCov,nCov);
-					_workSqrtTau[c].setZero(nCov,nCov);
-					_Sigma[c].setZero(nCov,nCov);
+					if (covariateType.compare("Discrete")==0){
+						_logPhi[c].resize(nCov);
+						_workLogPhiStar[c].resize(nCov);
+					} else {
+						if (covariateType.compare("Normal")==0){
+							_mu[c].setZero(nCov);
+							_workMuStar[c].setZero(nCov);
+							_Tau[c].setZero(nCov,nCov);
+							_workSqrtTau[c].setZero(nCov,nCov);
+							_Sigma[c].setZero(nCov,nCov);
+						}
+					}
 					_gamma[c].resize(nCov);
 					for(unsigned int j=0;j<nCov;j++){
-						_logPhi[c][j].resize(nCats[j]);
-						_workLogPhiStar[c][j].resize(nCats[j]);
-						for(unsigned int p=0;p<nCats[j];p++){
-							// We set logPhi to 0.0 so that we can call
-							// normal member function above when we actually
-							// initialise (allowing workLogPXiGivenZi to be
-							// correctly calculated)
-							_logPhi[c][j][p]=0.0;
-							_workLogPhiStar[c][j][p]=0.0;
+						if (covariateType.compare("Discrete")==0){
+							_logPhi[c][j].resize(nCats[j]);
+							_workLogPhiStar[c][j].resize(nCats[j]);
+							for(unsigned int p=0;p<nCats[j];p++){
+								// We set logPhi to 0.0 so that we can call
+								// normal member function above when we actually
+								// initialise (allowing workLogPXiGivenZi to be
+								// correctly calculated)
+								_logPhi[c][j][p]=0.0;
+								_workLogPhiStar[c][j][p]=0.0;
+							}
 						}
 						// Everything in by default
 						// This allows us to write general case with switches.
@@ -691,7 +703,6 @@ class diPBaCParams{
 					}
 				}
 			}
-
 		}
 
 		/// \brief Return the number of subjects
