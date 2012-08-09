@@ -231,10 +231,11 @@ clusSummaryBernoulliDiscrete<-list(
 	'covariateType'='Discrete',
 	'nCovariates'=5,
 	'nCategories'=c(3,3,3,3,3),
-	'nFixedEffects'=0,
+	'nFixedEffects'=2,
+	'fixedEffectsCoeffs'=c(0.1,-0.5),
 	'missingDataProb'=0,
 	'nClusters'=5,
-	'clusterSizes'=c(100,200,300,200,100),
+	'clusterSizes'=c(1000,1000,1000,1000,1000),
 	'clusterData'=list(list('theta'=log(9),
 		'covariateProbs'=list(c(0.8,0.1,0.1),
 			c(0.8,0.1,0.1),
@@ -395,12 +396,11 @@ clusSummaryNormalNormal<-list(
 	'outcomeType'='Normal',
 	'covariateType'='Normal',
 	'nCovariates'=2,
-	'nFixedEffects'=1,
-	'fixedEffectsCoeffs'=c(0.1),
+	'nFixedEffects'=0,
 	'sigmaSqY'=1,
-	'missingDataProb'=0.001,
+	'missingDataProb'=0,
 	'nClusters'=3,
-	'clusterSizes'=c(300,300,300),
+	'clusterSizes'=c(300,500,400),
 	'clusterData'=list(list('theta'=-5,
 			'covariateMeans'=c(0,2),
 			'covariateCovariance'=matrix(c(0.5,0,0,3),nrow=2)),
@@ -409,7 +409,7 @@ clusSummaryNormalNormal<-list(
 			'covariateCovariance'=matrix(c(1,0,0,1),nrow=2)),
 		list('theta'=5,
 			'covariateMeans'=c(10,-5),
-			'covariateCovariance'=matrix(c(2,0.7,0.7,1),nrow=2))))
+			'covariateCovariance'=matrix(c(2,0.9,0.9,1),nrow=2))))
 
 
 clusSummaryVarSelectBernoulliDiscrete<-list(

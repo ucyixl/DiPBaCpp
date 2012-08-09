@@ -84,14 +84,19 @@ class diPBaCHyperParams{
 		~diPBaCHyperParams() {};
 
 		// Set sizes
-		void setSizes(const unsigned int& nCovariates){
-
-			_aPhi.resize(nCovariates);
-			_mu0.setZero(nCovariates);
-			_Tau0.setZero(nCovariates,nCovariates);
-			_workSqrtTau0.setZero(nCovariates,nCovariates);
-			_R0.setZero(nCovariates,nCovariates);
-			_workInverseR0.setZero(nCovariates,nCovariates);
+		void setSizes(const unsigned int& nCovariates,
+				const string covariateType){
+			if (covariateType.compare("Discrete")==0){
+				_aPhi.resize(nCovariates);
+			} else {
+				if (covariateType.compare("Normal")==0){
+					_mu0.setZero(nCovariates);
+					_Tau0.setZero(nCovariates,nCovariates);
+					_workSqrtTau0.setZero(nCovariates,nCovariates);
+					_R0.setZero(nCovariates,nCovariates);
+					_workInverseR0.setZero(nCovariates,nCovariates);
+				}
+			}
 		}
 
 		// Set defaults
@@ -105,10 +110,12 @@ class diPBaCHyperParams{
 			_shapeAlpha=2.0;
 			_rateAlpha=1.0;
 
-			// For Phi
-			_useReciprocalNCatsPhi=false;
-			for(unsigned int j=0;j<_aPhi.size();j++){
-				_aPhi[j]=1.0;
+			if(options.covariateType().compare("Discrete")==0){
+				// For Phi
+				_useReciprocalNCatsPhi=false;
+				for(unsigned int j=0;j<_aPhi.size();j++){
+					_aPhi[j]=1.0;
+				}
 			}
 
 			if(options.covariateType().compare("Normal")==0){
@@ -522,7 +529,8 @@ class diPBaCParams{
 				const unsigned int& nCategoriesY,
 				const unsigned int& nPredictSubjects,
 				const vector<unsigned int>& nCategories,
-				const unsigned int& nClusInit){
+				const unsigned int& nClusInit,
+				const string covariateType){
 
 			// Initially make the maximum number of clusters  the bigger or
 			// the initial number of clusters and 100.
@@ -552,33 +560,38 @@ class diPBaCParams{
 			_gamma.resize(maxNClusters);
 			for(unsigned int c=0;c<maxNClusters;c++){
 				if(c==0){
-					_logNullPhi.resize(nCovariates);
-					_nullMu.setZero(nCovariates);
+					if (covariateType.compare("Discrete")==0) _logNullPhi.resize(nCovariates);
+					if (covariateType.compare("Normal")==0) _nullMu.setZero(nCovariates);
 				}
-				_logPhi[c].resize(nCovariates);
-				_workLogPhiStar[c].resize(nCovariates);
-				_mu[c].setZero(nCovariates);
-				_workMuStar[c].setZero(nCovariates);
-				_Tau[c].setZero(nCovariates,nCovariates);
-				_Sigma[c].setZero(nCovariates,nCovariates);
-				_workSqrtTau[c].setZero(nCovariates,nCovariates);
+				if (covariateType.compare("Discrete")==0) {
+					_logPhi[c].resize(nCovariates);
+					_workLogPhiStar[c].resize(nCovariates);
+				}
+				if (covariateType.compare("Normal")==0) {
+					_mu[c].setZero(nCovariates);
+					_workMuStar[c].setZero(nCovariates);
+					_Tau[c].setZero(nCovariates,nCovariates);
+					_Sigma[c].setZero(nCovariates,nCovariates);
+					_workSqrtTau[c].setZero(nCovariates,nCovariates);
+				}
 				_gamma[c].resize(nCovariates);
 				for(unsigned int j=0;j<nCovariates;j++){
-					if(c==0){
-						_logNullPhi[j].resize(nCategories[j]);
-					}
-					_logPhi[c][j].resize(nCategories[j]);
-					_workLogPhiStar[c][j].resize(nCategories[j]);
-					for(unsigned int p=0;p<nCategories[j];p++){
-						// We set logPhi to 0.0 so that we can call
-						// normal member function above when we actually
-						// initialise (allowing workLogPXiGivenZi to be
-						// correctly calculated)
-						_logPhi[c][j][p]=0.0;
-						_workLogPhiStar[c][j][p]=0.0;
+					if (covariateType.compare("Discrete")==0){
 						if(c==0){
-							_logNullPhi[j][p]=0.0;
-
+							_logNullPhi[j].resize(nCategories[j]);
+						}
+						_logPhi[c][j].resize(nCategories[j]);
+						_workLogPhiStar[c][j].resize(nCategories[j]);
+						for(unsigned int p=0;p<nCategories[j];p++){
+							// We set logPhi to 0.0 so that we can call
+							// normal member function above when we actually
+							// initialise (allowing workLogPXiGivenZi to be
+							// correctly calculated)
+							_logPhi[c][j][p]=0.0;
+							_workLogPhiStar[c][j][p]=0.0;
+							if(c==0){
+								_logNullPhi[j][p]=0.0;
+							}
 						}
 					}
 					// Everything in by default
@@ -624,7 +637,8 @@ class diPBaCParams{
 		}
 
 		/// \brief Set the number of clusters
-		void maxNClusters(const unsigned int& nClus){
+		void maxNClusters(const unsigned int& nClus,
+				const string covariateType){
 			_maxNClusters=nClus;
 			// Check if we need to do a resize of the
 			// number of various vectors
@@ -641,35 +655,47 @@ class diPBaCParams{
 					_theta[c].resize(nCategoriesY);
 				}
 				_workNXInCluster.resize(nClus);
-				_logPhi.resize(nClus);
-				_workLogPhiStar.resize(nClus);
-				_mu.resize(nClus);
-				_workMuStar.resize(nClus);
-				_Tau.resize(nClus);
-				_workSqrtTau.resize(nClus);
-				_workLogDetTau.resize(nClus);
-				_Sigma.resize(nClus);
+				if (covariateType.compare("Discrete")==0){
+					_logPhi.resize(nClus);
+					_workLogPhiStar.resize(nClus);
+				} else {
+					if (covariateType.compare("Normal")==0){
+						_mu.resize(nClus);
+						_workMuStar.resize(nClus);
+						_Tau.resize(nClus);
+						_workSqrtTau.resize(nClus);
+						_workLogDetTau.resize(nClus);
+						_Sigma.resize(nClus);
+					}
+				}
 				_gamma.resize(nClus);
 				for(unsigned int c=prevNClus;c<nClus;c++){
 					_workNXInCluster[c]=0;
-					_logPhi[c].resize(nCov);
-					_workLogPhiStar[c].resize(nCov);
-					_mu[c].setZero(nCov);
-					_workMuStar[c].setZero(nCov);
-					_Tau[c].setZero(nCov,nCov);
-					_workSqrtTau[c].setZero(nCov,nCov);
-					_Sigma[c].setZero(nCov,nCov);
+					if (covariateType.compare("Discrete")==0){
+						_logPhi[c].resize(nCov);
+						_workLogPhiStar[c].resize(nCov);
+					} else {
+						if (covariateType.compare("Normal")==0){
+							_mu[c].setZero(nCov);
+							_workMuStar[c].setZero(nCov);
+							_Tau[c].setZero(nCov,nCov);
+							_workSqrtTau[c].setZero(nCov,nCov);
+							_Sigma[c].setZero(nCov,nCov);
+						}
+					}
 					_gamma[c].resize(nCov);
 					for(unsigned int j=0;j<nCov;j++){
-						_logPhi[c][j].resize(nCats[j]);
-						_workLogPhiStar[c][j].resize(nCats[j]);
-						for(unsigned int p=0;p<nCats[j];p++){
-							// We set logPhi to 0.0 so that we can call
-							// normal member function above when we actually
-							// initialise (allowing workLogPXiGivenZi to be
-							// correctly calculated)
-							_logPhi[c][j][p]=0.0;
-							_workLogPhiStar[c][j][p]=0.0;
+						if (covariateType.compare("Discrete")==0){
+							_logPhi[c][j].resize(nCats[j]);
+							_workLogPhiStar[c][j].resize(nCats[j]);
+							for(unsigned int p=0;p<nCats[j];p++){
+								// We set logPhi to 0.0 so that we can call
+								// normal member function above when we actually
+								// initialise (allowing workLogPXiGivenZi to be
+								// correctly calculated)
+								_logPhi[c][j][p]=0.0;
+								_workLogPhiStar[c][j][p]=0.0;
+							}
 						}
 						// Everything in by default
 						// This allows us to write general case with switches.
@@ -677,7 +703,6 @@ class diPBaCParams{
 					}
 				}
 			}
-
 		}
 
 		/// \brief Return the number of subjects
@@ -687,7 +712,7 @@ class diPBaCParams{
 
 		/// \brief Return the number of covariates
 		unsigned int nCovariates() const{
-			return _logPhi[0].size();
+			return _gamma[0].size();
 		}
 
 		/// \brief Return the number of fixed effects
@@ -1898,6 +1923,7 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 		for(unsigned int i=0;i<nSubjects;i++){
 			int zi = params.z(i);
 			logLikelihood+=logPYiGivenZiWi(params,dataset,nFixedEffects,zi,i);
+
 		}
 	}
 
@@ -1935,7 +1961,6 @@ vector<double> diPBaCLogPost(const diPBaCParams& params,
 						dirichParams[k]=hyperParams.aPhi(j);
 					}
 					logPrior+=logPdfDirichlet(params.logPhi(c,j),dirichParams,true);
-
 				}
 			}
 		}
