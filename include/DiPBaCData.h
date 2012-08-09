@@ -2,6 +2,29 @@
 /// \author David Hastie
 /// \brief Header file for data specification for DiPBaCpp
 
+/// \note (C) Copyright David Hastie and Silvia Liverani, 2012.
+
+/// DiPBaC++ is free software; you can redistribute it and/or modify it under the
+/// terms of the GNU Lesser General Public License as published by the Free Software
+/// Foundation; either version 3 of the License, or (at your option) any later
+/// version.
+
+/// DiPBaC++ is distributed in the hope that it will be useful, but WITHOUT ANY
+/// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+/// PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+/// You should have received a copy of the GNU Lesser General Public License
+/// along with DiPBaC++ in the documentation directory. If not, see
+/// <http://www.gnu.org/licenses/>.
+
+/// The external linear algebra library Eigen, parts of which are included  in the
+/// lib directory is released under the LGPL3+ licence. See comments in file headers
+/// for details.
+
+/// The Boost C++ header library, parts of which are included in the  lib directory
+/// is released under the Boost Software Licence, Version 1.0, a copy  of which is
+/// included in the documentation directory.
+
 #ifndef DIPBACDATA_H_
 #define DIPBACDATA_H_
 
@@ -23,7 +46,7 @@ class diPBaCData{
 
 	public:
 		/// \brief Default constructor
-		diPBaCData(): _nSubjects(0), _nCovariates(0), _nFixedEffects(0), _nPredictSubjects(0) {};
+		diPBaCData(): _nSubjects(0), _nCovariates(0), _nFixedEffects(0), _nCategoriesY(0), _nPredictSubjects(0) {};
 
 		/// \brief Default destructor
 		~diPBaCData(){};
@@ -78,6 +101,21 @@ class diPBaCData{
 			_nFixedEffects = nConf;
 		}
 
+		/// \brief Return the number of categories
+		unsigned int nCategoriesY() const{
+			return _nCategoriesY;
+		}
+
+		/// \brief Return the number of categories
+		unsigned int& nCategoriesY(){
+			return _nCategoriesY;
+		}
+
+		/// \brief Set the number of categories
+		void nCategoriesY(const unsigned int& nCat){
+			_nCategoriesY = nCat;
+		}
+
 		/// \brief Return the number of subjects
 		unsigned int nPredictSubjects() const{
 			return _nPredictSubjects;
@@ -115,7 +153,7 @@ class diPBaCData{
 
 		/// \brief Return the number of categories for covariate j
 		unsigned int nCategories(const unsigned int& j) const{
-			if(j<0||j>_nCovariates){
+			if(j>_nCovariates){
 				throw std::range_error("nCategories subscript j out of range");
 			}
 			return _nCategories[j];
@@ -206,7 +244,7 @@ class diPBaCData{
 
 		/// \brief Return the output value for the ith subject
 		unsigned int discreteY(const unsigned int& i) const{
-			if(i<0||i>_nSubjects){
+			if(i>_nSubjects){
 				throw std::range_error("y subscript i out of range");
 			}
 			return _discreteY[i];
@@ -231,7 +269,7 @@ class diPBaCData{
 
 		/// \brief Return the output value for the ith subject
 		double continuousY(const unsigned int& i) const{
-			if(i<0||i>_nSubjects){
+			if(i>_nSubjects){
 				throw std::range_error("y subscript i out of range");
 			}
 			return _continuousY[i];
@@ -357,6 +395,9 @@ class diPBaCData{
 
 		/// \brief The number of fixed effects covariates
 		unsigned int _nFixedEffects;
+
+		/// \brief The number of categories for outcome discreteY when outcome is categorical
+		unsigned int _nCategoriesY;
 
 		/// \brief The number of subjects we are making predictions for
 		unsigned int _nPredictSubjects;

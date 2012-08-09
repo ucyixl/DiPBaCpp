@@ -2,6 +2,29 @@
 /// \author David Hastie
 /// \brief Header file for model specification for DiPBaCpp
 
+/// \note (C) Copyright David Hastie and Silvia Liverani, 2012.
+
+/// DiPBaC++ is free software; you can redistribute it and/or modify it under the
+/// terms of the GNU Lesser General Public License as published by the Free Software
+/// Foundation; either version 3 of the License, or (at your option) any later
+/// version.
+
+/// DiPBaC++ is distributed in the hope that it will be useful, but WITHOUT ANY
+/// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+/// PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+/// You should have received a copy of the GNU Lesser General Public License
+/// along with DiPBaC++ in the documentation directory. If not, see
+/// <http://www.gnu.org/licenses/>.
+
+/// The external linear algebra library Eigen, parts of which are included  in the
+/// lib directory is released under the LGPL3+ licence. See comments in file headers
+/// for details.
+
+/// The Boost C++ header library, parts of which are included in the  lib directory
+/// is released under the Boost Software Licence, Version 1.0, a copy  of which is
+/// included in the documentation directory.
+
 #ifndef DIPBACPROPOSALS_H_
 #define DIPBACPROPOSALS_H_
 
@@ -48,7 +71,7 @@ class diPBaCPropParams{
 		diPBaCPropParams() {};
 
 		diPBaCPropParams(const unsigned int& nSweeps,const unsigned int& nCovariates,
-								const unsigned int& nFixedEffects){
+								const unsigned int& nFixedEffects,const unsigned int& nCategoriesY){
 				_thetaStdDev=1.0;
 				_thetaStdDevLower=0.1;
 				_thetaStdDevUpper=99.9;
@@ -235,7 +258,6 @@ class diPBaCPropParams{
 			}else{
 				return 0.0;
 			}
-
 		}
 
 		unsigned int betaUpdateFreq() const{
@@ -246,9 +268,8 @@ class diPBaCPropParams{
 			return _nLocalAcceptBeta;
 		}
 
-
 		double betaLocalAcceptRate(const unsigned int& j) const{
-					return (double)_nLocalAcceptBeta[j]/(double)_betaUpdateFreq;
+				return (double)_nLocalAcceptBeta[j]/(double)_betaUpdateFreq;
 		}
 
 		double betaAcceptTarget() const{
@@ -278,7 +299,6 @@ class diPBaCPropParams{
 			_betaStdDevLower[j] = pow(10.0,-((double)_nResetBeta[j]+1.0));
 			_betaStdDevUpper[j] = 100.0-pow(10.0,-((double)_nResetBeta[j]+1.0));
 		}
-
 
 		vector<double> betaStdDev() const{
 			return _betaStdDev;
@@ -764,7 +784,6 @@ void gibbsForVActive(mcmcChain<diPBaCParams>& chain,
 		currentParams.logPsi(c,tmp+log(vVal));
 		tmp += log(1-vVal);
 	}
-
 }
 
 // Moves for updating the Theta which are active i.e. Theta_c where c<=Z_max
@@ -923,16 +942,17 @@ void gibbsForMuActive(mcmcChain<diPBaCParams>& chain,
 		}else{
 			meanX[c].setZero(nCovariates);
 		}
+
 		MatrixXd covMat(nCovariates,nCovariates);
 		covMat = (hyperParams.Tau0()+nXInC*gammaMat[c]*currentParams.Tau(c)*gammaMat[c]).inverse();
 		VectorXd meanVec(nCovariates);
         meanVec = hyperParams.Tau0()*hyperParams.mu0()+
 					nXInC*gammaMat[c]*currentParams.Tau(c)*(meanX[c]-oneMinusGammaMat[c]*currentParams.nullMu());
 		meanVec = covMat*meanVec;
-
 		VectorXd mu(nCovariates);
 		// We sample from this posterior
 		mu = multivarNormalRand(rndGenerator,meanVec,covMat);
+
 		// We store our sample
 		currentParams.mu(c,mu);
 
@@ -1094,6 +1114,8 @@ void metropolisHastingsForThetaActive(mcmcChain<diPBaCParams>& chain,
 
 	mcmcState<diPBaCParams>& currentState = chain.currentState();
 	diPBaCParams& currentParams = currentState.parameters();
+	const string outcomeType = model.dataset().outcomeType();
+	unsigned int nCategoriesY = currentParams.nCategoriesY();
 
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -1107,41 +1129,43 @@ void metropolisHastingsForThetaActive(mcmcChain<diPBaCParams>& chain,
 	unsigned int thetaUpdateFreq = propParams.thetaUpdateFreq();
 
 	double currentCondLogPost = logCondPostThetaBeta(currentParams,model);
-	for(unsigned int c=0;c<=maxZ;c++){
-		nTry++;
-		propParams.thetaAddTry();
-		double& stdDev = propParams.thetaStdDev();
-		double thetaOrig = currentParams.theta(c);
-		double thetaProp = thetaOrig +stdDev*normRand(rndGenerator);
-		currentParams.theta(c,thetaProp);
-		double propCondLogPost = logCondPostThetaBeta(currentParams,model);
-		double logAcceptRatio = propCondLogPost - currentCondLogPost;
-		if(unifRand(rndGenerator)<exp(logAcceptRatio)){
-			nAccept++;
-			propParams.thetaAddAccept();
-			currentCondLogPost = propCondLogPost;
-			// Update the std dev of the proposal
-			if(propParams.nTryTheta()%thetaUpdateFreq==0){
-				stdDev += 10*(propParams.thetaLocalAcceptRate()-thetaTargetRate)/
-								pow((double)(propParams.nTryTheta()/thetaUpdateFreq)+2.0,0.75);
-				propParams.thetaAnyUpdates(true);
-				if(stdDev>propParams.thetaStdDevUpper()||stdDev<propParams.thetaStdDevLower()){
-					propParams.thetaStdDevReset();
-				}
-				propParams.thetaLocalReset();
-			}
 
-		}else{
-			currentParams.theta(c,thetaOrig);
-			// Update the std dev of the proposal
-			if(propParams.nTryTheta()%thetaUpdateFreq==0){
-				stdDev += 10*(propParams.thetaLocalAcceptRate()-thetaTargetRate)/
+	for(unsigned int c=0;c<=maxZ;c++){
+		for (unsigned int k=0;k<nCategoriesY;k++){
+			nTry++;
+			propParams.thetaAddTry();
+			double& stdDev = propParams.thetaStdDev();
+			double thetaOrig = currentParams.theta(c,k);
+			double thetaProp = thetaOrig +stdDev*normRand(rndGenerator);
+			currentParams.theta(c,k,thetaProp);
+			double propCondLogPost = logCondPostThetaBeta(currentParams,model);
+			double logAcceptRatio = propCondLogPost - currentCondLogPost;
+			if(unifRand(rndGenerator)<exp(logAcceptRatio)){
+				nAccept++;
+				propParams.thetaAddAccept();
+				currentCondLogPost = propCondLogPost;
+				// Update the std dev of the proposal
+				if(propParams.nTryTheta()%thetaUpdateFreq==0){
+					stdDev += 10*(propParams.thetaLocalAcceptRate()-thetaTargetRate)/
 								pow((double)(propParams.nTryTheta()/thetaUpdateFreq)+2.0,0.75);
-				propParams.thetaAnyUpdates(true);
-				if(stdDev<propParams.thetaStdDevLower()||stdDev>propParams.thetaStdDevUpper()){
-					propParams.thetaStdDevReset();
+					propParams.thetaAnyUpdates(true);
+					if(stdDev>propParams.thetaStdDevUpper()||stdDev<propParams.thetaStdDevLower()){
+						propParams.thetaStdDevReset();
+					}
+					propParams.thetaLocalReset();
 				}
-				propParams.thetaLocalReset();
+			}else{
+				currentParams.theta(c,k,thetaOrig);
+				// Update the std dev of the proposal
+				if(propParams.nTryTheta()%thetaUpdateFreq==0){
+					stdDev += 10*(propParams.thetaLocalAcceptRate()-thetaTargetRate)/
+								pow((double)(propParams.nTryTheta()/thetaUpdateFreq)+2.0,0.75);
+					propParams.thetaAnyUpdates(true);
+					if(stdDev<propParams.thetaStdDevLower()||stdDev>propParams.thetaStdDevUpper()){
+						propParams.thetaStdDevReset();
+					}
+					propParams.thetaLocalReset();
+				}
 			}
 		}
 	}
@@ -1292,7 +1316,7 @@ void metropolisHastingsForLabels(mcmcChain<diPBaCParams>& chain,
 }
 
 
-// Gibbs move for updating the auxilliary variables u
+// Gibbs move for updating the auxiliary variables u
 // This is the second part of block 1. The first part used the marginal
 // distribution with u integrated out, we now use the conditional distribution
 // for u, conditional on the v^A,Theta^A parameters generated above
@@ -1306,6 +1330,8 @@ void gibbsForU(mcmcChain<diPBaCParams>& chain,
 
 	mcmcState<diPBaCParams>& currentState = chain.currentState();
 	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
+	string samplerType = model.options().samplerType();
 
 	nTry++;
 	nAccept++;
@@ -1319,8 +1345,23 @@ void gibbsForU(mcmcChain<diPBaCParams>& chain,
 	double minUi = 1.0;
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 		int zi = currentParams.z(i);
-		double ui = exp(currentParams.logPsi(zi))*unifRand(rndGenerator);
-		if(ui<minUi){
+		double ui=unifRand(rndGenerator);
+		if(samplerType.compare("SliceDependent")==0){
+			ui*=exp(currentParams.logPsi((unsigned int)zi));
+		}else if(samplerType.compare("SliceIndependent")==0){
+			ui*=hyperParams.workXiSlice((unsigned int)zi);
+		}
+
+		// This is to avoid numerical errors be
+		if(ui<0.0000000001){
+			ui=0.0000000001;
+		}
+
+		// We only take the minimum over the fitting subjects, because
+		// we don't allow predictiction subjects to be allocated to clusters
+		// where there are no fitting members, so no need to calc probabilities
+		// for cluster which are potential only for predictions subjects
+		if(ui<minUi&&i<nSubjects){
 			minUi=ui;
 		}
 		currentParams.u(i,ui);
@@ -1418,51 +1459,76 @@ void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 
 	mcmcState<diPBaCParams>& currentState = chain.currentState();
 	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
+	string samplerType = model.options().samplerType();
+	string covariateType = model.options().covariateType();
 
 	nTry++;
 	nAccept++;
 
-	// Find the active clusters
 	unsigned int maxZ = currentParams.workMaxZi();
-
-	unsigned int maxNClusters = maxZ+1;
-	vector<double> cumPsi(maxZ+1,0.0);
-	cumPsi[0] = exp(currentParams.logPsi(0));
-	for(unsigned int c=1;c<=maxZ;c++){
-		cumPsi[c]=cumPsi[c-1]+exp(currentParams.logPsi(c));
-	}
+	unsigned int maxNClusters = currentParams.maxNClusters();
+	double minUi = currentParams.workMinUi();
 
 	vector<double> vNew=currentParams.v();
 	vector<double> logPsiNew=currentParams.logPsi();
 
-
 	double alpha = currentParams.alpha();
-	double minU = currentParams.workMinUi();
-	bool continueLoop=true;
-	unsigned int c=maxNClusters-1;
-	while(continueLoop){
-		// Criteria 1
-		if(cumPsi[c]>1-minU){
-			// We can stop
-			maxNClusters=c+1;
-			continueLoop=false;
-		}else{
-			// We need a new sampled value of v
+
+	if(samplerType.compare("Truncated")==0){
+		// Just sample from the prior
+
+		for(unsigned int c=maxZ+1;c<maxNClusters;c++){
 			double v=betaRand(rndGenerator,1.0,alpha);
-			double logPsi=log(v)+log(1-vNew[maxNClusters-1])-log(vNew[maxNClusters-1])+logPsiNew[maxNClusters-1];
-			if(c+1>=vNew.size()){
+			double logPsi=log(v)+log(1-vNew[c-1])-log(vNew[c-1])+logPsiNew[c-1];
+			if(c>=vNew.size()){
 				vNew.push_back(v);
 				logPsiNew.push_back(logPsi);
 			}else{
-				vNew[c+1]=v;
-				logPsiNew[c+1]=logPsi;
+				vNew[c]=v;
+				logPsiNew[c]=logPsi;
 			}
-			cumPsi.push_back(cumPsi[c]+exp(logPsi));
-			c++;
 		}
+	}else{
+		if(samplerType.compare("SliceIndependent")==0){
+			maxNClusters=2+(int)((log(minUi)-log(1.0-hyperParams.rSlice()))/log(hyperParams.rSlice()));
+		}
+
+		// Sample V
+		vector<double> cumPsi(maxZ+1,0.0);
+		cumPsi[0] = exp(currentParams.logPsi(0));
+		for(unsigned int c=1;c<=maxZ;c++){
+			cumPsi[c]=cumPsi[c-1]+exp(currentParams.logPsi(c));
+		}
+
+		bool continueLoop=true;
+		unsigned int c=maxZ;
+		while(continueLoop){
+			if(samplerType.compare("SliceDependent")==0&&cumPsi[c]>1-minUi){
+				// We can stop
+				maxNClusters=c+1;
+				continueLoop=false;
+			}else if(samplerType.compare("SliceIndependent")==0&&c>=maxNClusters){
+				continueLoop=false;
+			}else{
+				c++;
+				// We need a new sampled value of v
+				double v=betaRand(rndGenerator,1.0,alpha);
+				double logPsi=log(v)+log(1-vNew[c-1])-log(vNew[c-1])+logPsiNew[c-1];
+				if(c>=vNew.size()){
+					vNew.push_back(v);
+					logPsiNew.push_back(logPsi);
+				}else{
+					vNew[c]=v;
+					logPsiNew[c]=logPsi;
+				}
+				cumPsi.push_back(cumPsi[c-1]+exp(logPsi));
+			}
+		}
+		currentParams.maxNClusters(maxNClusters,covariateType);
+
 	}
 
-	currentParams.maxNClusters(maxNClusters);
 	currentParams.v(vNew);
 	currentParams.logPsi(logPsiNew);
 
@@ -1545,7 +1611,6 @@ void gibbsForMuInActive(mcmcChain<diPBaCParams>& chain,
 		VectorXd mu(nCovariates);
 		// We sample from this posterior
 		mu = multivarNormalRand(rndGenerator,meanVec,covMat);
-
 		// We store our sample
 		currentParams.mu(c,mu);
 	}
@@ -1662,6 +1727,11 @@ void gibbsForThetaInActive(mcmcChain<diPBaCParams>& chain,
 	mcmcState<diPBaCParams>& currentState = chain.currentState();
 	diPBaCParams& currentParams = currentState.parameters();
 	diPBaCHyperParams hyperParams = currentParams.hyperParams();
+	const diPBaCData& dataset = model.dataset();
+	unsigned int nCategoriesY=dataset.nCategoriesY();
+	const string outcomeType = model.dataset().outcomeType();
+
+
 
 	// Find the number of clusters
 	unsigned int maxZ = currentParams.workMaxZi();
@@ -1674,9 +1744,11 @@ void gibbsForThetaInActive(mcmcChain<diPBaCParams>& chain,
 	double scale = hyperParams.sigmaTheta();
 	unsigned int dof = hyperParams.dofTheta();
 	randomStudentsT studentsTRand(dof);
-	for(unsigned int c=maxZ+1;c<maxNClusters;c++){
-		double theta=location+scale*studentsTRand(rndGenerator);
-		currentParams.theta(c,theta);
+	for (unsigned int k=0;k<nCategoriesY;k++){
+		for(unsigned int c=maxZ+1;c<maxNClusters;c++){
+			double theta=location+scale*studentsTRand(rndGenerator);
+			currentParams.theta(c,k,theta);
+		}
 	}
 
 }
@@ -1696,9 +1768,13 @@ void metropolisHastingsForBeta(mcmcChain<diPBaCParams>& chain,
 
 	mcmcState<diPBaCParams>& currentState = chain.currentState();
 	diPBaCParams& currentParams = currentState.parameters();
+	const string outcomeType = model.dataset().outcomeType();
 
 	// Find the number of clusters
-	unsigned int nFixedEffects = currentParams.nFixedEffects();
+	unsigned int nFixedEffects = currentParams.nFixedEffects(outcomeType);
+
+	// Find the number of categories of Y
+	unsigned int nCategoriesY = currentParams.nCategoriesY();
 
 	// Define a uniform random number generator
 	randomUniform unifRand(0,1);
@@ -1711,44 +1787,44 @@ void metropolisHastingsForBeta(mcmcChain<diPBaCParams>& chain,
 	double currentCondLogPost = logCondPostThetaBeta(currentParams,model);
 
 	for(unsigned int j=0;j<nFixedEffects;j++){
-		nTry++;
-		propParams.betaAddTry(j);
-		double& stdDev = propParams.betaStdDev(j);
-		double betaOrig = currentParams.beta(j);
-		double betaProp = betaOrig+stdDev*normRand(rndGenerator);
-		currentParams.beta(j,betaProp);
-		double propCondLogPost = logCondPostThetaBeta(currentParams,model);
-		double logAcceptRatio = propCondLogPost - currentCondLogPost;
-		if(unifRand(rndGenerator)<exp(logAcceptRatio)){
-			nAccept++;
-			propParams.betaAddAccept(j);
-			currentCondLogPost = propCondLogPost;
-			// Update the std dev of the proposal
-			if(propParams.nTryBeta(j)%betaUpdateFreq==0){
-				stdDev += 10*(propParams.betaLocalAcceptRate(j)-betaTargetRate)/
-								pow((double)(propParams.nTryBeta(j)/betaUpdateFreq)+2.0,0.75);
-				propParams.betaAnyUpdates(true);
-			    if(stdDev>propParams.betaStdDevUpper(j)||stdDev<propParams.betaStdDevLower(j)){
-					propParams.betaStdDevReset(j);
+		for (unsigned int k=0;k<nCategoriesY;k++){
+			nTry++;
+			propParams.betaAddTry(j);
+			double& stdDev = propParams.betaStdDev(j);
+			double betaOrig = currentParams.beta(j,k);
+			double betaProp = betaOrig+stdDev*normRand(rndGenerator);
+			currentParams.beta(j,k,betaProp);
+			double propCondLogPost = logCondPostThetaBeta(currentParams,model);
+			double logAcceptRatio = propCondLogPost - currentCondLogPost;
+			if(unifRand(rndGenerator)<exp(logAcceptRatio)){
+				nAccept++;
+				propParams.betaAddAccept(j);
+				currentCondLogPost = propCondLogPost;
+				// Update the std dev of the proposal
+				if(propParams.nTryBeta(j)%betaUpdateFreq==0){
+					stdDev += 10*(propParams.betaLocalAcceptRate(j)-betaTargetRate)/
+							pow((double)(propParams.nTryBeta(j)/betaUpdateFreq)+2.0,0.75);
+					propParams.betaAnyUpdates(true);
+					if(stdDev>propParams.betaStdDevUpper(j)||stdDev<propParams.betaStdDevLower(j)){
+						propParams.betaStdDevReset(j);
+					}
+					propParams.betaLocalReset(j);
 				}
-				propParams.betaLocalReset(j);
-			}
-
-		}else{
-			currentParams.beta(j,betaOrig);
-			// Update the std dev of the proposal
-			if(propParams.nTryBeta(j)%betaUpdateFreq==0){
-				stdDev += 10*(propParams.betaLocalAcceptRate(j)-betaTargetRate)/
-								pow((double)(propParams.nTryBeta(j)/betaUpdateFreq)+2.0,0.75);
-				propParams.betaAnyUpdates(true);
-				if(stdDev<propParams.betaStdDevLower(j)||stdDev>propParams.betaStdDevUpper(j)){
-					propParams.betaStdDevReset(j);
+			}else{
+				currentParams.beta(j,k,betaOrig);
+				// Update the std dev of the proposal
+				if(propParams.nTryBeta(j)%betaUpdateFreq==0){
+					stdDev += 10*(propParams.betaLocalAcceptRate(j)-betaTargetRate)/
+							pow((double)(propParams.nTryBeta(j)/betaUpdateFreq)+2.0,0.75);
+					propParams.betaAnyUpdates(true);
+					if(stdDev<propParams.betaStdDevLower(j)||stdDev>propParams.betaStdDevUpper(j)){
+						propParams.betaStdDevReset(j);
+					}
+					propParams.betaLocalReset(j);
 				}
-				propParams.betaLocalReset(j);
 			}
 		}
 	}
-
 }
 
 
@@ -1867,9 +1943,9 @@ void gibbsForTauEpsilon(mcmcChain<diPBaCParams>& chain,
 	}
 	for(unsigned int i=0;i<nSubjects;i++){
 		int zi=currentParams.z(i);
-		double meanVal=meanVec[i]+currentParams.theta(zi);
+		double meanVal=meanVec[i]+currentParams.theta(zi,0);
 		for(unsigned int j=0;j<nFixedEffects;j++){
-			meanVal+=currentParams.beta(j)*dataset.W(i,j);
+			meanVal+=currentParams.beta(j,0)*dataset.W(i,j);
 		}
 		double eps = currentParams.lambda(i)-meanVal;
 		sumEpsilon+=pow(eps,2.0);
@@ -2050,9 +2126,9 @@ void gibbsForSigmaSqY(mcmcChain<diPBaCParams>& chain,
 	for(unsigned int i=0;i<nSubjects;i++){
 		int Zi = currentParams.z(i);
 
-		double mu = currentParams.theta(Zi);
+		double mu = currentParams.theta(Zi,0);
 		for(unsigned int j=0;j<nFixedEffects;j++){
-			mu+=currentParams.beta(j)*dataset.W(i,j);
+			mu+=currentParams.beta(j,0)*dataset.W(i,j);
 		}
 
 		sumVal+=pow(dataset.continuousY(i)-mu,2.0);
@@ -2080,13 +2156,17 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 
 	mcmcState<diPBaCParams>& currentState = chain.currentState();
 	diPBaCParams& currentParams = currentState.parameters();
+	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 	const diPBaCData& dataset = model.dataset();
 	const string& outcomeType = model.dataset().outcomeType();
 	const string& covariateType = model.dataset().covariateType();
+	const string& samplerType = model.options().samplerType();
+	bool computeEntropy = model.options().computeEntropy();
 	unsigned int nSubjects=dataset.nSubjects();
 	unsigned int nPredictSubjects=dataset.nPredictSubjects();
 	unsigned int maxNClusters=currentParams.maxNClusters();
 	unsigned int nFixedEffects=dataset.nFixedEffects();
+	unsigned int nCategoriesY=dataset.nCategoriesY();
 	unsigned int nCovariates=dataset.nCovariates();
 	vector<unsigned int>nCategories=dataset.nCategories();
 	const vector<vector<bool> >& missingX=dataset.missingX();
@@ -2108,9 +2188,19 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		u[i] = currentParams.u(i);
 	}
 
-	vector<double> psi=currentParams.logPsi();
+	vector<double> testBound(maxNClusters,0.0);
+	vector<double> clusterWeight(maxNClusters,0.0);
 	for(unsigned int c=0;c<maxNClusters;c++){
-		psi[c]=exp(psi[c]);
+		if(samplerType.compare("SliceDependent")==0){
+			testBound[c] = exp(currentParams.logPsi(c));
+			clusterWeight[c] = 0.0;
+		}else if(samplerType.compare("SliceIndependent")==0){
+			testBound[c] = hyperParams.workXiSlice(c);
+			clusterWeight[c] = currentParams.logPsi(c)-(double)c*log(hyperParams.rSlice())-log(1-hyperParams.rSlice());
+		}else if(samplerType.compare("Truncated")==0){
+			testBound[c] = 1.0;
+			clusterWeight[c] = currentParams.logPsi(c);
+		}
 	}
 
 	// Compute the allocation probabilities in terms of the unique vectors
@@ -2122,7 +2212,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		for(unsigned int i=0;i<nSubjects;i++){
 			logPXiGivenZi[i].resize(maxNClusters,0);
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<psi[c]){
+				if(u[i]<testBound[c]){
 					if(currentParams.z(i)==(int)c){
 						logPXiGivenZi[i][c]=currentParams.workLogPXiGivenZi(i);
 					}else{
@@ -2140,7 +2230,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		for(unsigned int i=nSubjects;i<nSubjects+nPredictSubjects;i++){
 			logPXiGivenZi[i].resize(maxNClusters,0);
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<psi[c]){
+				if(u[i]<testBound[c]){
 					for(unsigned int j=0;j<nCovariates;j++){
 						if(!missingX[i][j]){
 							int Xij = currentParams.workDiscreteX(i,j);
@@ -2156,7 +2246,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			logPXiGivenZi[i].resize(maxNClusters,0.0);
 			VectorXd xi=VectorXd::Zero(nCovariates);
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<psi[c]){
+				if(u[i]<testBound[c]){
 					if(currentParams.z(i)==(int)c){
 						logPXiGivenZi[i][c]=currentParams.workLogPXiGivenZi(i);
 					}else{
@@ -2166,6 +2256,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 						logPXiGivenZi[i][c]=logPdfMultivarNormal(nCovariates,xi,currentParams.workMuStar(c),currentParams.workSqrtTau(c),currentParams.workLogDetTau(c));
 					}
 				}
+
 			}
 		}
 		// For the predictive subjects we do not count missing data
@@ -2176,7 +2267,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			unsigned int nNotMissing=dataset.nCovariatesNotMissing(i);
 
 			for(unsigned int c=0;c<maxNClusters;c++){
-				if(u[i]<psi[c]){
+				if(u[i]<testBound[c]){
 					VectorXd workMuStar=currentParams.workMuStar(c);
 
 					VectorXd xi=VectorXd::Zero(nNotMissing);
@@ -2235,6 +2326,8 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				logPYiGivenZiWi = &logPYiGivenZiWiPoisson;
 			}else if(outcomeType.compare("Normal")==0){
 				logPYiGivenZiWi = &logPYiGivenZiWiNormal;
+			}else if(outcomeType.compare("Categorical")==0){
+				logPYiGivenZiWi = &logPYiGivenZiWiCategorical;
 			}
 		}
 	}
@@ -2248,6 +2341,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 
 	unsigned int maxZ=0;
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
+
 		vector<double> logPyXz(maxNClusters,0.0);
 		// We calculate p(Z=c|y,X) \propto p(y,X,Z=c)
 		// p(y,X,z=c) = p(y|Z=c)p(X|z=c)p(z=c)
@@ -2259,10 +2353,10 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				// In this case the Y only go into this conditional
 				// through lambda
 				for(unsigned int c=0;c<maxNClusters;c++){
-					if(u[i]<psi[c]){
-						double meanVal=meanVec[i]+currentParams.theta(c);
+					if(u[i]<testBound[c]){
+						double meanVal=meanVec[i]+currentParams.theta(c,0);
 						for(unsigned int j=0;j<nFixedEffects;j++){
-							meanVal+=currentParams.beta(j)*dataset.W(i,j);
+							meanVal+=currentParams.beta(j,0)*dataset.W(i,j);
 						}
 
 						logPyXz[c]+=logPdfNormal(currentParams.lambda(i),meanVal,
@@ -2272,7 +2366,7 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			}else{
 				// In this case the Y go in directly
 				for(unsigned int c=0;c<maxNClusters;c++){
-					if(u[i]<psi[c]){
+					if(u[i]<testBound[c]){
 						logPyXz[c]+=logPYiGivenZiWi(currentParams,dataset,nFixedEffects,c,i);
 					}
 				}
@@ -2280,8 +2374,15 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 		}
 
 		for(unsigned int c=0;c<maxNClusters;c++){
-			if(u[i]<psi[c]){
-				logPyXz[c]+=logPXiGivenZi[i][c];
+			if(u[i]<testBound[c]){
+				// Make sure prediction subjects can only be allocated to one
+				// of the non-empty clusters
+				if(i<nSubjects||nMembers[c]>0){
+					logPyXz[c]+=clusterWeight[c];
+					logPyXz[c]+=logPXiGivenZi[i][c];
+				}else{
+					logPyXz[c]=-(numeric_limits<double>::max());
+				}
 			}else{
 				logPyXz[c]=-(numeric_limits<double>::max());
 			}
@@ -2289,7 +2390,6 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				maxLogPyXz=logPyXz[c];
 			}
 		}
-
 		vector<double> pzGivenXy(maxNClusters);
 		double sumVal=0;
 		for(unsigned int c=0;c<maxNClusters;c++){
@@ -2302,14 +2402,16 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 			sumVal+=pzGivenXy[c];
 		}
 
-		double expectedTheta=0.0;
+		vector<double> expectedTheta(nCategoriesY);
 		double entropyVal=0.0;
 		double expectedPackYears=0.0;
 		vector<double> cumPzGivenXy(maxNClusters);
 		for(unsigned int c=0;c<maxNClusters;c++){
 			pzGivenXy[c]/=sumVal;
-			if(pzGivenXy[c]>0){
-				entropyVal-=pzGivenXy[c]*log(pzGivenXy[c]);
+			if(computeEntropy){
+				if(pzGivenXy[c]>0){
+					entropyVal-=pzGivenXy[c]*log(pzGivenXy[c]);
+				}
 			}
 
 			if(c==0){
@@ -2318,7 +2420,13 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				cumPzGivenXy[c]=cumPzGivenXy[c-1]+pzGivenXy[c];
 			}
 			if(includeResponse&&i>=nSubjects){
-				expectedTheta+=currentParams.theta(c)*pzGivenXy[c];
+				if(outcomeType.compare("Categorical")==0){
+					for (unsigned int k=0;k<nCategoriesY;k++){
+						expectedTheta[k]+=currentParams.theta(c,k)*pzGivenXy[c];
+					}
+				} else {
+					expectedTheta[0]+=currentParams.theta(c,0)*pzGivenXy[c];
+				}
 			}
 			// This is only in the ICare branch
 			// A rough and ready fix for one of plots
@@ -2331,7 +2439,6 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 				}
 			}
 		}
-
 		unsigned int zi;
 		if(maxNClusters==1){
 			zi=0;
@@ -2350,12 +2457,16 @@ void gibbsForZ(mcmcChain<diPBaCParams>& chain,
 
 
 		currentParams.z(i,zi,covariateType);
-		currentParams.workEntropy(i,entropyVal);
+		if(computeEntropy){
+			currentParams.workEntropy(i,entropyVal);
+		}
 		if(i<nSubjects){
 			nMembers[zi]++;
 		}else{
 			if(includeResponse){
-				currentParams.workPredictExpectedTheta(i-nSubjects,expectedTheta);
+				for (unsigned int k=0;k<nCategoriesY;k++){
+					currentParams.workPredictExpectedTheta(i-nSubjects,k,expectedTheta[k]);
+				}
 			}
 			currentParams.workPredictExpectedPackYears(i-nSubjects,expectedPackYears);
 		}
@@ -2421,7 +2532,7 @@ void updateMissingDiPBaCData(baseGeneratorType& rndGenerator,
 			// Check if there is anything to do
 			if(dataset.nCovariatesNotMissing(i)<nCovariates){
 				int zi = params.z(i);
-				VectorXd newXi=multivarNormalRand(rndGenerator,params.workMuStar(zi),params.Tau(zi));
+				VectorXd newXi=multivarNormalRand(rndGenerator,params.workMuStar(zi),params.Sigma(zi));
 				for(unsigned int j=0;j<nCovariates;j++){
 					if(dataset.missingX(i,j)){
 						dataset.continuousX(i,j,newXi(j));

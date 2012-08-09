@@ -2,6 +2,30 @@
 /// \author David Hastie
 /// \brief Main file for running DiPBaC
 
+/// \note (C) Copyright David Hastie and Silvia Liverani, 2012.
+
+/// DiPBaC++ is free software; you can redistribute it and/or modify it under the
+/// terms of the GNU Lesser General Public License as published by the Free Software
+/// Foundation; either version 3 of the License, or (at your option) any later
+/// version.
+
+/// DiPBaC++ is distributed in the hope that it will be useful, but WITHOUT ANY
+/// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+/// PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+
+/// You should have received a copy of the GNU Lesser General Public License
+/// along with DiPBaC++ in the documentation directory. If not, see
+/// <http://www.gnu.org/licenses/>.
+
+/// The external linear algebra library Eigen, parts of which are included  in the
+/// lib directory is released under the LGPL3+ licence. See comments in file headers
+/// for details.
+
+/// The Boost C++ header library, parts of which are included in the  lib directory
+/// is released under the Boost Software Licence, Version 1.0, a copy  of which is
+/// included in the documentation directory.
+
+
 // Standard includes
 #include<cmath>
 #include<cstdio>
@@ -76,12 +100,11 @@ int main(int argc, char*  argv[]){
 
 	// Set the proposal parameters
 	diPBaCPropParams proposalParams(options.nSweeps(),dataset.nCovariates(),
-										dataset.nFixedEffects());
+										dataset.nFixedEffects(),dataset.nCategoriesY());
 	diPBaCSampler.proposalParams(proposalParams);
 
 	// The gibbs update for the active V
 	diPBaCSampler.addProposal("gibbsForVActive",1.0,1,1,&gibbsForVActive);
-
 
 	if(options.covariateType().compare("Discrete")==0){
 		// For discrete X data we do a mixture of Categorical and ordinal updates
@@ -118,7 +141,9 @@ int main(int argc, char*  argv[]){
 	diPBaCSampler.addProposal("metropolisHastingsForLabels",1.0,1,1,&metropolisHastingsForLabels);
 
 	// Gibbs for U
-	diPBaCSampler.addProposal("gibbsForU",1.0,1,1,&gibbsForU);
+	if(options.samplerType().compare("Truncated")!=0){
+		diPBaCSampler.addProposal("gibbsForU",1.0,1,1,&gibbsForU);
+	}
 
 	// The Metropolis Hastings update for alpha
 	if(options.fixedAlpha()<0){
@@ -203,6 +228,8 @@ int main(int argc, char*  argv[]){
 	diPBaCSampler.initialiseChain();
 	diPBaCHyperParams hyperParams = diPBaCSampler.chain().currentState().parameters().hyperParams();
 	unsigned int nClusInit = diPBaCSampler.chain().currentState().parameters().workNClusInit();
+	// The following is only used if the sampler type is truncated
+	unsigned int maxNClusters = diPBaCSampler.chain().currentState().parameters().maxNClusters();
 	/* ---------- Run the sampler --------- */
 	// Note: in this function the output gets written
 	diPBaCSampler.run();
@@ -210,7 +237,7 @@ int main(int argc, char*  argv[]){
 	/* -- End the clock time and write the full run details to log file --*/
 	currTime = time(NULL);
     double timeInSecs=(double)currTime-(double)beginTime;
-	string tmpStr = storeLogFileData(options,dataset,hyperParams,nClusInit,timeInSecs);
+	string tmpStr = storeLogFileData(options,dataset,hyperParams,nClusInit,maxNClusters,timeInSecs);
 	diPBaCSampler.appendToLogFile(tmpStr);
 
 
