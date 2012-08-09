@@ -1460,6 +1460,7 @@ void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 	diPBaCParams& currentParams = currentState.parameters();
 	diPBaCHyperParams hyperParams = currentParams.hyperParams();
 	string samplerType = model.options().samplerType();
+	string covariateType = model.options().covariateType();
 
 	nTry++;
 	nAccept++;
@@ -1523,7 +1524,7 @@ void gibbsForVInActive(mcmcChain<diPBaCParams>& chain,
 				cumPsi.push_back(cumPsi[c-1]+exp(logPsi));
 			}
 		}
-		currentParams.maxNClusters(maxNClusters);
+		currentParams.maxNClusters(maxNClusters,covariateType);
 
 	}
 
