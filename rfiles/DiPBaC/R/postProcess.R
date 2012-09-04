@@ -302,7 +302,7 @@ calcOptimalClustering<-function(disSimObj,maxNClusters=NULL,useLS=F){
 			clusteringPred<-rep(0,nPredictSubjects)
 			for(i in 1:nPredictSubjects){
 				tmpVec<-disSimMatPred[i,clustMedoids]
-				clusteringPred[i]<-which(tmpVec==min(tmpVec))
+				clusteringPred[i]<-sample(which(tmpVec==min(tmpVec)),1)
 			}
 		}
 	}
