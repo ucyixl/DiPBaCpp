@@ -84,7 +84,7 @@ diPBaCOptions processCommandLine(int argc, char*  argv[]){
 			cout << "--nBurn=<unsigned int>" << endl << "\tThe number of sweeps in the burn in period (1000)" << endl;
 			cout << "--nProgress=<unsigned int>" << endl << "\tThe number of sweeps at which to print a" << endl << "progress update (500)" << endl;
 			cout << "--nFilter=<unsigned int>" << endl << "\tThe frequency (in sweeps) with which to write" << endl << "\tthe output to file (1)" << endl;
-			cout << "--nClusInit=<unsigned int>" << endl << "\tThe number of clusters individuals should be" << endl << "\tinitially randomly assigned to (Unif[5,15])" << endl;
+			cout << "--nClusInit=<unsigned int>" << endl << "\tThe number of clusters individuals should be" << endl << "\tinitially randomly assigned to (Unif[50,60])" << endl;
 			cout << "--seed=<unsigned int>" << endl << "\tThe value for the seed for the random number" << endl << "\tgenerator (current time)" << endl;
 			cout << "--yModel=<string>" << endl << "\tThe model type for the outcome variable. Options are" << endl << "\tcurrently 'Bernoulli','Poisson','Binomial', 'Categorical' and 'Normal' (Bernoulli)" << endl;
 			cout << "--xModel=<string>" << endl << "\tThe model type for the covariates. Options are" << endl << "\tcurrently 'Discrete' and 'Normal' (Discrete)" << endl;
@@ -678,9 +678,9 @@ void initialiseDiPBaC(baseGeneratorType& rndGenerator,
 	vector<unsigned int> nXInCluster(maxNClusters,0);
 	unsigned int maxZ=0;
 	if(nClusInit==0){
-		nClusInit=5+(unsigned int)11*unifRand(rndGenerator);
-		params.workNClusInit(nClusInit);
+		nClusInit=50+(unsigned int)11*unifRand(rndGenerator);
 	}
+	params.workNClusInit(nClusInit);
 	for(unsigned int i=0;i<nSubjects+nPredictSubjects;i++){
 		int c=(int) nClusInit*unifRand(rndGenerator);
 		params.z(i,c,covariateType);
